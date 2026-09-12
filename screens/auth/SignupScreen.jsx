@@ -1,0 +1,206 @@
+import React, { useState } from 'react'
+import { View, TouchableOpacity, Linking } from 'react-native'
+import Ionicons from 'react-native-vector-icons/Ionicons'
+import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
+import { useLanguage } from '../../context/LanguageContext'
+import AuthWrapper from '../../components/AuthWrapper'
+import { Button, Input, Text } from '../../components/ui'
+import { db, auth } from '../../config/firebase'
+import {
+  doc,
+  setDoc,
+  serverTimestamp,
+} from 'firebase/firestore'
+import { sendEmailVerification } from 'firebase/auth'
+import { validatePassword } from '../../utils/passwordUtils'
+import { detectUserCountry } from '../../utils/country'
+
+export const SignupScreen = ({ navigation }) => {
+  const { colors } = useTheme()
+  const { t } = useLanguage()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const { signup } = useAuth()
+
+  const handleSignup = async () => {
+    setError('')
+
+    if (!email || !password || !confirmPassword) {
+      setError(t('auth.fillAllFields'))
+      return
+    }
+
+    if (!acceptedTerms) {
+      setError(t('auth.agreeTermsError'))
+      return
+    }
+
+    if (password !== confirmPassword) {
+      setError(t('auth.passwordMismatch'))
+      return
+    }
+
+    const passCheck = validatePassword(password)
+    if (!passCheck.isValid) {
+      setError(passCheck.error)
+      return
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email.trim())) {
+      setError(t('auth.invalidEmail'))
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const userCountry = await detectUserCountry()
+
+      // 1. Sign up user in Firebase Auth
+      const userCredential = await signup(email.trim(), password)
+      const user = userCredential.user
+
+      // 2. Create User Profile document in Firestore
+      await setDoc(doc(db, 'profiles', user.uid), {
+        uid: user.uid,
+        email: email.trim(),
+        display_name: email.trim().split('@')[0],
+        isVerified: false,
+        country: userCountry,
+        createdAt: serverTimestamp(),
+        fastingDefaults: {
+          sunnah: true,
+          whiteDays: true,
+          ramadan: true,
+        },
+        preferences: {
+          soundEnabled: true,
+          buzzNotifications: true,
+        },
+      })
+
+      // 3. Send Firebase email verification (built-in Firebase syntax)
+      try {
+        await sendEmailVerification(user, {
+          url: 'https://suhoor-group.web.app/login',
+          handleCodeInApp: true,
+        })
+      } catch (emailErr) {
+        console.log('Firebase verification email error:', emailErr)
+        // Continue anyway - user can request resend later
+      }
+
+      // Success, the AuthContext state change will trigger RootNavigator navigation.
+      // But we can let them know about the verification email.
+    } catch (err) {
+      if (err.code === 'auth/email-already-in-use') {
+        setError(t('auth.emailInUse'))
+      } else {
+        setError(t('auth.signupError'))
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <AuthWrapper
+      title={t('auth.createAccount')}
+      subtitle={t('auth.signupSubtitle')}
+      error={error}
+      bottomTitle={t('auth.alreadyHaveAccount')}
+      bottomsubTitle={t('auth.login')}
+      onBottomPress={() => navigation.navigate('Login')}
+      onBackPress={() => navigation.goBack()}
+    >
+      <Input
+        label={t('settings.emailAddress')}
+        icon="mail-outline"
+        placeholder="your@email.com"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
+
+      <Input
+        label={t('auth.password')}
+        icon="lock-closed-outline"
+        placeholder="••••••••"
+        value={password}
+        onChangeText={setPassword}
+        hint={t(
+          'auth.passwordHint',
+          'Minimum of 6 characters with uppercase, lowercase & special characters'
+        )}
+        secure
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
+
+      <Input
+        label={t('auth.confirmPassword')}
+        icon="lock-closed-outline"
+        placeholder="••••••••"
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+        secure
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
+
+      <View className="mt-1 mb-6 flex-row items-center gap-3 pe-4">
+        <TouchableOpacity
+          onPress={() => setAcceptedTerms(!acceptedTerms)}
+          className="w-5 h-5 rounded border-2 flex items-center justify-center"
+          style={{
+            borderColor: acceptedTerms ? colors.primary : '#E5E7EB',
+            backgroundColor: acceptedTerms ? colors.primary : 'transparent',
+          }}
+        >
+          {acceptedTerms && (
+            <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+          )}
+        </TouchableOpacity>
+        <Text
+          variant="caption"
+          tone="secondary"
+          className="flex-1 text-[13px] leading-4 text-gray-600"
+        >
+          By continuing, you agree to Suhoor's{' '}
+          <Text
+            className="text-primary underline"
+            onPress={() => Linking.openURL('https://suhoorapp.cv/terms')}
+          >
+            Terms of Use
+          </Text>{' '}
+          and{' '}
+          <Text
+            className="text-primary underline"
+            onPress={() => Linking.openURL('https://suhoorapp.cv/privacy')}
+          >
+            Privacy Policy
+          </Text>
+          .
+        </Text>
+      </View>
+
+      <Button
+        title={t('auth.signup')}
+        onPress={handleSignup}
+        loading={loading}
+        variant="primary"
+        style={{ borderRadius: 8 }}
+      />
+    </AuthWrapper>
+  )
+}
+
+export default SignupScreen

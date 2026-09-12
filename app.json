@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "Suhoor",
+    "slug": "suhoor",
+    "version": "1.0.0",
+    "platforms": ["android", "web"],
+    "userInterfaceStyle": "automatic",
+    "web": {
+      "bundler": "metro"
+    },
+    "jsEngine": "hermes"
+  }
+}

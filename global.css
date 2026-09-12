@@ -1,0 +1,76 @@
+/* NativeWind v4 — these three directives are REQUIRED.
+   Without them NativeWind compiles no utilities and className props do nothing. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Basic web layout to ensure content is visible */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+}
+
+/* React Native Web fixes */
+.rn-view {
+  display: flex;
+  flex-direction: column;
+}
+
+/* These eight rules are **web only** — NativeWind does not compile @font-face
+   for Android or iOS. `theme/fonts.js` + the `useFonts` call in `App.jsx` are
+   what register the same eight faces natively. Keep both lists in step. */
+
+@font-face {
+  font-family: 'Quicksand-Regular';
+  src: url('./assets/fonts/Quicksand-Regular.ttf');
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: 'Quicksand-Medium';
+  src: url('./assets/fonts/Quicksand-Medium.ttf');
+  font-weight: 500;
+}
+
+@font-face {
+  font-family: 'Quicksand-SemiBold';
+  src: url('./assets/fonts/Quicksand-SemiBold.ttf');
+  font-weight: 600;
+}
+
+@font-face {
+  font-family: 'Quicksand-Bold';
+  src: url('./assets/fonts/Quicksand-Bold.ttf');
+  font-weight: 700;
+}
+
+@font-face {
+  font-family: 'SpaceGrotesk-Regular';
+  src: url('./assets/fonts/SpaceGrotesk-Regular.ttf');
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: 'SpaceGrotesk-Medium';
+  src: url('./assets/fonts/SpaceGrotesk-Medium.ttf');
+  font-weight: 500;
+}
+
+@font-face {
+  font-family: 'SpaceGrotesk-SemiBold';
+  src: url('./assets/fonts/SpaceGrotesk-SemiBold.ttf');
+  font-weight: 600;
+}
+
+@font-face {
+  font-family: 'SpaceGrotesk-Bold';
+  src: url('./assets/fonts/SpaceGrotesk-Bold.ttf');
+  font-weight: 700;
+}
