@@ -1,6 +1,7 @@
 ---
 description: Suhoor Native Goals
 ---
+
 How Groups Work:
 
 Once it's 8 AM in the morning, I get a prompt asking me if I want to fast the next day, that's if the time is before that next day, of course. Once it's 0:00, the prompt is still there(if i havent choosen anything), but now it shows today. This prompt will be there until it's actually the beginning of my wake-up window.
@@ -14,6 +15,8 @@ At the end of the wake-up window, the prompt for tomorrow shows: Do you want to 
 a. If I did not choose anything, maybe I forgot to select Yes or No, this is where my setting fasting preferences come in. For every other normal day, the prompt defaults to No. Then, for the four special cases, it depends on whether I have toggled it on or off in my settings. For example, if tomorrow is Monday and it's a Sunnah fast, and I have Sunnah fast defaulting to Yes in my settings, then the prompt must default to Yes based on my settings.
 
 b. If I choose Yes: The first thing that happens is that my alarm overlay is able to ring when it's the beginning of my wake-up window., with the four digit pin confirmation, until i get this pin correctly, the alarm overlay(which can come on even if i did not open the app, or my phone screen is off) will not go away.
+
+Users have a 5-minute grace period after their wake-up time before they can be buzzed by group members across all groups
 
 After I turn off the alarm, if I did not check in by clicking I'm Awake in the groups tab, note that the I'm Awake button can't be in each group page; it will only show during my wake-up window at the top of the groups tab itself, on clicking the groups tab of the mobile app., that is immediately I click on the groups tab. So it can't be in each group.
 

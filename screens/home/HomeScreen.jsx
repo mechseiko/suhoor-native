@@ -1,17 +1,17 @@
-import { FlatList, Image, Modal, RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { FlatList, Image, Modal, RefreshControl, StyleSheet, TouchableOpacity, View, TextInput } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../config/firebase';
-import { collection, query, where, getDocs, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import FastingPrompt from '../../components/FastingPrompt';
 import StatsCard from '../../components/StatsCard';
 import ProfileSidebar from '../../components/ProfileSidebar';
 import { Badge, Button, Card, IconTile, Screen, Text } from '../../components/ui';
 import { brand, radius, spacing } from '../../theme';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const alpha = (color, opacity) => {
   const hex = color.replace('#', '');
@@ -30,6 +30,12 @@ export const HomeScreen = ({ navigation }) => {
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [lastSeenNotifications, setLastSeenNotifications] = useState(0);
+  
+  // PIN setup modal state
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinDigits, setPinDigits] = useState(['', '', '', '']);
+  const [pinError, setPinError] = useState('');
+  const pinRefs = [useRef(), useRef(), useRef(), useRef()];
 
   // Notifications listener (Goal 14)
   useEffect(() => {
@@ -100,34 +106,30 @@ export const HomeScreen = ({ navigation }) => {
       setTotalMembers(uniqueMemberIds.size);
       console.log('[HomeScreen] Total unique members:', uniqueMemberIds.size);
 
-      // 3. Fetch total fasting days this year
-      const fastingRef = collection(db, 'daily_fasting_status');
-      const fastingQuery = query(
-        fastingRef,
-        where('userId', '==', currentUser.uid),
-        where('wantsToFast', '==', true)
+      // 3. Fetch total fasting days this year (based on actual wake-up logs, not just intentions)
+      const wakeUpLogsRef = collection(db, 'wake_up_logs');
+      const wakeUpQuery = query(
+        wakeUpLogsRef,
+        where('user_id', '==', currentUser.uid)
       );
-      const fastingSnap = await getDocs(fastingQuery);
-      setTotalFastingDays(fastingSnap.size);
-      console.log('[HomeScreen] Total fasting days:', fastingSnap.size);
+      const wakeUpSnap = await getDocs(wakeUpQuery);
+      setTotalFastingDays(wakeUpSnap.size);
+      console.log('[HomeScreen] Total fasting days:', wakeUpSnap.size);
 
-      // 4. Determine fasting status for last 7 days for a nice visual widget
+      // 4. Determine fasting status for last 7 days for a nice visual widget (based on actual wake-ups)
       const last7DaysStatus = [];
       const today = new Date();
       for (let i = 6; i >= 0; i--) {
         const d = new Date(today);
         d.setDate(today.getDate() - i);
         const dateStr = d.toLocaleDateString('en-CA');
-        const dayStatusQuery = query(
-          fastingRef,
-          where('userId', '==', currentUser.uid),
+        const dayWakeUpQuery = query(
+          wakeUpLogsRef,
+          where('user_id', '==', currentUser.uid),
           where('date', '==', dateStr)
         );
-        const daySnap = await getDocs(dayStatusQuery);
-        let fasted = false;
-        daySnap.forEach((doc) => {
-          if (doc.data().wantsToFast) fasted = true;
-        });
+        const daySnap = await getDocs(dayWakeUpQuery);
+        let fasted = daySnap.size > 0; // Consider fasted if they actually woke up and logged it
         last7DaysStatus.push(fasted);
       }
       setWeeklyFasting(last7DaysStatus);
@@ -142,7 +144,7 @@ export const HomeScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchDashboardData();
-  }, [currentUser]);
+  }, [currentUser, userProfile?.pin]); // Re-fetch when PIN changes to update UI
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -163,6 +165,49 @@ export const HomeScreen = ({ navigation }) => {
     if (hours < 12) return t('home.welcomeMorning');
     if (hours < 18) return t('home.welcomeAfternoon');
     return t('home.welcomeEvening');
+  };
+
+  // PIN setup functions
+  const handlePinDigitChange = (index, value) => {
+    if (!/^\d*$/.test(value)) return;
+    const digit = value.slice(-1);
+    const next = [...pinDigits];
+    next[index] = digit;
+    setPinDigits(next);
+    setPinError('');
+    if (digit && index < 3) {
+      pinRefs[index + 1]?.current?.focus();
+    }
+    if (digit && index === 3) {
+      const entered = [...next.slice(0, 3), digit].join('');
+      handlePinVerify(entered);
+    }
+  };
+
+  const handlePinKeyPress = (index, e) => {
+    if (e.nativeEvent?.key === 'Backspace' && !pinDigits[index] && index > 0) {
+      pinRefs[index - 1]?.current?.focus();
+    }
+  };
+
+  const handlePinVerify = async (override) => {
+    const entered = override ?? pinDigits.join('');
+    if (entered.length < 4) {
+      setPinError('Enter your 4-digit PIN.');
+      return;
+    }
+
+    try {
+      // Save PIN to AsyncStorage (matching onboarding flow)
+      await AsyncStorage.setItem('suhoor_alarm_pin', entered);
+
+      setPinError('');
+      setShowPinModal(false);
+      setPinDigits(['', '', '', '']);
+    } catch (err) {
+      console.error('Error saving PIN:', err);
+      setPinError('Failed to save PIN. Try again.');
+    }
   };
 
   const displayName =
@@ -246,12 +291,7 @@ export const HomeScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
-          {/* <Badge
-            label={formatDate(new Date(), { month: 'short', day: 'numeric' })}
-            icon="calendar-outline"
-            bordered
-            pill={false}
-          /> */}
+         
         </View>
       </View>
 
@@ -267,7 +307,7 @@ export const HomeScreen = ({ navigation }) => {
               <Ionicons name="lock-closed-outline" size={20} color={colors.warning} />
             </View>
             <View style={styles.cardHeaderText}>
-              <Text variant="h3" style={{ color: colors.primary }}>Set Your Alarm PIN</Text>
+              <Text variant="h3" style={{ color: colors.warning }}>Set Your Alarm PIN</Text>
               <Text variant="caption" tone="secondary">
                 You need to set up your 4-digit PIN to be able to receive and dismiss alarms.
               </Text>
@@ -275,7 +315,10 @@ export const HomeScreen = ({ navigation }) => {
           </View>
           <Button
             title="Set Up PIN"
-            onPress={() => navigation.navigate('Profile')}
+            onPress={() => {
+              setShowPinModal(true);
+              setTimeout(() => pinRefs[0]?.current?.focus(), 200);
+            }}
             variant="secondary"
             style={{ borderRadius: 8 }}
           />
@@ -376,6 +419,79 @@ export const HomeScreen = ({ navigation }) => {
         onClose={() => setSidebarVisible(false)}
         navigation={navigation}
       />
+
+      {/* PIN Setup Modal */}
+      <Modal
+        visible={showPinModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowPinModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 20, padding: 24, width: '100%', maxWidth: 320 }}>
+            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+              <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: alpha(colors.primary, 0.1), alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                <Ionicons name="lock-closed" size={28} color={colors.primary} />
+              </View>
+              <Text variant="h2" style={{ textAlign: 'center', marginBottom: 8 }}>Set Your Alarm PIN</Text>
+              <Text variant="body" tone="secondary" style={{ textAlign: 'center', fontSize: 13 }}>
+                Enter a 4-digit PIN to dismiss your Suhoor alarm. This ensures you're truly awake when stopping the alarm.
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'center', columnGap: 12, marginBottom: 16 }}>
+              {pinDigits.map((digit, i) => (
+                <TextInput
+                  key={i}
+                  ref={pinRefs[i]}
+                  value={digit}
+                  onChangeText={(val) => handlePinDigitChange(i, val)}
+                  onKeyPress={(e) => handlePinKeyPress(i, e)}
+                  keyboardType="number-pad"
+                  maxLength={1}
+                  secureTextEntry
+                  style={{
+                    width: 54,
+                    height: 60,
+                    textAlign: 'center',
+                    fontSize: 24,
+                    fontWeight: '800',
+                    borderWidth: 2,
+                    borderColor: digit ? colors.primary : colors.border,
+                    borderRadius: 12,
+                    backgroundColor: digit ? alpha(colors.primary, 0.08) : colors.surfaceVariant,
+                    color: colors.text,
+                  }}
+                  autoFocus={i === 0}
+                />
+              ))}
+            </View>
+
+            {pinError ? (
+              <Text style={{ color: colors.error, fontSize: 12, marginBottom: 12, textAlign: 'center' }}>{pinError}</Text>
+            ) : null}
+
+            <View style={{ flexDirection: 'row', columnGap: 12 }}>
+              <Button
+                title="Cancel"
+                onPress={() => {
+                  setShowPinModal(false);
+                  setPinDigits(['', '', '', '']);
+                  setPinError('');
+                }}
+                variant="outline"
+                style={{ flex: 1 }}
+              />
+              <Button
+                title="Save PIN"
+                onPress={() => handlePinVerify()}
+                variant="secondary"
+                style={{ flex: 1 }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Notifications Modal (Goal 14) */}
       <Modal

@@ -283,12 +283,13 @@ export const FastingTimesScreen = () => {
         'preferences.alarmAudioMode': 'custom',
         'preferences.customAlarmAudioUrl': downloadUrl,
         'preferences.customAlarmAudioName': file.name,
+        'preferences.alarmVolume': 1.0, // Set to maximum volume
       });
 
       setAlarmAudioMode('custom');
       setCustomAudioUrl(downloadUrl);
       setCustomAudioName(file.name);
-      triggerToast('Custom alarm audio saved!', 'success');
+      triggerToast('Custom alarm audio saved at maximum volume!', 'success');
     } catch (err) {
       if (DocumentPicker.isCancel(err)) return;
       console.error('Audio upload error:', err);

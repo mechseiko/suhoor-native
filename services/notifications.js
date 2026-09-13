@@ -20,7 +20,6 @@ import { Platform } from 'react-native'
 
 export const CHANNELS = {
   wakeUp: { id: 'suhoor-wake-up', name: 'Suhoor Wake Up' },
-  recheck: { id: 'suhoor-recheck', name: 'Suhoor Recheck' },
   fastingPrompt: { id: 'suhoor-fasting-prompt', name: 'Fasting Intention' },
   suhoorStart: { id: 'suhoor-start', name: 'Suhoor Time' },
   suhoorEnd: { id: 'suhoor-end', name: 'Suhoor Ending' },

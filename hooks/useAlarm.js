@@ -279,40 +279,6 @@ export function useAlarm() {
     [logMissedWakeUp]
   );
 
-  /** A second nudge five minutes on, in case they went back to sleep. */
-  const scheduleRecheckAlarm = useCallback(
-    async (initialWakeUpTime, userId, groupId) => {
-      const recheckTime = new Date(initialWakeUpTime.getTime() + 5 * 60000);
-      const semanticId = `recheck_${userId}_${groupId}_${recheckTime.getTime()}`;
-
-      if (nativeAlarm.isNativeAvailable) {
-        try {
-          const success = await nativeAlarm.scheduleAlarm(
-            semanticId,
-            recheckTime.getTime(),
-            userId,
-            groupId,
-            'recheck'
-          );
-          return success ? semanticId : null;
-        } catch (error) {
-          console.error('Error scheduling native re-check alarm:', error);
-          return null;
-        }
-      }
-
-      return scheduleNotification({
-        semanticId,
-        date: recheckTime,
-        title: t('alarm.recheckTitle'),
-        message: t('alarm.recheckBody'),
-        channel: CHANNELS.recheck,
-        data: { userId, groupId, type: 'recheck_alarm' },
-      });
-    },
-    [nativeAlarm, t]
-  );
-
   // Restore a pending alarm after a restart; drop it if its time has passed.
   useEffect(() => {
     if (!hasPermission) return;
@@ -348,7 +314,6 @@ export function useAlarm() {
     cancelAlarm,
     checkAlarmStatus,
     logWakeUpTime,
-    scheduleRecheckAlarm,
     logMissedWakeUp,
     checkMissedWakeUps,
     // Exposed for callers that need to line up a native id with a stored one.

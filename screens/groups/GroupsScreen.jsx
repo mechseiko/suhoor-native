@@ -729,6 +729,12 @@ export const GroupsScreen = ({ navigation }) => {
 
       {loading ? (
         <View style={styles.listContent}>
+          <View style={styles.circularLoaderContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+              Loading groups...
+            </Text>
+          </View>
           <GroupSkeleton />
           <GroupSkeleton />
           <GroupSkeleton />
@@ -1061,6 +1067,16 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
+  },
+  circularLoaderContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    fontWeight: '500',
   },
   groupCard: {
     borderRadius: 16,

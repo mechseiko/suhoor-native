@@ -379,34 +379,22 @@ export const FastingPrompt = () => {
       )}
 
       {status === 'confirmed_fasting' && (
-        <Card style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }}>
+        // <Card style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }}>
+        <Card>
           <View style={styles.header}>
-            <View style={[styles.glyph, { backgroundColor: '#D1FAE5' }]}>
-              <Ionicons name="checkmark-circle-outline" size={20} color="#059669" />
-            </View>
             <View style={{ flex: 1, gap: 2 }}>
-              <Text variant="h3" style={{ color: '#065F46' }}>Fasting intention set ✓</Text>
+              <Text variant="h3" style={{ color: '#065F46' }}>Fasting intention set</Text>
               <Text variant="caption" style={{ color: '#047857' }}>
-                Your wake-up alarm will be active. Check in during your wake-up window to dismiss it completely.
+                Your alarm is active. Check in during your wake-up window to dismiss it completely.
               </Text>
             </View>
           </View>
-          <Button
-            title="Change intention"
-            onPress={() => setStatus('idle')}
-            variant="outline"
-            style={{ borderColor: '#BBF7D0' }}
-            textStyle={{ color: '#059669', fontSize: 13 }}
-          />
         </Card>
       )}
 
       {status === 'confirmed_not_fasting' && (
         <Card style={{ backgroundColor: colors.surfaceVariant, borderColor: colors.border }}>
           <View style={styles.header}>
-            <View style={[styles.glyph, { backgroundColor: colors.surfaceVariant }]}>
-              <Ionicons name="moon-outline" size={20} color={colors.textSecondary} />
-            </View>
             <View style={{ flex: 1, gap: 2 }}>
               <Text variant="h3" tone="secondary">Not fasting</Text>
               <Text variant="caption" tone="secondary">
@@ -414,13 +402,6 @@ export const FastingPrompt = () => {
               </Text>
             </View>
           </View>
-          <Button
-            title="Change intention"
-            onPress={() => setStatus('idle')}
-            variant="outline"
-            style={{ borderColor: colors.border }}
-            textStyle={{ color: colors.textSecondary, fontSize: 13 }}
-          />
         </Card>
       )}
     </View>

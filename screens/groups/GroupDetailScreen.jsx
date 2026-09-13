@@ -18,6 +18,7 @@ import { copyToClipboard } from '../../utils/clipboard'
 import { Text } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
 import { useSocket } from '../../context/SocketContext'
+import { useNetwork } from '../../context/NetworkContext'
 import { useFastingTimes } from '../../hooks/useFastingTimes'
 import { db } from '../../config/firebase'
 import {
@@ -41,6 +42,8 @@ import Toast from '../../components/Toast'
 export const GroupDetailScreen = ({ route, navigation }) => {
   const { groupId, groupName } = route.params
   const { currentUser, userProfile } = useAuth()
+  const { isConnected: isSocketConnected } = useSocket()
+  const { isConnected: isNetworkConnected } = useNetwork()
   const {
     socket,
     isConnected,
@@ -303,7 +306,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
   useEffect(() => {
     if (!groupId) return
 
-    if (isConnected) {
+    if (isSocketConnected) {
       const userName =
         userProfile?.display_name ||
         currentUser?.displayName ||
@@ -313,14 +316,14 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     }
 
     return () => {
-      if (isConnected) {
+      if (isSocketConnected) {
         leaveGroup(groupId)
       }
     }
-  }, [groupId, isConnected, joinGroup, leaveGroup, currentUser, userProfile])
+  }, [groupId, isSocketConnected, joinGroup, leaveGroup, currentUser, userProfile])
 
   useEffect(() => {
-    if (!isConnected) return
+    if (!isSocketConnected) return
 
     const handleMemberWokeUp = data => {
       console.log('🌅 Member woke up socket event:', data)
@@ -375,7 +378,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       off('group-members-update', handleGroupMembersUpdate)
       off('get-buzzed', handleGotBuzzed)
     }
-  }, [isConnected, groupId, currentUser, on, off])
+  }, [isSocketConnected, groupId, currentUser, on, off])
 
   // Loop vibration if user is buzzing
   useEffect(() => {
@@ -556,11 +559,36 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       return
     }
 
-    // Check 2-minute cooldown across the group for this member
+    // Check 5-minute grace period after wake-up time to prevent immediate buzzing
+    const wakeUpStr = getMemberWakeUpTime(member)
+    if (wakeUpStr && wakeUpStr !== '--:--') {
+      const [wH, wM] = wakeUpStr.split(':').map(Number)
+      if (!isNaN(wH) && !isNaN(wM)) {
+        const wakeTime = new Date()
+        wakeTime.setHours(wH, wM, 0, 0)
+        const now = new Date()
+        const gracePeriodMs = 5 * 60 * 1000 // 5 minutes
+        const elapsedSinceWakeUp = now.getTime() - wakeTime.getTime()
+        
+        if (elapsedSinceWakeUp < gracePeriodMs) {
+          const remainingSecs = Math.ceil((gracePeriodMs - elapsedSinceWakeUp) / 1000)
+          const remainingMins = Math.floor(remainingSecs / 60)
+          const remainingSecPart = remainingSecs % 60
+          const timeText = remainingMins > 0 ? `${remainingMins}m ${remainingSecPart}s` : `${remainingSecs}s`
+          triggerToast(
+            `${member.profiles.display_name || 'Member'} has a 5-minute wake-up grace period (${timeText} remaining).`,
+            'info'
+          )
+          return
+        }
+      }
+    }
+
+    // Check 3-minute cooldown across the group for this member
     try {
       const buzzDocRef = doc(db, 'group_buzzes', `${groupId}_${member.profiles.id}`)
       const buzzSnap = await getDoc(buzzDocRef)
-      const COOLDOWN_MS = 2 * 60 * 1000 // 2 minutes cooldown
+      const COOLDOWN_MS = 3 * 60 * 1000 // 3 minutes cooldown
 
       if (buzzSnap.exists()) {
         const data = buzzSnap.data()
@@ -585,7 +613,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         currentUser.email ||
         'Group Member'
 
-      // Record buzz in Firestore so all group members respect the 3-minute cooldown
+      // Record buzz in Firestore so all group members respect the 3-minute cooldown between buzzes
       await setDoc(buzzDocRef, {
         group_id: groupId,
         target_user_id: member.profiles.id,
@@ -917,7 +945,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
             </View>
           )}
 
-          {isConnected && (
+          {isNetworkConnected && (
             <View style={styles.liveBadge}>
               <View style={styles.liveDot} />
               <Text style={styles.liveText}>Live</Text>

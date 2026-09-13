@@ -88,14 +88,16 @@ export const AlarmOverlay = () => {
                 playsInSilentModeIOS: true,
                 staysActiveInBackground: true,
                 shouldDuckAndroid: true,
+                volume: 1.0, // Maximum volume
               })
 
               // Load and play custom audio if available, otherwise use default
               if (alarmAudioMode === 'custom' && customAudioUrl) {
                 try {
+                  const volume = userProfile?.preferences?.alarmVolume ?? 1.0;
                   const { sound } = await Audio.Sound.createAsync(
                     { uri: customAudioUrl },
-                    { shouldPlay: true, isLooping: true }
+                    { shouldPlay: true, isLooping: true, volume }
                   )
                   soundRef.current = sound
                 } catch (customAudioError) {

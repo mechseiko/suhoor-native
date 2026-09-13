@@ -9,7 +9,7 @@ import { useAuth } from './AuthContext';
 import { useSocket } from './SocketContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const ALARM_TYPES = new Set(['wake_up_alarm', 'recheck_alarm', 'buzz']);
+const ALARM_TYPES = new Set(['wake_up_alarm', 'buzz']);
 const DAILY_ALARM_KEY = 'suhoor_daily_alarm_time';
 
 const AlarmContext = createContext({});

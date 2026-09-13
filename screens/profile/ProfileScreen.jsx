@@ -621,6 +621,77 @@ export const ProfileScreen = () => {
                 </Text>
               </View>
 
+              {/* Alarm PIN Section */}
+              <View style={{ marginBottom: 32 }}>
+                <Text style={[styles.label, themedStyles.label, { marginBottom: 8 }]}>
+                  Alarm PIN
+                </Text>
+                <Text style={[styles.dangerSubtext, { color: colors.textSecondary, marginBottom: 16 }]}>
+                  Set a 4-digit PIN to dismiss your Suhoor alarm. This ensures you're truly awake when stopping the alarm.
+                  Your current pin is: {alarmPin.join('')}
+                </Text>
+                <Text style={[styles.label, themedStyles.label, { marginBottom: 2 }]}>
+                  Enter new PIN
+                </Text>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'center', columnGap: 12, marginBottom: 16 }}>
+                  {alarmPin.map((digit, i) => (
+                    <TextInput
+                      key={i}
+                      ref={pinRefs[i]}
+                      value={digit}
+                      onChangeText={(val) => handlePinDigitChange(i, val)}
+                      onKeyPress={(e) => handlePinKeyPress(i, e)}
+                      keyboardType="number-pad"
+                      maxLength={1}
+                      secureTextEntry
+                      style={{
+                        width: 56,
+                        height: 64,
+                        textAlign: 'center',
+                        fontSize: 28,
+                        fontWeight: '900',
+                        borderWidth: 2,
+                        borderColor: digit ? Colors.primary : colors.border,
+                        borderRadius: 12,
+                        backgroundColor: digit ? 'rgba(21,12,51,0.04)' : colors.surfaceVariant,
+                        color: Colors.primary,
+                      }}
+                    />
+                  ))}
+                </View>
+
+                {pinError ? (
+                  <Text style={[styles.dangerSubtext, { color: Colors.red, marginBottom: 12, textAlign: 'center' }]}>{pinError}</Text>
+                ) : null}
+
+                <TouchableOpacity
+                  style={[
+                    styles.primaryButton,
+                    { backgroundColor: Colors.primary },
+                  ]}
+                  onPress={handleSavePin}
+                  disabled={isSavingPin}
+                >
+                  {isSavingPin ? (
+                    <ActivityIndicator color={Colors.white} size="small" />
+                  ) : (
+                    <>
+                      <Ionicons
+                        name="lock-closed-outline"
+                        size={18}
+                        color={Colors.white}
+                      />
+                      <Text style={styles.primaryButtonText}>
+                        Save Alarm PIN
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.sectionDivider} />
+
               <View style={styles.inputGroup}>
                 <Text style={[styles.label, themedStyles.label]}>
                   {t('profile.currentPassword')}
@@ -746,73 +817,6 @@ export const ProfileScreen = () => {
                     />
                     <Text style={styles.primaryButtonText}>
                       {t('settings.changePassword')}
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
-
-            {/* Alarm PIN Section */}
-            <View style={[styles.card, themedStyles.card]}>
-              <View style={styles.cardHeader}>
-                <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
-                  Alarm PIN
-                </Text>
-              </View>
-              <Text style={[styles.dangerSubtext, { color: colors.textSecondary, marginBottom: 16 }]}>
-                Set a 4-digit PIN to dismiss your Suhoor alarm. This ensures you're truly awake when stopping the alarm.
-              </Text>
-
-              <View style={{ flexDirection: 'row', justifyContent: 'center', columnGap: 12, marginBottom: 16 }}>
-                {alarmPin.map((digit, i) => (
-                  <TextInput
-                    key={i}
-                    ref={pinRefs[i]}
-                    value={digit}
-                    onChangeText={(val) => handlePinDigitChange(i, val)}
-                    onKeyPress={(e) => handlePinKeyPress(i, e)}
-                    keyboardType="number-pad"
-                    maxLength={1}
-                    secureTextEntry
-                    style={{
-                      width: 56,
-                      height: 64,
-                      textAlign: 'center',
-                      fontSize: 28,
-                      fontWeight: '900',
-                      borderWidth: 2,
-                      borderColor: digit ? Colors.primary : colors.border,
-                      borderRadius: 12,
-                      backgroundColor: digit ? 'rgba(21,12,51,0.04)' : colors.surfaceVariant,
-                      color: Colors.primary,
-                    }}
-                  />
-                ))}
-              </View>
-
-              {pinError ? (
-                <Text style={[styles.dangerSubtext, { color: Colors.red, marginBottom: 12, textAlign: 'center' }]}>{pinError}</Text>
-              ) : null}
-
-              <TouchableOpacity
-                style={[
-                  styles.primaryButton,
-                  { backgroundColor: Colors.primary },
-                ]}
-                onPress={handleSavePin}
-                disabled={isSavingPin}
-              >
-                {isSavingPin ? (
-                  <ActivityIndicator color={Colors.white} size="small" />
-                ) : (
-                  <>
-                    <Ionicons
-                      name="lock-closed-outline"
-                      size={18}
-                      color={Colors.white}
-                    />
-                    <Text style={styles.primaryButtonText}>
-                      Save Alarm PIN
                     </Text>
                   </>
                 )}
@@ -1431,6 +1435,11 @@ const styles = StyleSheet.create({
     color: Colors.gray,
     marginBottom: 12,
     lineHeight: 18,
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.08)',
+    marginVertical: 24,
   },
   deleteButton: {
     flexDirection: 'row',

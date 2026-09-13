@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo } from 'react'
 import { Animated, Platform, StyleSheet, View } from 'react-native'
 import { useTheme } from '../context/ThemeContext'
+import { useNetwork } from '../context/NetworkContext'
 import { radius } from '../theme'
 import { Card, IconTile, Text } from './ui'
 
@@ -25,27 +26,44 @@ export const StatsCard = ({
   tone = 'primary',
   loading = false,
   style,
-}) => (
-  <Card style={[styles.card, style]}>
-    <IconTile icon={icon} tone={tone} size={38} />
+}) => {
+  const { isConnected } = useNetwork();
+  const { colors } = useTheme();
 
-    {loading ? (
-      <StatSkeleton />
-    ) : (
-      <View style={styles.textGroup}>
-        <Text variant="display">{value}</Text>
-        <Text
-          variant="caption"
-          tone="secondary"
-          style={styles.title}
-          numberOfLines={2}
-        >
-          {title}
-        </Text>
-      </View>
-    )}
-  </Card>
-)
+  return (
+    <Card style={[styles.card, style]}>
+      <IconTile icon={icon} tone={tone} size={38} />
+
+      {loading ? (
+        <StatSkeleton />
+      ) : !isConnected ? (
+        <View style={styles.textGroup}>
+          <Text variant="display" style={{ color: colors.textSecondary }}>-</Text>
+          <Text
+            variant="caption"
+            tone="secondary"
+            style={styles.title}
+            numberOfLines={2}
+          >
+            {title}
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.textGroup}>
+          <Text variant="display">{value}</Text>
+          <Text
+            variant="caption"
+            tone="secondary"
+            style={styles.title}
+            numberOfLines={2}
+          >
+            {title}
+          </Text>
+        </View>
+      )}
+    </Card>
+  );
+}
 
 /**
  * One bar covering the height the figure and its label occupy together, so the

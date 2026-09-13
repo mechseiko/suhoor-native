@@ -7,6 +7,7 @@ import { SocketProvider } from './context/SocketContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { LanguageProvider } from './context/LanguageContext'
 import { AlarmProvider } from './context/AlarmContext'
+import { NetworkProvider } from './context/NetworkContext'
 import AlarmOverlay from './components/AlarmOverlay'
 import RootNavigator from './navigation/RootNavigator'
 import { fontAssets } from './theme/fonts'
@@ -14,6 +15,7 @@ import { Svg, G, Path } from 'react-native-svg'
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated'
 import { configureNotifications } from './services/notifications'
 import FastingNotificationsManager from './components/FastingNotificationsManager'
+import NetworkStatusNotification from './components/NetworkStatusNotification'
 
 // Polyfill for random values (needed for Firebase/Socket.IO in React Native)
 import 'react-native-get-random-values'
@@ -87,20 +89,23 @@ export default function App() {
   if (Platform.OS === 'web') {
     return (
       <AuthProvider>
-        <SocketProvider>
-          <ThemeProvider>
-            <LanguageProvider>
-              <AlarmProvider>
-                <View style={{ flex: 1, backgroundColor: '#FFFFFF', height: '100vh', width: '100vw' }}>
-                  <RootNavigator />
-                  <AlarmOverlay />
-                  <FastingNotificationsManager />
-                  <StatusBar barStyle="default" />
-                </View>
-              </AlarmProvider>
-            </LanguageProvider>
-          </ThemeProvider>
-        </SocketProvider>
+        <NetworkProvider>
+          <SocketProvider>
+            <ThemeProvider>
+              <LanguageProvider>
+                <AlarmProvider>
+                  <View style={{ flex: 1, backgroundColor: '#FFFFFF', height: '100vh', width: '100vw' }}>
+                    <RootNavigator />
+                    <AlarmOverlay />
+                    <FastingNotificationsManager />
+                    <NetworkStatusNotification />
+                    <StatusBar barStyle="default" />
+                  </View>
+                </AlarmProvider>
+              </LanguageProvider>
+            </ThemeProvider>
+          </SocketProvider>
+        </NetworkProvider>
       </AuthProvider>
     )
   }
@@ -108,20 +113,23 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <SocketProvider>
-          <ThemeProvider>
-            <LanguageProvider>
-              <AlarmProvider>
-                <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-                  <RootNavigator />
-                  <AlarmOverlay />
-                  <FastingNotificationsManager />
-                  <StatusBar barStyle="default" />
-                </View>
-              </AlarmProvider>
-            </LanguageProvider>
-          </ThemeProvider>
-        </SocketProvider>
+        <NetworkProvider>
+          <SocketProvider>
+            <ThemeProvider>
+              <LanguageProvider>
+                <AlarmProvider>
+                  <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+                    <RootNavigator />
+                    <AlarmOverlay />
+                    <FastingNotificationsManager />
+                    <NetworkStatusNotification />
+                    <StatusBar barStyle="default" />
+                  </View>
+                </AlarmProvider>
+              </LanguageProvider>
+            </ThemeProvider>
+          </SocketProvider>
+        </NetworkProvider>
       </AuthProvider>
     </SafeAreaProvider>
   )
