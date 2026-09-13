@@ -490,7 +490,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     }
     Alert.alert(
       'Leave Group',
-      'Are you sure you want to leave this group? You will be permanently removed and cannot re-enter.',
+      'Are you sure you want to leave this group? You will be permanently removed.',
       [
         { text: 'Cancel', style: 'cancel' },
         {

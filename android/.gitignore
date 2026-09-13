@@ -1,22 +1,29 @@
-# OSX
-#
+# OS
 .DS_Store
+Thumbs.db
 
-# Android/IntelliJ
-#
+# Android / IntelliJ build artifacts
 build/
-.idea
-.gradle
+.idea/
+.gradle/
 local.properties
 *.iml
 *.hprof
 .cxx/
-
-# Bundle artifacts
-*.jsbundle
+android/app/build/
+android/.gradle/
+android/build/
 
 # Node modules
-node-modules/
+node_modules
 node_modules/
-node_modules*
 node_modules/*
+node-modules
+node-modules/
+node-modules/*
+
+# Expo / Bundles
+.expo/
+*.jsbundle
+dist/
+web-build/
