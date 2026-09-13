@@ -1040,7 +1040,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 18,
     marginBottom: 16,
-    gap: 14,
+    columnGap: 14,
+    rowGap: 14,
   },
   avatarCircle: {
     width: 54,
@@ -1063,7 +1064,8 @@ const styles = StyleSheet.create({
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    columnGap: 8,
+    rowGap: 8,
     marginBottom: 4,
   },
   headerName: {
@@ -1082,7 +1084,8 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     paddingHorizontal: 6,
     borderRadius: 10,
-    gap: 3,
+    columnGap: 3,
+    rowGap: 3,
   },
   unverifiedBadge: {
     backgroundColor: 'rgba(245, 158, 11, 0.2)',
@@ -1098,7 +1101,8 @@ const styles = StyleSheet.create({
   memberSinceBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    columnGap: 4,
+    rowGap: 4,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10,
@@ -1117,7 +1121,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 4,
     marginBottom: 16,
-    gap: 4,
+    columnGap: 4,
+    rowGap: 4,
   },
   segmentBtn: {
     flex: 1,
@@ -1126,7 +1131,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 8,
     borderRadius: 10,
-    gap: 4,
+    columnGap: 4,
+    rowGap: 4,
   },
   segmentBtnActive: {
     backgroundColor: Colors.primary,
@@ -1217,7 +1223,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 12,
     marginTop: 4,
-    gap: 6,
+    columnGap: 6,
+    rowGap: 6,
   },
   primaryButtonText: {
     color: Colors.white,
@@ -1260,7 +1267,8 @@ const styles = StyleSheet.create({
   supportLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    columnGap: 8,
+    rowGap: 8,
   },
   supportLabel: {
     fontSize: 13,
@@ -1280,7 +1288,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(61, 31, 148, 0.2)',
     backgroundColor: 'rgba(61, 31, 148, 0.05)',
-    gap: 6,
+    columnGap: 6,
+    rowGap: 6,
     marginTop: 4,
   },
   logoutBannerText: {
@@ -1303,7 +1312,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.red,
     backgroundColor: 'rgba(239, 68, 68, 0.05)',
-    gap: 6,
+    columnGap: 6,
+    rowGap: 6,
   },
   deleteButtonText: {
     fontSize: 13,
@@ -1331,7 +1341,8 @@ const styles = StyleSheet.create({
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    columnGap: 12,
+    rowGap: 12,
     marginBottom: 16,
   },
   modalTitle: {
@@ -1363,7 +1374,8 @@ const styles = StyleSheet.create({
   },
   modalButtons: {
     flexDirection: 'row',
-    gap: 12,
+    columnGap: 12,
+    rowGap: 12,
   },
   modalButton: {
     flex: 1,

@@ -310,7 +310,7 @@ const FastingRoutineStep = ({ fastingDefaults, setFastingDefaults }) => {
       </View>
 
       {/* Routine Cards */}
-      <View style={{ gap: 9, marginBottom: 14 }}>
+      <View style={{ rowGap: 9, columnGap: 9, marginBottom: 14 }}>
         {items.map((item) => {
           const active = !!fastingDefaults[item.key]
           return (
@@ -330,7 +330,7 @@ const FastingRoutineStep = ({ fastingDefaults, setFastingDefaults }) => {
                 borderColor: active ? brand.primary : '#E5E7EB',
               }}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', columnGap: 12, flex: 1, marginRight: 10 }}>
                 <View
                   style={{
                     width: 34,
@@ -434,7 +434,7 @@ const AlarmPinStep = ({ alarmPin, setAlarmPin, pinError, setPinError }) => {
         </Text>
       </View>
 
-      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12, marginBottom: 16 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', columnGap: 12, marginBottom: 16 }}>
         {alarmPin.map((digit, i) => (
           <TextInput
             key={i}

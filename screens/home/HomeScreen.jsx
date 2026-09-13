@@ -276,7 +276,7 @@ export const HomeScreen = ({ navigation }) => {
         <StatsCard
           icon="ribbon-outline"
           title={t('home.fastingDays')}
-          value={4}
+          value={totalFastingDays}
           tone="secondary"
           loading={loading}
         />
@@ -416,7 +416,8 @@ export const HomeScreen = ({ navigation }) => {
                     style={{
                       flexDirection: 'row',
                       alignItems: 'flex-start',
-                      gap: 12,
+                      columnGap: 12,
+    rowGap: 12,
                       paddingVertical: 14,
                       paddingHorizontal: 14,
                       borderRadius: 14,
@@ -467,7 +468,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: spacing.md,
+    columnGap: spacing.md,
+    rowGap: spacing.md,
     marginTop: spacing.md,
   },
   greetingText: {
@@ -476,7 +478,8 @@ const styles = StyleSheet.create({
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    columnGap: spacing.sm,
+    rowGap: spacing.sm,
     marginBottom: spacing.sm,
   },
   logo: {
@@ -491,21 +494,25 @@ const styles = StyleSheet.create({
     marginTop: spacing.xxs,
   },
   section: {
-    gap: spacing.md,
+    columnGap: spacing.md,
+    rowGap: spacing.md,
   },
   statsRow: {
     flexDirection: 'row',
-    gap: spacing.md,
+    columnGap: spacing.md,
+    rowGap: spacing.md,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    columnGap: spacing.md,
+    rowGap: spacing.md,
     marginBottom: spacing.lg,
   },
   cardHeaderText: {
     flex: 1,
-    gap: spacing.xxs,
+    columnGap: spacing.xxs,
+    rowGap: spacing.xxs,
   },
   weekRow: {
     flexDirection: 'row',
@@ -513,7 +520,8 @@ const styles = StyleSheet.create({
   },
   dayCol: {
     alignItems: 'center',
-    gap: spacing.sm,
+    columnGap: spacing.sm,
+    rowGap: spacing.sm,
   },
   dayMark: {
     height: 34,
@@ -526,7 +534,8 @@ const styles = StyleSheet.create({
   legend: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: spacing.base,
+    columnGap: spacing.base,
+    rowGap: spacing.base,
     borderTopWidth: 1,
     paddingTop: spacing.md,
     marginTop: spacing.base,
@@ -534,7 +543,8 @@ const styles = StyleSheet.create({
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    columnGap: spacing.xs,
+    rowGap: spacing.xs,
   },
   legendDot: {
     height: 8,

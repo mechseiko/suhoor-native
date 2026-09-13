@@ -17,6 +17,6 @@ config.resolver = {
 }
 
 const nativeWindConfig = withNativeWind(config, { input: './global.css' })
-nativeWindConfig.transformerPath = require.resolve('./metro-transformer')
 
 module.exports = nativeWindConfig
+

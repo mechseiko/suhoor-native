@@ -1069,7 +1069,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
               <Text style={[styles.verificationPrompt, { textAlign: 'center', marginBottom: 20 }]}>
                 Enter your personal 4-digit PIN to confirm you are awake.
               </Text>
-              <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12, marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'center', columnGap: 12, marginBottom: 12 }}>
                 {pinDigits.map((digit, i) => (
                   <TextInput
                     key={i}
@@ -1157,7 +1157,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    gap: 8,
+    columnGap: 8,
   },
   editInput: {
     flex: 1,
@@ -1197,7 +1197,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 8,
-    gap: 4,
+    columnGap: 4,
   },
   liveDot: {
     height: 6,
@@ -1214,7 +1214,7 @@ const styles = StyleSheet.create({
   groupDetailsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    columnGap: 12,
     marginBottom: 16,
   },
   keyBadge: {
@@ -1245,7 +1245,7 @@ const styles = StyleSheet.create({
   },
   actionButtonsRow: {
     flexDirection: 'row',
-    gap: 12,
+    columnGap: 12,
   },
   actionBtn: {
     flex: 1,
@@ -1254,7 +1254,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: 36,
     borderRadius: 8,
-    gap: 6,
+    columnGap: 6,
     borderWidth: 1,
   },
   shareBtn: {
@@ -1302,7 +1302,7 @@ const styles = StyleSheet.create({
   },
   trackerTitleLeft: {
     flexDirection: 'column',
-    gap: 4,
+    rowGap: 4,
   },
   trackerTitle: {
     fontSize: 16,
@@ -1318,7 +1318,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     paddingHorizontal: 6,
     borderRadius: 6,
-    gap: 4,
+    columnGap: 4,
     alignSelf: 'flex-start',
   },
   locationBadgeText: {
@@ -1333,7 +1333,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 10,
-    gap: 6,
+    columnGap: 6,
   },
   wakeUpBtnText: {
     color: Colors.white,
@@ -1343,7 +1343,7 @@ const styles = StyleSheet.create({
   awakeSuccess: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    columnGap: 4,
   },
   awakeSuccessText: {
     color: Colors.accent,
@@ -1411,7 +1411,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 6,
+    columnGap: 6,
+    rowGap: 4,
   },
   memberName: {
     fontSize: 14,
@@ -1454,7 +1455,7 @@ const styles = StyleSheet.create({
   memberDetailsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    columnGap: 12,
     marginTop: 4,
   },
   memberDetailText: {
@@ -1471,7 +1472,7 @@ const styles = StyleSheet.create({
   memberActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    columnGap: 8,
   },
   buzzIconBtn: {
     flexDirection: 'row',
@@ -1482,7 +1483,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 8,
     borderRadius: 8,
-    gap: 4,
+    columnGap: 4,
   },
   buzzBtnText: {
     fontSize: 10,
@@ -1496,7 +1497,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 8,
     borderRadius: 8,
-    gap: 4,
+    columnGap: 4,
   },
   findText: {
     fontSize: 10,
@@ -1629,7 +1630,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(61, 31, 148, 0.08)',
     borderRadius: 14,
     padding: 4,
-    gap: 4,
+    columnGap: 4,
   },
   segmentBtn: {
     flex: 1,
@@ -1638,7 +1639,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 10,
     borderRadius: 10,
-    gap: 6,
+    columnGap: 6,
   },
   segmentBtnActive: {
     backgroundColor: Colors.primary,

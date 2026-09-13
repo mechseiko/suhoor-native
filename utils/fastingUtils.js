@@ -119,7 +119,7 @@ export const getTargetFastingDate = () => {
  * @returns {boolean}
  */
 export const getDefaultIntention = (date, preferences = {}) => {
-  const { fastingDefaults = {} } = preferences;
+  const { fastingDefaults = {} } = preferences || {};
 
   // Each entry: does the date qualify, and is that kind enabled? Settings
   // defaults every switch to on, so an absent field reads as true here to match.

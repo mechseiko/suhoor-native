@@ -952,7 +952,7 @@ export const GroupsScreen = ({ navigation }) => {
               <Text style={[styles.modalInfo, { color: colors.textSecondary, textAlign: 'center', marginBottom: 20 }]}>
                 Enter your personal 4-digit PIN to confirm you are awake.
               </Text>
-              <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12, marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'center', columnGap: 12, marginBottom: 12 }}>
                 {pinDigits.map((digit, i) => (
                   <TextInput
                     key={i}
@@ -1037,7 +1037,7 @@ const styles = StyleSheet.create({
   },
   actionRow: {
     flexDirection: 'row',
-    gap: 12,
+    columnGap: 12,
   },
   actionBtn: {
     flex: 1,
@@ -1046,7 +1046,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: 42,
     borderRadius: 10,
-    gap: 6,
+    columnGap: 6,
   },
   btnJoin: {
     borderWidth: 1.5,
@@ -1154,7 +1154,7 @@ const styles = StyleSheet.create({
   cardRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    columnGap: 8,
   },
   badge: {
     flexDirection: 'row',
@@ -1162,7 +1162,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 8,
-    gap: 4,
+    columnGap: 4,
   },
   badgeText: {
     fontSize: 11,
@@ -1241,7 +1241,7 @@ const styles = StyleSheet.create({
   },
   modalFooter: {
     flexDirection: 'row',
-    gap: 12,
+    columnGap: 12,
   },
   modalBtn: {
     flex: 1,

@@ -302,7 +302,8 @@ const styles = StyleSheet.create({
   userRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    columnGap: 12,
+    rowGap: 12,
     flex: 1,
   },
   avatarCircle: {
@@ -353,7 +354,8 @@ const styles = StyleSheet.create({
     height: 32,
   },
   menuSection: {
-    gap: 4,
+    columnGap: 4,
+    rowGap: 4,
   },
   menuRow: {
     flexDirection: 'row',
@@ -383,7 +385,8 @@ const styles = StyleSheet.create({
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    columnGap: 10,
+    rowGap: 10,
     paddingVertical: 10,
     paddingHorizontal: 8,
   },

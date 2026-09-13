@@ -463,7 +463,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    columnGap: 10,
+    rowGap: 10,
     paddingTop: 30,
   },
   logo: {
@@ -539,7 +540,8 @@ const styles = StyleSheet.create({
   },
   actionBlock: {
     width: '100%',
-    gap: 12,
+    columnGap: 12,
+    rowGap: 12,
     paddingBottom: 16,
   },
   primaryCta: {

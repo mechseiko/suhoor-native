@@ -289,7 +289,8 @@ const styles = StyleSheet.create({
   meRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    columnGap: spacing.md,
+    rowGap: spacing.md,
   },
   tierGlyph: {
     width: 46,
@@ -303,12 +304,14 @@ const styles = StyleSheet.create({
   },
   meMeta: {
     flex: 1,
-    gap: spacing.xs,
+    columnGap: spacing.xs,
+    rowGap: spacing.xs,
   },
   meNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    columnGap: spacing.sm,
+    rowGap: spacing.sm,
   },
   meName: {
     flexShrink: 1,
@@ -317,13 +320,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: spacing.sm,
+    columnGap: spacing.sm,
+    rowGap: spacing.sm,
   },
   tierFooter: {
     marginTop: spacing.base,
     paddingTop: spacing.md,
     borderTopWidth: 1,
-    gap: spacing.sm,
+    columnGap: spacing.sm,
+    rowGap: spacing.sm,
   },
   track: {
     height: 6,
@@ -337,20 +342,23 @@ const styles = StyleSheet.create({
 
   // Filters
   filters: {
-    gap: spacing.sm,
+    columnGap: spacing.sm,
+    rowGap: spacing.sm,
   },
   toggleGroup: {
     flexDirection: 'row',
     padding: 3,
     borderRadius: radius.xl,
-    gap: 3,
+    columnGap: 3,
+    rowGap: 3,
   },
   toggle: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xs,
+    columnGap: spacing.xs,
+    rowGap: spacing.xs,
     paddingVertical: spacing.sm,
     borderRadius: radius.lg,
     borderWidth: 1,
@@ -367,7 +375,8 @@ const styles = StyleSheet.create({
   memberRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    columnGap: spacing.md,
+    rowGap: spacing.md,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.base,
     borderTopWidth: 1,
@@ -389,12 +398,14 @@ const styles = StyleSheet.create({
   },
   memberMeta: {
     flex: 1,
-    gap: spacing.xxs,
+    columnGap: spacing.xxs,
+    rowGap: spacing.xxs,
   },
   memberNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    columnGap: spacing.sm,
+    rowGap: spacing.sm,
   },
   points: {
     alignItems: 'flex-end',
@@ -403,12 +414,14 @@ const styles = StyleSheet.create({
   // Board placeholder / empty
   rowStack: {
     padding: spacing.base,
-    gap: spacing.base,
+    columnGap: spacing.base,
+    rowGap: spacing.base,
   },
   skeletonRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    columnGap: spacing.md,
+    rowGap: spacing.md,
   },
   skeletonAvatar: {
     width: 38,
@@ -417,7 +430,8 @@ const styles = StyleSheet.create({
   },
   skeletonText: {
     flex: 1,
-    gap: spacing.sm,
+    columnGap: spacing.sm,
+    rowGap: spacing.sm,
   },
   skeletonLine: {
     height: 10,
@@ -425,7 +439,8 @@ const styles = StyleSheet.create({
   },
   empty: {
     alignItems: 'center',
-    gap: spacing.md,
+    columnGap: spacing.md,
+    rowGap: spacing.md,
     paddingVertical: spacing.xxl,
     paddingHorizontal: spacing.base,
   },

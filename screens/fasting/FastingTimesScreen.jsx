@@ -575,7 +575,8 @@ export const FastingTimesScreen = () => {
           <TouchableOpacity
             onPress={handleSelectDefaultAudio}
             style={{
-              flexDirection: 'row', alignItems: 'center', gap: 12,
+              flexDirection: 'row', alignItems: 'center', columnGap: 12,
+    rowGap: 12,
               paddingVertical: 14, paddingHorizontal: 14,
               borderRadius: 12, marginBottom: 10,
               borderWidth: 1.5,
@@ -604,7 +605,8 @@ export const FastingTimesScreen = () => {
             onPress={handlePickAndUploadAudio}
             disabled={isUploadingAudio}
             style={{
-              flexDirection: 'row', alignItems: 'center', gap: 12,
+              flexDirection: 'row', alignItems: 'center', columnGap: 12,
+    rowGap: 12,
               paddingVertical: 14, paddingHorizontal: 14,
               borderRadius: 12,
               borderWidth: 1.5,

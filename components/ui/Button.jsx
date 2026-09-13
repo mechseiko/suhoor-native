@@ -115,7 +115,8 @@ const styles = StyleSheet.create({
   inner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    columnGap: 8,
+    rowGap: 8,
   },
   label: {
     fontWeight: '700',

@@ -431,7 +431,8 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: spacing.md,
+    columnGap: spacing.md,
+    rowGap: spacing.md,
     marginBottom: spacing.base,
   },
   glyph: {
@@ -443,17 +444,20 @@ const styles = StyleSheet.create({
   },
   headerText: {
     flex: 1,
-    gap: spacing.xxs,
+    columnGap: spacing.xxs,
+    rowGap: spacing.xxs,
   },
   badgeRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
+    columnGap: spacing.sm,
+    rowGap: spacing.sm,
     marginBottom: spacing.base,
   },
   buttonRow: {
     flexDirection: 'row',
-    gap: spacing.md,
+    columnGap: spacing.md,
+    rowGap: spacing.md,
   },
   flexButton: {
     flex: 1,

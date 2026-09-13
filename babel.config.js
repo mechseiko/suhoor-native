@@ -32,6 +32,8 @@ module.exports = {
       },
     ],
   ],
+
+
   env: {
     web: {
       plugins: [],
