@@ -37,9 +37,14 @@ export const Badge = ({
 
   return (
     <View
-      className={`flex-row items-center self-start gap-1 px-2 py-[3px] ${className ?? ''}`}
       style={StyleSheet.flatten([
         {
+          flexDirection: 'row',
+          alignItems: 'center',
+          alignSelf: 'flex-start',
+          columnGap: 4,
+          paddingHorizontal: 8,
+          paddingVertical: 3,
           backgroundColor: alpha(hue, 0.1),
           borderRadius: pill ? 999 : 4,
           borderWidth: bordered ? 1 : 0,

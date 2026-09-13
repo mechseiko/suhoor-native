@@ -87,6 +87,10 @@ export const GroupDetailScreen = ({ route, navigation }) => {
   const [buzzData, setBuzzData] = useState(null) // Store buzz data (fromUserName, groupName)
   const [buzzCounts, setBuzzCounts] = useState({}) // Track buzz counts per target per day
 
+  // Member action modal state (for 3-dots / hold-down)
+  const [selectedMemberForAction, setSelectedMemberForAction] = useState(null)
+  const [showMemberActionModal, setShowMemberActionModal] = useState(false)
+
   // Toast notifications state
   const [toastVisible, setToastVisible] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
@@ -96,6 +100,11 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     setToastMsg(msg)
     setToastType(type)
     setToastVisible(true)
+  }
+
+  const openMemberActionMenu = member => {
+    setSelectedMemberForAction(member)
+    setShowMemberActionModal(true)
   }
 
   // 1. Fetch group metadata and members list
@@ -146,6 +155,8 @@ export const GroupDetailScreen = ({ route, navigation }) => {
 
   // Helper to determine member status based on time and check-in
   const getMemberStatus = member => {
+    if (!member?.profiles) return 'sleeping'
+
     const hasCheckedInToday = wakeUpLogs.some(
       log =>
         log.user_id === member.profiles.id &&
@@ -165,23 +176,51 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     return 'sleeping'
   }
 
-  // Get member wake-up time from profile or default
+  // Get member wake-up time from profile preferences or default (45m before suhoor)
   const getMemberWakeUpTime = member => {
-    const profile = member.profiles
+    const profile = member?.profiles
+    const wakeMinutes =
+      profile?.preferences?.wakeUpMinutesBeforeSuhoor ||
+      profile?.wakeUpMinutesBeforeSuhoor ||
+      profile?.customWakeUpMinutes ||
+      45
+
+    if (todayData?.time?.sahur) {
+      const [suhoorH, suhoorM] = todayData.time.sahur.split(':').map(Number)
+      if (!isNaN(suhoorH) && !isNaN(suhoorM)) {
+        const suhoorTime = new Date()
+        suhoorTime.setHours(suhoorH, suhoorM, 0, 0)
+        suhoorTime.setMinutes(suhoorTime.getMinutes() - Number(wakeMinutes))
+        return `${String(suhoorTime.getHours()).padStart(2, '0')}:${String(suhoorTime.getMinutes()).padStart(2, '0')}`
+      }
+    }
+    
     if (profile?.customWakeUpTime) {
       return profile.customWakeUpTime
     }
     
-    // Default: 45 mins before suhoor
+    return '--:--'
+  }
+
+  // Check if wakeup status should be displayed:
+  // Shows by 0:00 (midnight) and disappears when it's time for Fajr / 6:00
+  const isStatusVisibleNow = () => {
+    const now = new Date()
+    const currentHour = now.getHours()
+    const currentMinute = now.getMinutes()
+    const nowMinutes = currentHour * 60 + currentMinute
+
+    // Determine cutoff time (suhoor time or 6:00 AM)
+    let cutoffMinutes = 6 * 60 // fallback to 6:00 AM
     if (todayData?.time?.sahur) {
-      const [suhoorH, suhoorM] = todayData.time.sahur.split(':').map(Number)
-      const suhoorTime = new Date()
-      suhoorTime.setHours(suhoorH, suhoorM, 0, 0)
-      suhoorTime.setMinutes(suhoorTime.getMinutes() - 45)
-      return `${String(suhoorTime.getHours()).padStart(2, '0')}:${String(suhoorTime.getMinutes()).padStart(2, '0')}`
+      const [h, m] = todayData.time.sahur.split(':').map(Number)
+      if (!isNaN(h) && !isNaN(m)) {
+        cutoffMinutes = h * 60 + m
+      }
     }
-    
-    return 'N/A'
+
+    // Visible from 0:00 (0 mins) up to cutoff
+    return nowMinutes >= 0 && nowMinutes <= cutoffMinutes
   }
 
   // Check if a specific member is currently in their individual wake-up window
@@ -189,29 +228,23 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     if (!todayData?.time?.sahur) return false
     const now = new Date()
     const wakeUpStr = getMemberWakeUpTime(member)
-    if (!wakeUpStr || wakeUpStr === 'N/A') return false
+    if (!wakeUpStr || wakeUpStr === '--:--') return false
     const [wH, wM] = wakeUpStr.split(':').map(Number)
     if (isNaN(wH) || isNaN(wM)) return false
 
     const wakeTime = new Date()
     wakeTime.setHours(wH, wM, 0, 0)
-    if (wakeTime < now && now.getHours() > 12) {
-      wakeTime.setDate(wakeTime.getDate() + 1)
-    }
 
     const [suhoorH, suhoorM] = todayData.time.sahur.split(':').map(Number)
     const suhoorTime = new Date()
     suhoorTime.setHours(suhoorH, suhoorM, 0, 0)
-    if (suhoorTime < now && now.getHours() > 12) {
-      suhoorTime.setDate(suhoorTime.getDate() + 1)
-    }
 
     return now >= wakeTime && now <= suhoorTime
   }
 
   // Determine if current user is admin
   const isCurrentUserAdmin =
-    members.find(m => m.profiles.id === currentUser?.uid)?.role === 'admin'
+    members.find(m => m?.profiles?.id === currentUser?.uid)?.role === 'admin'
 
   // 2. Fetch today's wake-up logs and fasting intentions from Firestore
   const fetchTodayLogsAndIntentions = useCallback(async () => {
@@ -236,6 +269,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       const intentions = {}
       await Promise.all(
         members.map(async member => {
+          if (!member?.profiles) return
           try {
             const docRef = doc(
               db,
@@ -503,7 +537,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
   }
 
   const handleBuzzMember = async member => {
-    if (!currentUser) return
+    if (!currentUser || !member?.profiles) return
     const targetMemberIntent = memberIntentions[member.profiles.id] !== false
     if (!targetMemberIntent) {
       triggerToast(
@@ -522,11 +556,11 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       return
     }
 
-    // Check 3-minute cooldown across the group for this member
+    // Check 2-minute cooldown across the group for this member
     try {
       const buzzDocRef = doc(db, 'group_buzzes', `${groupId}_${member.profiles.id}`)
       const buzzSnap = await getDoc(buzzDocRef)
-      const COOLDOWN_MS = 3 * 60 * 1000 // 3 minutes cooldown
+      const COOLDOWN_MS = 2 * 60 * 1000 // 2 minutes cooldown
 
       if (buzzSnap.exists()) {
         const data = buzzSnap.data()
@@ -576,6 +610,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
   }
 
   const handleRemoveMember = member => {
+    if (!member?.profiles) return
     const targetUserId = member.profiles?.id || member.user_id
     Alert.alert(
       'Remove Member',
@@ -707,15 +742,22 @@ export const GroupDetailScreen = ({ route, navigation }) => {
 
   // Render member rows
   const renderMemberItem = ({ item }) => {
+    if (!item?.profiles) return null
+
     const memberStatus = getMemberStatus(item)
     const wakeUpTime = getMemberWakeUpTime(item)
     const wakeUpLog = wakeUpLogs.find(
       log => log.user_id === item.profiles.id
     )
     const intendsToFast = memberIntentions[item.profiles.id] !== false
+    const showStatus = isStatusVisibleNow()
+    const isSelf = item.profiles.id === currentUser?.uid
 
     return (
-      <View
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onLongPress={() => openMemberActionMenu(item)}
+        delayLongPress={350}
         style={[
           styles.memberRow,
           memberStatus === 'awake' && styles.memberRowAwake,
@@ -743,35 +785,41 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                 {item.profiles.display_name ||
                   item.profiles.email.split('@')[0]}
               </Text>
-              {memberStatus === 'awake' && wakeUpLog ? (
-                <View style={styles.awakeBadge}>
-                  <Text style={styles.awakeBadgeText}>
-                    Awake ({new Date(wakeUpLog.woke_up_at).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })})
-                  </Text>
+              {item.role === 'admin' ? (
+                <View style={styles.adminRoleBadge}>
+                  <Text style={styles.adminRoleBadgeText}>Admin</Text>
                 </View>
               ) : null}
-              {memberStatus === 'sleeping' && intendsToFast ? (
-                <View style={styles.sleepingBadge}>
-                  <Text style={styles.sleepingBadgeText}>Sleeping</Text>
-                </View>
-              ) : null}
-              {memberStatus === 'not_fasting' ? (
-                <View style={styles.notFastingBadge}>
-                  <Text style={styles.notFastingBadgeText}>Not Fasting</Text>
+              {isSelf ? (
+                <View style={styles.selfBadge}>
+                  <Text style={styles.selfBadgeText}>You</Text>
                 </View>
               ) : null}
             </View>
             <View style={styles.memberDetailsRow}>
-              <Text style={styles.memberDetailText}>
-                <Ionicons name="time-outline" size={12} color={Colors.gray} />
-                {' '}{wakeUpTime}
-              </Text>
-              <Text style={styles.memberDetailText}>
-                {memberStatus === 'awake' ? 'Awake' : memberStatus === 'sleeping' ? 'Sleeping' : 'Not Fasting'}
-              </Text>
+              <View style={styles.timeTag}>
+                <Ionicons name="alarm-outline" size={12} color={Colors.primary} />
+                <Text style={styles.timeTagText}>{wakeUpTime}</Text>
+              </View>
+              {showStatus ? (
+                memberStatus === 'awake' ? (
+                  <View style={styles.awakeBadge}>
+                    <Ionicons name="checkmark-circle" size={11} color={Colors.accent} />
+                    <Text style={styles.awakeBadgeText}>
+                      Awake{wakeUpLog ? ` (${new Date(wakeUpLog.woke_up_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : ''}
+                    </Text>
+                  </View>
+                ) : memberStatus === 'sleeping' && intendsToFast ? (
+                  <View style={styles.sleepingBadge}>
+                    <Ionicons name="moon" size={10} color={Colors.secondary} />
+                    <Text style={styles.sleepingBadgeText}>Asleep</Text>
+                  </View>
+                ) : memberStatus === 'not_fasting' || !intendsToFast ? (
+                  <View style={styles.notFastingBadge}>
+                    <Text style={styles.notFastingBadgeText}>Not Fasting</Text>
+                  </View>
+                ) : null
+              ) : null}
             </View>
           </View>
         </View>
@@ -779,31 +827,33 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         <View style={styles.memberActions}>
           {memberStatus === 'sleeping' &&
             intendsToFast &&
-            item.profiles.id !== currentUser?.uid &&
+            !isSelf &&
             isMemberInWakeUpWindow(item) && (
               <TouchableOpacity
                 style={styles.buzzIconBtn}
                 onPress={() => handleBuzzMember(item)}
+                activeOpacity={0.8}
               >
                 <Ionicons
                   name="notifications"
-                  size={16}
+                  size={15}
                   color={Colors.secondary}
                 />
                 <Text style={styles.buzzBtnText}>Buzz</Text>
               </TouchableOpacity>
             )}
 
-          {isCurrentUserAdmin && item.profiles.id !== currentUser?.uid && (
-            <TouchableOpacity
-              style={styles.removeBtn}
-              onPress={() => handleRemoveMember(item)}
-            >
-              <Ionicons name="trash-outline" size={16} color={Colors.red} />
-            </TouchableOpacity>
-          )}
+          {/* 3 vertical dots action button in front of member */}
+          <TouchableOpacity
+            style={styles.memberDotsBtn}
+            onPress={() => openMemberActionMenu(item)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="ellipsis-vertical" size={18} color={Colors.dark} />
+          </TouchableOpacity>
         </View>
-      </View>
+      </TouchableOpacity>
     )
   }
 
@@ -1105,6 +1155,114 @@ export const GroupDetailScreen = ({ route, navigation }) => {
             </TouchableOpacity>
           </View>
         </View>
+      </Modal>
+
+      {/* Member Action Modal (Hold-down / 3-dots sheet) */}
+      <Modal
+        visible={showMemberActionModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowMemberActionModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.actionModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowMemberActionModal(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.actionModalSheet}
+            onPress={e => e.stopPropagation?.()}
+          >
+            <View style={styles.actionModalHandle} />
+            <View style={styles.actionModalHeader}>
+              <View style={styles.actionModalAvatar}>
+                <Text style={styles.actionModalAvatarText}>
+                  {selectedMemberForAction?.profiles?.display_name?.charAt(0).toUpperCase() ||
+                    selectedMemberForAction?.profiles?.email?.charAt(0).toUpperCase() ||
+                    'U'}
+                </Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.actionModalName} numberOfLines={1}>
+                  {selectedMemberForAction?.profiles?.display_name ||
+                    selectedMemberForAction?.profiles?.email?.split('@')[0] ||
+                    'Member'}
+                </Text>
+                <Text style={styles.actionModalRole}>
+                  {selectedMemberForAction?.role === 'admin' ? 'Group Admin' : 'Member'} • Wake-up at {getMemberWakeUpTime(selectedMemberForAction)}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowMemberActionModal(false)}
+                style={styles.actionModalCloseBtn}
+              >
+                <Ionicons name="close" size={20} color={Colors.gray} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.actionModalOptions}>
+              {/* Buzz Option if eligible */}
+              {getMemberStatus(selectedMemberForAction) === 'sleeping' &&
+                memberIntentions[selectedMemberForAction?.profiles?.id] !== false &&
+                selectedMemberForAction?.profiles?.id !== currentUser?.uid &&
+                isMemberInWakeUpWindow(selectedMemberForAction) && (
+                  <TouchableOpacity
+                    style={styles.actionModalItem}
+                    onPress={() => {
+                      const m = selectedMemberForAction
+                      setShowMemberActionModal(false)
+                      handleBuzzMember(m)
+                    }}
+                  >
+                    <View style={[styles.actionModalItemIcon, { backgroundColor: 'rgba(249, 168, 38, 0.14)' }]}>
+                      <Ionicons name="notifications" size={18} color={Colors.secondary} />
+                    </View>
+                    <Text style={[styles.actionModalItemText, { color: Colors.secondary }]}>
+                      Buzz Member (Wake Up)
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+              {/* Copy Name */}
+              <TouchableOpacity
+                style={styles.actionModalItem}
+                onPress={async () => {
+                  const name = selectedMemberForAction?.profiles?.display_name || selectedMemberForAction?.profiles?.email || ''
+                  if (name) {
+                    await copyToClipboard(name)
+                    triggerToast('Copied name to clipboard', 'info')
+                  }
+                  setShowMemberActionModal(false)
+                }}
+              >
+                <View style={[styles.actionModalItemIcon, { backgroundColor: 'rgba(21, 12, 51, 0.06)' }]}>
+                  <Ionicons name="copy-outline" size={18} color={Colors.primary} />
+                </View>
+                <Text style={styles.actionModalItemText}>Copy Member Name</Text>
+              </TouchableOpacity>
+
+              {/* Remove Member option for Admins */}
+              {isCurrentUserAdmin && selectedMemberForAction?.profiles?.id !== currentUser?.uid && (
+                <TouchableOpacity
+                  style={[styles.actionModalItem, styles.actionModalItemDanger]}
+                  onPress={() => {
+                    const memberToRemove = selectedMemberForAction
+                    setShowMemberActionModal(false)
+                    handleRemoveMember(memberToRemove)
+                  }}
+                >
+                  <View style={[styles.actionModalItemIcon, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
+                    <Ionicons name="trash-outline" size={18} color={Colors.red} />
+                  </View>
+                  <Text style={[styles.actionModalItemText, { color: Colors.red, fontWeight: '700' }]}>
+                    Remove Member from Group
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </SafeAreaView>
   )
@@ -1657,6 +1815,139 @@ const styles = StyleSheet.create({
   segmentTextActive: {
     color: Colors.white,
     fontWeight: '700',
+  },
+  adminRoleBadge: {
+    backgroundColor: 'rgba(249, 168, 38, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: 6,
+  },
+  adminRoleBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.secondary,
+    textTransform: 'uppercase',
+  },
+  selfBadge: {
+    backgroundColor: 'rgba(61, 31, 148, 0.1)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: 6,
+  },
+  selfBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+  timeTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    columnGap: 4,
+    backgroundColor: 'rgba(21, 12, 51, 0.05)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  timeTagText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.primary,
+  },
+  memberDotsBtn: {
+    padding: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  actionModalSheet: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  actionModalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  actionModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    columnGap: 12,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    marginBottom: 16,
+  },
+  actionModalAvatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionModalAvatarText: {
+    color: Colors.white,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  actionModalName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.dark,
+    marginBottom: 2,
+  },
+  actionModalRole: {
+    fontSize: 12,
+    color: Colors.gray,
+  },
+  actionModalCloseBtn: {
+    padding: 6,
+  },
+  actionModalOptions: {
+    rowGap: 10,
+  },
+  actionModalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    columnGap: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: '#F9FAFB',
+  },
+  actionModalItemDanger: {
+    backgroundColor: 'rgba(239, 68, 68, 0.05)',
+  },
+  actionModalItemIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionModalItemText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.dark,
   },
 })
 

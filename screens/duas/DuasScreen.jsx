@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   FlatList,
   TextInput,
+  StyleSheet,
 } from 'react-native'
 import { useTheme } from '../../context/ThemeContext'
 import { useLanguage } from '../../context/LanguageContext'
@@ -181,14 +182,17 @@ export const DuasScreen = ({ navigation }) => {
     const isExpanded = expandedDuas[index]
 
     return (
-      <View className="rounded-xl border mb-3 overflow-hidden" style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+      <View
+        style={[styles.duaCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+      >
         <TouchableOpacity
           onPress={() => toggleDuaExpansion(index)}
-          className="p-3"
+          style={styles.duaHeader}
+          activeOpacity={0.7}
         >
-          <View className="h-1" style={{ backgroundColor: colors.primary }}></View>
-          <View className="flex-row items-center justify-between">
-            <Text className="flex-1 text-sm font-medium mr-2" style={{ color: colors.text }} numberOfLines={2}>
+          <View style={[styles.duaAccent, { backgroundColor: colors.primary }]} />
+          <View style={styles.duaTitleRow}>
+            <Text style={[styles.duaTitle, { color: colors.text }]} numberOfLines={2}>
               {item.title}
             </Text>
             <Ionicons
@@ -203,8 +207,8 @@ export const DuasScreen = ({ navigation }) => {
           <>
             {/* Arabic Text */}
             {item.arabic && (
-              <View className="p-4 border-b" style={{ borderBottomColor: colors.border }}>
-                <Text className="text-[22px] leading-8 text-right font-medium" style={{ color: colors.text }} allowFontScaling={true}>
+              <View style={[styles.duaSection, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.arabicText, { color: colors.text }]} allowFontScaling={true}>
                   {item.arabic}
                 </Text>
               </View>
@@ -212,38 +216,38 @@ export const DuasScreen = ({ navigation }) => {
 
             {/* Transliteration */}
             {item.transliteration && (
-              <View className="p-3 border-b" style={{ backgroundColor: colors.surfaceVariant, borderBottomColor: colors.border }}>
-                <Text className="text-sm italic leading-[18px]" style={{ color: colors.textSecondary }}>{item.transliteration}</Text>
+              <View style={[styles.duaSection, { backgroundColor: colors.surfaceVariant, borderBottomColor: colors.border }]}>
+                <Text style={[styles.transliterationText, { color: colors.textSecondary }]}>{item.transliteration}</Text>
               </View>
             )}
 
             {/* Translation */}
             {item.translation && (
-              <View className="p-3 border-b" style={{ borderBottomColor: colors.border }}>
-                <Text className="text-sm leading-5 italic" style={{ color: colors.text }}>"{item.translation}"</Text>
+              <View style={[styles.duaSection, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.translationText, { color: colors.text }]}>"{item.translation}"</Text>
               </View>
             )}
 
             {/* Benefits/Fawaid */}
             {item.fawaid && (
-              <View className="p-3 border-b" style={{ backgroundColor: colors.warning + '14', borderBottomColor: colors.border }}>
-                <Text className="text-xs font-bold mb-1" style={{ color: colors.warning }}>{t('duas.benefits')}</Text>
-                <Text className="text-sm leading-[18px]" style={{ color: colors.warning }}>{item.fawaid}</Text>
+              <View style={[styles.duaSection, { backgroundColor: colors.warning + '14', borderBottomColor: colors.border }]}>
+                <Text style={[styles.fawaidLabel, { color: colors.warning }]}>{t('duas.benefits')}</Text>
+                <Text style={[styles.fawaidText, { color: colors.warning }]}>{item.fawaid}</Text>
               </View>
             )}
 
             {/* Notes */}
             {item.notes && (
-              <View className="p-2.5 border-b" style={{ borderBottomColor: colors.border }}>
-                <Text className="text-xs italic text-center" style={{ color: colors.textSecondary }}>{item.notes}</Text>
+              <View style={[styles.duaSection, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.notesText, { color: colors.textSecondary }]}>{item.notes}</Text>
               </View>
             )}
 
             {/* Source */}
             {item.source && (
-              <View className="p-3 border-t" style={{ borderTopColor: colors.border }}>
-                <Text className="text-xs font-bold mb-1" style={{ color: colors.textSecondary }}>{t('duas.source')}</Text>
-                <Text className="text-xs leading-4" style={{ color: colors.textSecondary }}>{item.source}</Text>
+              <View style={[styles.duaSection, { borderTopColor: colors.border }]}>
+                <Text style={[styles.sourceLabel, { color: colors.textSecondary }]}>{t('duas.source')}</Text>
+                <Text style={[styles.sourceText, { color: colors.textSecondary }]}>{item.source}</Text>
               </View>
             )}
           </>
@@ -256,16 +260,20 @@ export const DuasScreen = ({ navigation }) => {
     <TouchableOpacity
       key={category.id}
       onPress={() => setSelectedCategory(category.id)}
-      className="mx-1.5 px-4 py-2 rounded-full justify-center"
-      style={{
-        backgroundColor: selectedCategory === category.id ? colors.primary : colors.surfaceVariant,
-      }}
+      style={[
+        styles.categoryBtn,
+        {
+          backgroundColor: selectedCategory === category.id ? colors.primary : colors.surfaceVariant,
+        },
+      ]}
     >
       <Text
-        className="text-sm font-semibold"
-        style={{
-          color: selectedCategory === category.id ? colors.white : colors.textSecondary,
-        }}
+        style={[
+          styles.categoryText,
+          {
+            color: selectedCategory === category.id ? colors.white : colors.textSecondary,
+          },
+        ]}
       >
         {category.name}
       </Text>
@@ -273,20 +281,20 @@ export const DuasScreen = ({ navigation }) => {
   )
 
   return (
-    <SafeAreaView className="flex-1" style={{ backgroundColor: colors.background }}>
-      <View className="px-4 pt-3 pb-1">
-        <Text className="text-[13.5px] leading-[18px]" style={{ color: colors.textSecondary }}>
+    <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>
+      <View style={styles.subtitle}>
+        <Text style={[styles.subtitleText, { color: colors.textSecondary }]}>
           {t('duas.subtitle')}
         </Text>
       </View>
 
       {/* Categories */}
       {categories.length > 0 && (
-        <View className="py-2">
+        <View style={styles.categoriesRow}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 12, alignItems: 'center' }}
+            contentContainerStyle={styles.categoriesScroll}
           >
             {categories.map(renderCategoryButton)}
           </ScrollView>
@@ -294,11 +302,10 @@ export const DuasScreen = ({ navigation }) => {
       )}
 
       {/* Search Input */}
-      <View className="flex-row items-center mx-3 my-2 px-3 py-2 rounded-xl border" style={{ backgroundColor: colors.surface, borderColor: '#E5E7EB' }}>
-        <Ionicons name="search" size={20} color={colors.textSecondary} className="mr-2" />
+      <View style={[styles.searchRow, { backgroundColor: colors.surface }]}>
+        <Ionicons name="search" size={20} color={colors.textSecondary} style={{ marginRight: 8 }} />
         <TextInput
-          className="flex-1 text-sm"
-          style={{ color: colors.text }}
+          style={[styles.searchInput, { color: colors.text }]}
           placeholder={t('duas.searchPlaceholder')}
           placeholderTextColor={colors.textSecondary}
           value={searchQuery}
@@ -313,15 +320,15 @@ export const DuasScreen = ({ navigation }) => {
 
       {/* Loading */}
       {loading && (
-        <View className="flex-1 justify-center items-center">
+        <View style={styles.centeredState}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       )}
 
       {/* Error */}
       {error && (
-        <View className="p-4 mx-3 rounded-lg" style={{ backgroundColor: colors.error + '14' }}>
-          <Text className="text-sm" style={{ color: colors.error }}>{error}</Text>
+        <View style={[styles.errorBox, { backgroundColor: colors.error + '14' }]}>
+          <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
         </View>
       )}
 
@@ -331,7 +338,7 @@ export const DuasScreen = ({ navigation }) => {
           data={displayedDuas}
           renderItem={renderDuaCard}
           keyExtractor={(item, index) => index.toString()}
-          contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 8 }}
+          contentContainerStyle={styles.listContent}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
           initialNumToRender={8}
@@ -341,11 +348,10 @@ export const DuasScreen = ({ navigation }) => {
             visibleCount < filteredDuas.length ? (
               <TouchableOpacity
                 onPress={handleLoadMore}
-                className="py-3.5 items-center justify-center my-2.5 rounded-lg border"
-                style={{ borderColor: '#E5E7EB', backgroundColor: '#F9FAFB' }}
+                style={[styles.loadMoreBtn, { borderColor: '#E5E7EB', backgroundColor: '#F9FAFB' }]}
                 accessibilityRole="button"
               >
-                <Text className="text-[13.5px] font-semibold" style={{ color: colors.primary }}>
+                <Text style={[styles.loadMoreText, { color: colors.primary }]}>
                   {`Load more duas (${visibleCount} of ${filteredDuas.length})`}
                 </Text>
               </TouchableOpacity>
@@ -356,8 +362,8 @@ export const DuasScreen = ({ navigation }) => {
 
       {/* Empty State */}
       {!loading && filteredDuas.length === 0 && !error && (
-        <View className="flex-1 justify-center items-center">
-          <Text className="text-base" style={{ color: colors.textSecondary }}>
+        <View style={styles.centeredState}>
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
             {searchQuery ? t('duas.noResults') : t('duas.empty')}
           </Text>
         </View>
@@ -365,5 +371,154 @@ export const DuasScreen = ({ navigation }) => {
     </SafeAreaView>
   )
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  subtitle: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  subtitleText: {
+    fontSize: 13.5,
+    lineHeight: 18,
+  },
+  categoriesRow: {
+    paddingVertical: 8,
+  },
+  categoriesScroll: {
+    paddingHorizontal: 12,
+    alignItems: 'center',
+  },
+  categoryBtn: {
+    marginHorizontal: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    justifyContent: 'center',
+  },
+  categoryText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 12,
+    marginVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+  },
+  centeredState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorBox: {
+    padding: 16,
+    marginHorizontal: 12,
+    borderRadius: 8,
+  },
+  errorText: {
+    fontSize: 13,
+  },
+  listContent: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  loadMoreBtn: {
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  loadMoreText: {
+    fontSize: 13.5,
+    fontWeight: '600',
+  },
+  emptyText: {
+    fontSize: 14,
+  },
+  // Dua card
+  duaCard: {
+    borderWidth: 1,
+    borderRadius: 14,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  duaHeader: {
+    padding: 14,
+  },
+  duaAccent: {
+    height: 2,
+    borderRadius: 1,
+    marginBottom: 10,
+  },
+  duaTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  duaTitle: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    marginRight: 8,
+  },
+  duaSection: {
+    padding: 14,
+    borderBottomWidth: 1,
+  },
+  arabicText: {
+    fontSize: 22,
+    lineHeight: 36,
+    textAlign: 'right',
+    fontWeight: '500',
+  },
+  transliterationText: {
+    fontSize: 13,
+    fontStyle: 'italic',
+    lineHeight: 20,
+  },
+  translationText: {
+    fontSize: 13,
+    lineHeight: 20,
+    fontStyle: 'italic',
+  },
+  fawaidLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  fawaidText: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  notesText: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
+  sourceLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  sourceText: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+})
 
 export default DuasScreen

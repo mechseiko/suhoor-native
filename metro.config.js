@@ -14,6 +14,13 @@ config.resolver = {
   // @react-navigation v7 ships ESM only and relies on package exports.
   unstable_enablePackageExports: true,
   unstable_conditionNames: ['react-native', 'require', 'import', 'default'],
+  assetExts: [...config.resolver.assetExts, 'svg'],
+  sourceExts: [...config.resolver.sourceExts, 'svg'],
+}
+
+config.transformer = {
+  ...config.transformer,
+  babelTransformerPath: require.resolve('react-native-svg-transformer/expo'),
 }
 
 const nativeWindConfig = withNativeWind(config, { input: './global.css' })

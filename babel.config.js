@@ -16,27 +16,27 @@
  * Note: changes to .env are baked in at transform time. Restart Metro with
  * `npm start -- --reset-cache` after editing it, or the old values stay cached.
  */
-module.exports = {
-  presets: ['babel-preset-expo', 'nativewind/babel'],
-  plugins: [
-    [
-      'module:react-native-dotenv',
-      {
-        moduleName: '@env',
-        path: '.env',
-        // Missing variables come through as undefined instead of throwing at
-        // build time, so a partially-filled .env still bundles and the app can
-        // report which keys are absent.
-        allowUndefined: true,
-        safe: false,
-      },
+module.exports = function (api) {
+  api.cache(true)
+  return {
+    presets: [
+      ['babel-preset-expo', { jsxImportSource: 'nativewind' }],
+      'nativewind/babel',
     ],
-  ],
-
-
-  env: {
-    web: {
-      plugins: [],
-    },
-  },
+    plugins: [
+      [
+        'module:react-native-dotenv',
+        {
+          moduleName: '@env',
+          path: '.env',
+          // Missing variables come through as undefined instead of throwing at
+          // build time, so a partially-filled .env still bundles and the app can
+          // report which keys are absent.
+          allowUndefined: true,
+          safe: false,
+        },
+      ],
+      'react-native-reanimated/plugin',
+    ],
+  }
 }

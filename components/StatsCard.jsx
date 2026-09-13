@@ -26,18 +26,18 @@ export const StatsCard = ({
   loading = false,
   style,
 }) => (
-  <Card className="min-w-[45%] flex-1 gap-3" style={[{ flex: 1, minWidth: '45%' }, style]}>
+  <Card style={[styles.card, style]}>
     <IconTile icon={icon} tone={tone} size={38} />
 
     {loading ? (
       <StatSkeleton />
     ) : (
-      <View className="gap-0.5">
+      <View style={styles.textGroup}>
         <Text variant="display">{value}</Text>
         <Text
           variant="caption"
           tone="secondary"
-          className="-mt-0.5"
+          style={styles.title}
           numberOfLines={2}
         >
           {title}
@@ -94,6 +94,17 @@ const StatSkeleton = () => {
 }
 
 const styles = StyleSheet.create({
+  card: {
+    flex: 1,
+    minWidth: '45%',
+    rowGap: 12,
+  },
+  textGroup: {
+    rowGap: 2,
+  },
+  title: {
+    marginTop: -2,
+  },
   skeleton: {
     // The display figure plus its caption line and the gap between them.
     height: 48,

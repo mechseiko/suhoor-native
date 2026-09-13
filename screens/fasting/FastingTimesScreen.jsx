@@ -25,7 +25,7 @@ import Toast from '../../components/Toast';
 import { getHijriDate } from '../../utils/fastingUtils';
 // DocumentPicker for custom audio upload (gracefully no-ops if not installed)
 let DocumentPicker;
-try { DocumentPicker = require('react-native-document-picker').default; } catch {}
+try { DocumentPicker = require('react-native-document-picker').default; } catch (e) {}
 
 // The wake-up window the README specifies: 45 minutes before suhoor ends by
 // default, user-configurable up to two hours. Named here so the copy, the
@@ -372,10 +372,10 @@ export const FastingTimesScreen = () => {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1" style={{ backgroundColor: colors.background }}>
-        <View className="flex-1 justify-center items-center p-5">
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text className="mt-4 text-base font-medium" style={{ color: colors.textSecondary }}>
+          <Text style={{ marginTop: 16, fontSize: 14, fontWeight: '500', color: colors.textSecondary }}>
             {t('fastingTimes.loading')}
           </Text>
         </View>
@@ -385,13 +385,13 @@ export const FastingTimesScreen = () => {
 
   if (error) {
     return (
-      <SafeAreaView className="flex-1" style={{ backgroundColor: colors.background }}>
-        <View className="flex-1 justify-center items-center p-5">
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
           <Ionicons name="alert-circle" size={48} color={colors.error} />
-          <Text className="mt-4 text-lg font-bold text-center" style={{ color: colors.text }}>
+          <Text style={{ marginTop: 16, fontSize: 17, fontWeight: '700', textAlign: 'center', color: colors.text }}>
             {t('fastingTimes.loadError')}
           </Text>
-          <Text className="mt-2 text-sm text-center" style={{ color: colors.textSecondary }}>{error}</Text>
+          <Text style={{ marginTop: 8, fontSize: 13, textAlign: 'center', color: colors.textSecondary }}>{error}</Text>
         </View>
       </SafeAreaView>
     );
@@ -421,33 +421,62 @@ export const FastingTimesScreen = () => {
       : null;
 
   return (
-    <SafeAreaView className="flex-1" style={{ backgroundColor: colors.background }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <Toast message={toastMsg} type={toastType} visible={toastVisible} onDismiss={() => setToastVisible(false)} />
       
-      <ScrollView contentContainerClassName="p-4" showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
         {/* Location Status */}
         {locationStatus && (
-          <View className="rounded-xl p-4 mb-4 flex-row items-center gap-3" style={{ backgroundColor: colors.surfaceVariant }}>
+          <View
+            style={{
+              backgroundColor: colors.surfaceVariant,
+              borderRadius: 12,
+              padding: 14,
+              marginBottom: 16,
+              flexDirection: 'row',
+              alignItems: 'center',
+              columnGap: 10,
+            }}
+          >
             <Ionicons name={locationStatus.icon} size={20} color={locationStatus.color} />
-            <Text className="text-sm flex-1" style={{ color: colors.textSecondary }}>
+            <Text style={{ flex: 1, fontSize: 13, color: colors.textSecondary }}>
               {locationStatus.message}
             </Text>
           </View>
         )}
 
         {/* Date Section */}
-        <View className="rounded-2xl p-5 mb-4 shadow-sm border" style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
-          <View className="flex-row items-center gap-3 mb-5 pb-4 border-b" style={{ borderBottomColor: colors.border }}>
+        <View
+          style={{
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+            borderWidth: 1,
+            borderRadius: 16,
+            padding: 18,
+            marginBottom: 16,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              columnGap: 10,
+              marginBottom: 16,
+              paddingBottom: 12,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.border,
+            }}
+          >
             <Ionicons name="calendar" size={24} color={colors.primary} />
-            <Text className="text-lg font-bold" style={{ color: colors.text }}>{t('common.todaysDate')}</Text>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text }}>{t('common.todaysDate')}</Text>
           </View>
 
-          <View className="flex-row justify-between">
-            <View className="flex-1">
-              <Text className="text-xs font-semibold uppercase mb-2" style={{ color: colors.textSecondary }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 11, fontWeight: '600', textTransform: 'uppercase', marginBottom: 6, color: colors.textSecondary }}>
                 {t('fastingTimes.hijriDate')}
               </Text>
-              <Text className="text-base font-semibold leading-5" style={{ color: colors.text }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', lineHeight: 22, color: colors.text }}>
                 {t('fastingTimes.hijriToday', {
                   day: hijri.day,
                   month: hijriMonthName(today, locale, hijri.month),
@@ -456,13 +485,13 @@ export const FastingTimesScreen = () => {
               </Text>
             </View>
 
-            <View className="w-1 mx-4" style={{ backgroundColor: colors.border }} />
+            <View style={{ width: 1, height: 48, marginHorizontal: 16, backgroundColor: colors.border }} />
 
-            <View className="flex-1">
-              <Text className="text-xs font-semibold uppercase mb-2" style={{ color: colors.textSecondary }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 11, fontWeight: '600', textTransform: 'uppercase', marginBottom: 6, color: colors.textSecondary }}>
                 {t('fastingTimes.gregorianDate')}
               </Text>
-              <Text className="text-base font-semibold leading-5" style={{ color: colors.text }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', lineHeight: 22, color: colors.text }}>
                 {formatDate(today, {
                   weekday: 'long',
                   month: 'long',
@@ -475,73 +504,131 @@ export const FastingTimesScreen = () => {
         </View>
 
         {/* Fasting Times Section */}
-        <View className="rounded-2xl p-5 mb-4 shadow-sm border" style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
-          <View className="flex-row items-center gap-3 mb-5 pb-4 border-b" style={{ borderBottomColor: colors.border }}>
+        <View
+          style={{
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+            borderWidth: 1,
+            borderRadius: 16,
+            padding: 18,
+            marginBottom: 16,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              columnGap: 10,
+              marginBottom: 16,
+              paddingBottom: 12,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.border,
+            }}
+          >
             <Ionicons name="sunny" size={24} color={colors.secondary} />
-            <Text className="text-lg font-bold" style={{ color: colors.text }}>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text }}>
               {t('nav.fastingTimes')}
             </Text>
           </View>
 
-          <View className="flex-row justify-between">
-            <View className="flex-1 items-center">
-              <View className="w-12 h-12 rounded-full justify-center items-center mb-3" style={{ backgroundColor: colors.primary + '14' }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <View
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginBottom: 10,
+                  backgroundColor: colors.primary + '14',
+                }}
+              >
                 <Ionicons name="moon" size={20} color={colors.secondary} />
               </View>
-              <View className="items-center">
-                <Text className="text-xs font-semibold uppercase mb-1" style={{ color: colors.textSecondary }}>
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ fontSize: 11, fontWeight: '600', textTransform: 'uppercase', marginBottom: 4, color: colors.textSecondary }}>
                   {t('fastingTimes.suhoorEnds')}
                 </Text>
-                <Text className="text-2xl font-extrabold" style={{ color: colors.text }}>{suhoorTime}</Text>
+                <Text style={{ fontSize: 24, fontWeight: '800', color: colors.text }}>{suhoorTime}</Text>
               </View>
             </View>
 
-            <View className="w-1 mx-4" style={{ backgroundColor: colors.border }} />
+            <View style={{ width: 1, height: 48, marginHorizontal: 16, backgroundColor: colors.border }} />
 
-            <View className="flex-1 items-center">
-              <View className="w-12 h-12 rounded-full justify-center items-center mb-3" style={{ backgroundColor: colors.error + '14' }}>
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <View
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginBottom: 10,
+                  backgroundColor: colors.error + '14',
+                }}
+              >
                 <Ionicons name="sunny" size={20} color={colors.error} />
               </View>
-              <View className="items-center">
-                <Text className="text-xs font-semibold uppercase mb-1" style={{ color: colors.textSecondary }}>
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ fontSize: 11, fontWeight: '600', textTransform: 'uppercase', marginBottom: 4, color: colors.textSecondary }}>
                   {t('fastingTimes.iftarBegins')}
                 </Text>
-                <Text className="text-2xl font-extrabold" style={{ color: colors.text }}>{iftarTime}</Text>
+                <Text style={{ fontSize: 24, fontWeight: '800', color: colors.text }}>{iftarTime}</Text>
               </View>
             </View>
           </View>
         </View>
 
         {/* Wake Up Times Section */}
-        <View className="rounded-2xl p-5 mb-4 shadow-sm border" style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
-          <View className="flex-row items-center gap-3 mb-5 pb-4 border-b" style={{ borderBottomColor: colors.border }}>
+        <View
+          style={{
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+            borderWidth: 1,
+            borderRadius: 16,
+            padding: 18,
+            marginBottom: 16,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              columnGap: 10,
+              marginBottom: 16,
+              paddingBottom: 12,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.border,
+            }}
+          >
             <Ionicons name="alarm" size={24} color={colors.accent} />
-            <Text className="text-lg font-bold" style={{ color: colors.text }}>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text }}>
               {t('fastingTimes.wakeUpTimes')}
             </Text>
           </View>
 
-          <View className="gap-5">
-            <View className="gap-2">
-              <Text className="text-sm font-bold" style={{ color: colors.text }}>
+          <View style={{ rowGap: 18 }}>
+            <View style={{ rowGap: 6 }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>
                 {t('fastingTimes.defaultWakeUp')}
               </Text>
-              <Text className="text-sm" style={{ color: colors.textSecondary }}>
+              <Text style={{ fontSize: 13, color: colors.textSecondary }}>
                 {t('fastingTimes.defaultWakeUpSub', { minutes: DEFAULT_WAKE_MINUTES })}
               </Text>
-              <Text className="text-3xl font-black" style={{ color: colors.primary }}>{defaultWakeUp}</Text>
+              <Text style={{ fontSize: 28, fontWeight: '900', color: colors.primary, marginTop: 4 }}>{defaultWakeUp}</Text>
             </View>
 
-            <View className="w-1 mx-4" style={{ backgroundColor: colors.border }} />
+            <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 4 }} />
 
-            <View className="gap-2">
-              <Text className="text-sm font-bold" style={{ color: colors.text }}>
+            <View style={{ rowGap: 6 }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>
                 {t('fastingTimes.personalWakeUp')}
               </Text>
-              <Text className="text-sm" style={{ color: colors.textSecondary }}>
+              <Text style={{ fontSize: 13, color: colors.textSecondary }}>
                 {t('fastingTimes.personalWakeUpSub')}
               </Text>
-              <Text className="text-xs italic" style={{ color: colors.textSecondary }}>
+              <Text style={{ fontSize: 12, fontStyle: 'italic', color: colors.textSecondary }}>
                 {t('fastingTimes.allowedRange', {
                   min: MIN_WAKE_MINUTES,
                   max: MAX_WAKE_MINUTES,
@@ -554,7 +641,7 @@ export const FastingTimesScreen = () => {
                 colors={colors} 
               />
 
-              <Text className="text-sm font-semibold mt-1 text-center" style={{ color: colors.accent }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', marginTop: 8, textAlign: 'center', color: colors.accent }}>
                 {t('fastingTimes.calculated', { time: personalWakeUp })}
               </Text>
             </View>
@@ -562,12 +649,12 @@ export const FastingTimesScreen = () => {
         </View>
 
         {/* Alarm Audio Section */}
-        <View className="rounded-2xl p-5 mb-4 shadow-sm border" style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
-          <View className="flex-row items-center gap-3 mb-5 pb-4 border-b" style={{ borderBottomColor: colors.border }}>
+        <View style={{ backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 18, marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', columnGap: 10, marginBottom: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
             <Ionicons name="musical-notes" size={24} color={colors.primary} />
             <View style={{ flex: 1 }}>
-              <Text className="text-lg font-bold" style={{ color: colors.text }}>Alarm Sound</Text>
-              <Text className="text-xs" style={{ color: colors.textSecondary }}>Choose what plays when your Suhoor alarm rings</Text>
+              <Text style={{ fontWeight: '700', fontSize: 17, color: colors.text }}>Alarm Sound</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>Choose what plays when your Suhoor alarm rings</Text>
             </View>
           </View>
 
@@ -638,8 +725,10 @@ export const FastingTimesScreen = () => {
         </View>
 
         <TouchableOpacity
-            className="flex-row items-center justify-center h-12 rounded-xl gap-2 mt-2"
-            style={{ backgroundColor: colors.primary }}
+            style={[
+              { flexDirection: 'row', alignItems: 'center', columnGap: 12, paddingVertical: 14, paddingHorizontal: 14, borderRadius: 12, marginTop: 8 },
+              { backgroundColor: colors.primary },
+            ]}
             onPress={handleSaveWakeUpTime}
             disabled={isSaving}
           >
@@ -648,7 +737,7 @@ export const FastingTimesScreen = () => {
             ) : (
               <>
                 <Ionicons name="save-outline" size={18} color={colors.white} />
-                <Text className="font-bold text-base" style={{ color: colors.white }}>
+                <Text style={{ color: colors.white, fontWeight: '700', fontSize: 15 }}>
                   {t('fastingTimes.saveWakeUp')}
                 </Text>
               </>

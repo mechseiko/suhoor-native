@@ -1,5 +1,5 @@
 import React from 'react'
-import { Text, View, TouchableOpacity, ActivityIndicator } from 'react-native'
+import { Text, View, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import { useTheme } from '../context/ThemeContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -26,7 +26,7 @@ export const LanguageSelector = () => {
 
   if (isLoadingLocale) {
     return (
-      <View className="items-center py-5">
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="small" color={colors.primary} />
       </View>
     )
@@ -44,10 +44,13 @@ export const LanguageSelector = () => {
             onPress={() => changeLanguage(lang.code)}
             accessibilityRole="radio"
             accessibilityState={{ selected: isActive }}
-            className={`flex-row items-center justify-between border-b py-3 ${isLast ? 'border-b-0' : ''}`}
-            style={{ borderBottomColor: colors.border }}
+            style={[
+              styles.langRow,
+              { borderBottomColor: colors.border },
+              isLast && styles.langRowLast,
+            ]}
           >
-            <View className="flex-1 pe-4">
+            <View style={styles.langTextGroup}>
               <Text
                 style={[
                   { fontSize: 15, fontWeight: '600' },
@@ -58,8 +61,7 @@ export const LanguageSelector = () => {
                 {lang.nativeName}
               </Text>
               <Text
-                className="mt-0.5 text-xs"
-                style={{ color: colors.textSecondary }}
+                style={[styles.langSubtitle, { color: colors.textSecondary }]}
               >
                 {lang.name}
               </Text>
@@ -80,8 +82,7 @@ export const LanguageSelector = () => {
 
       {needsRestartForRtl && (
         <View
-          className="mt-3 flex-row items-start gap-2 rounded-[10px] p-3"
-          style={{ backgroundColor: colors.surfaceVariant }}
+          style={[styles.restartBanner, { backgroundColor: colors.surfaceVariant }]}
         >
           <Ionicons
             name="information-circle-outline"
@@ -89,8 +90,7 @@ export const LanguageSelector = () => {
             color={colors.secondary}
           />
           <Text
-            className="flex-1 text-xs leading-4.25"
-            style={{ color: colors.textSecondary }}
+            style={[styles.restartText, { color: colors.textSecondary }]}
           >
             {t(
               'settings.restartForRtl',
@@ -102,5 +102,43 @@ export const LanguageSelector = () => {
     </View>
   )
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  langRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    paddingVertical: 12,
+  },
+  langRowLast: {
+    borderBottomWidth: 0,
+  },
+  langTextGroup: {
+    flex: 1,
+    paddingEnd: 16,
+  },
+  langSubtitle: {
+    marginTop: 2,
+    fontSize: 12,
+  },
+  restartBanner: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    columnGap: 8,
+    borderRadius: 10,
+    padding: 12,
+  },
+  restartText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+})
 
 export default LanguageSelector

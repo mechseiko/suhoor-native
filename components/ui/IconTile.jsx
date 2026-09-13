@@ -33,11 +33,14 @@ export const IconTile = ({
 
   return (
     <View
-      className={`items-center justify-center rounded-lg border ${className ?? ''}`}
       style={StyleSheet.flatten([
         {
           width: size,
           height: size,
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: 10,
+          borderWidth: 1,
           backgroundColor: alpha(hue, 0.1),
           borderColor: alpha(hue, 0.2),
         },

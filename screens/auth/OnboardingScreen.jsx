@@ -138,12 +138,11 @@ const TypewriterHero = () => {
   }
 
   return (
-    <View className="flex-1 items-center justify-center px-4 w-full">
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, width: '100%' }}>
       {/* Ambient background glow orbs */}
       <View
-        style={StyleSheet.absoluteFillObject}
+        style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}
         pointerEvents="none"
-        className="items-center justify-center overflow-hidden"
       >
         {/* Warm amber orb */}
         <Animated.View
@@ -518,18 +517,19 @@ export const OnboardingScreen = ({ onComplete }) => {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <View className="flex-1 px-6 pb-6 pt-8">
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+      <View style={{ flex: 1, paddingHorizontal: 24, paddingBottom: 24, paddingTop: 32 }}>
         {/* Top Bar with Flexed Logo + App Name and Skip button */}
-        <View className="h-12 flex-row items-center justify-between mb-2">
-          <View className="flex-row items-center gap-3">
+        <View style={{ height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', columnGap: 12 }}>
             <Image
               source={require('../../assets/icon-nobg.png')}
               style={{ width: 44, height: 44 }}
               resizeMode="contain"
             />
-            <Text variant="display" className="font-bold" style={{
-              fontFamily: 'Quicksand-Regular'
+            <Text variant="display" style={{
+              fontFamily: 'Quicksand-Regular',
+              fontWeight: '700',
             }}>
               Suhoor
             </Text>
@@ -541,7 +541,7 @@ export const OnboardingScreen = ({ onComplete }) => {
               hitSlop={12}
               accessibilityRole="button"
               accessibilityLabel="Skip onboarding"
-              className="py-1 px-2"
+              style={{ paddingVertical: 4, paddingHorizontal: 8 }}
             >
               <Text variant="label" tone="secondary" style={{
                 fontFamily: 'Quicksand-Regular',
@@ -552,7 +552,7 @@ export const OnboardingScreen = ({ onComplete }) => {
               </Text>
             </TouchableOpacity>
           ) : (
-            <View className="w-12" />
+            <View style={{ width: 48 }} />
           )}
         </View>
 
@@ -572,12 +572,11 @@ export const OnboardingScreen = ({ onComplete }) => {
             setFastingDefaults={setFastingDefaults}
           />
         ) : (
-          <View className="flex-1 items-center justify-center px-2 relative">
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 }}>
             {/* Ambient Background Glow Orbs for dynamic richness */}
             <View
-              style={StyleSheet.absoluteFillObject}
+              style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}
               pointerEvents="none"
-              className="items-center justify-center overflow-hidden"
             >
               <View
                 style={{
@@ -624,7 +623,7 @@ export const OnboardingScreen = ({ onComplete }) => {
             </View>
 
             {/* Title with Keyword in Bold Secondary Color */}
-            <Text variant="hero" className="text-center mb-2">
+            <Text variant="hero" style={{ textAlign: 'center', marginBottom: 8 }}>
               <Text variant="inherit" style={{ color: brand.primary, fontWeight: '700' }}>
                 {current.titlePrimary}
               </Text>
@@ -637,8 +636,7 @@ export const OnboardingScreen = ({ onComplete }) => {
             <Text
               variant="bodyLg"
               tone="secondary"
-              className="text-center max-w-[310px] leading-relaxed"
-              style={{ fontWeight: '600' }}
+              style={{ textAlign: 'center', maxWidth: 310, lineHeight: 24, fontWeight: '600' }}
             >
               {current.subtitle}
             </Text>
@@ -646,12 +644,13 @@ export const OnboardingScreen = ({ onComplete }) => {
         )}
 
         {/* Progress Indicator */}
-        <View className="my-6 flex-row items-center justify-center gap-2">
+        <View style={{ marginVertical: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', columnGap: 8 }}>
           {STEPS.map((item, index) => (
             <View
               key={item.id}
-              className="h-1 rounded-full"
               style={{
+                height: 4,
+                borderRadius: 2,
                 width: index === step ? 24 : 8,
                 backgroundColor: index === step ? brand.primary : '#E5E7EB',
               }}
@@ -660,7 +659,7 @@ export const OnboardingScreen = ({ onComplete }) => {
         </View>
 
         {/* Action Button */}
-        <View className="pt-1">
+        <View style={{ paddingTop: 4 }}>
           <Button
             title={t(
               isLastStep ? 'onboarding.getStarted' : 'onboarding.next',

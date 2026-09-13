@@ -156,11 +156,16 @@ export const SignupScreen = ({ navigation }) => {
         autoCorrect={false}
       />
 
-      <View className="mt-1 mb-6 flex-row items-center gap-3 pe-4">
+      <View style={{ marginTop: 4, marginBottom: 24, flexDirection: 'row', alignItems: 'center', columnGap: 12, paddingEnd: 16 }}>
         <TouchableOpacity
           onPress={() => setAcceptedTerms(!acceptedTerms)}
-          className="w-5 h-5 rounded border-2 flex items-center justify-center"
           style={{
+            width: 20,
+            height: 20,
+            borderRadius: 4,
+            borderWidth: 2,
+            alignItems: 'center',
+            justifyContent: 'center',
             borderColor: acceptedTerms ? colors.primary : '#E5E7EB',
             backgroundColor: acceptedTerms ? colors.primary : 'transparent',
           }}
@@ -172,18 +177,18 @@ export const SignupScreen = ({ navigation }) => {
         <Text
           variant="caption"
           tone="secondary"
-          className="flex-1 text-[13px] leading-4 text-gray-600"
+          style={{ flex: 1, fontSize: 13, lineHeight: 16, color: '#6B7280' }}
         >
           By continuing, you agree to Suhoor's{' '}
           <Text
-            className="text-primary underline"
+            style={{ color: colors.primary, textDecorationLine: 'underline' }}
             onPress={() => Linking.openURL('https://suhoorapp.cv/terms')}
           >
             Terms of Use
           </Text>{' '}
           and{' '}
           <Text
-            className="text-primary underline"
+            style={{ color: colors.primary, textDecorationLine: 'underline' }}
             onPress={() => Linking.openURL('https://suhoorapp.cv/privacy')}
           >
             Privacy Policy

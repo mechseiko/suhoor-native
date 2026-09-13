@@ -26,11 +26,19 @@ export const Screen = ({
   const { colors } = useTheme()
 
   const header = (title || subtitle || action) && (
-    <View className="flex-row items-start justify-between gap-3">
-      <View className="flex-1">
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        columnGap: 12,
+        marginBottom: 8,
+      }}
+    >
+      <View style={{ flex: 1 }}>
         {title && <Text variant="h1">{title}</Text>}
         {subtitle && (
-          <Text variant="body" tone="secondary" className="mt-1">
+          <Text variant="body" tone="secondary" style={{ marginTop: 4 }}>
             {subtitle}
           </Text>
         )}
@@ -49,23 +57,29 @@ export const Screen = ({
   // On web, use regular View instead of SafeAreaView
   const Container = Platform.OS === 'web' ? View : SafeAreaView
 
+  const containerPaddingStyle = {
+    padding: 16,
+    paddingBottom: 40,
+    rowGap: 18,
+  }
+
   return (
     <Container
       {...(Platform.OS !== 'web' && { edges: ['top', 'left', 'right'] })}
-      className="flex-1"
-      style={{ backgroundColor: colors.background }}
+      style={{ flex: 1, backgroundColor: colors.background }}
     >
       {scroll ? (
         <ScrollView
-          contentContainerClassName="gap-5 p-4 pb-10"
-          contentContainerStyle={contentStyle}
+          contentContainerStyle={[containerPaddingStyle, contentStyle]}
           showsVerticalScrollIndicator={false}
           refreshControl={refreshControl}
         >
           {body}
         </ScrollView>
       ) : (
-        <View className="flex-1 gap-5 p-4 pb-10" style={contentStyle}>
+        <View
+          style={[{ flex: 1 }, containerPaddingStyle, contentStyle]}
+        >
           {body}
         </View>
       )}

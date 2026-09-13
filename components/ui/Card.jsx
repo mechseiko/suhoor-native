@@ -33,12 +33,18 @@ export const Card = ({
     default: {
       backgroundColor: colors.surface,
       borderColor: colors.border,
+      borderWidth: 1,
+      borderRadius: 12,
+      padding: padded ? 16 : 0,
       ...elevation.sm,
       shadowColor: colors.primary,
     },
     hero: {
       backgroundColor: colors.heroSurface,
       borderColor: alpha(colors.white, 0.1),
+      borderWidth: 1,
+      borderRadius: 14,
+      padding: padded ? 18 : 0,
       ...elevation.md,
     },
     tinted: {
@@ -47,16 +53,21 @@ export const Card = ({
         colors.mode === 'dark' ? 0.14 : 0.05
       ),
       borderColor: alpha(colors.primary, 0.2),
+      borderWidth: 1,
+      borderRadius: 12,
+      padding: padded ? 16 : 0,
     },
     flat: {
       backgroundColor: colors.surface,
       borderColor: colors.border,
+      borderWidth: 1,
+      borderRadius: 12,
+      padding: padded ? 16 : 0,
     },
   }[variant]
 
   return (
     <View
-      className={`rounded-lg border ${padded ? 'p-4' : ''} ${className ?? ''}`}
       style={StyleSheet.flatten([variantStyle, style])}
       {...rest}
     >

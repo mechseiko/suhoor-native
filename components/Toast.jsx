@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react'
-import { Text, Animated, View, Platform } from 'react-native'
+import { Text, Animated, View, Platform, StyleSheet } from 'react-native'
 import { useTheme } from '../context/ThemeContext'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 
@@ -78,7 +78,7 @@ export const Toast = ({
   return (
     <Animated.View
       style={[
-        'absolute left-5 right-5 top-[50px] z-[9999] rounded-xl border-[1.5px] p-3.5 shadow-lg',
+        styles.container,
         {
           opacity,
           backgroundColor: theme.bg,
@@ -86,7 +86,7 @@ export const Toast = ({
         },
       ]}
     >
-      <View className="flex-row items-center">
+      <View style={styles.row}>
         <Ionicons
           name={theme.icon}
           size={22}
@@ -94,8 +94,7 @@ export const Toast = ({
           style={{ marginEnd: 10 }}
         />
         <Text
-          className="flex-1 text-sm font-semibold"
-          style={{ color: theme.text }}
+          style={[styles.message, { color: theme.text }]}
         >
           {message}
         </Text>
@@ -103,5 +102,33 @@ export const Toast = ({
     </Animated.View>
   )
 }
+
+const styles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    top: 50,
+    zIndex: 9999,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  message: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18,
+  },
+})
 
 export default Toast

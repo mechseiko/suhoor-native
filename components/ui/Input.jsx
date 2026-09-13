@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { TextInput, TouchableOpacity, View } from 'react-native'
+import { TextInput, TouchableOpacity, View, StyleSheet } from 'react-native'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import { useTheme } from '../../context/ThemeContext'
 import { useLanguage } from '../../context/LanguageContext'
@@ -26,7 +26,6 @@ export const Input = ({
   hint,
   containerStyle,
   style,
-  className,
   editable = true,
   ...rest
 }) => {
@@ -40,38 +39,40 @@ export const Input = ({
     : colors.borderStrong
 
   return (
-    <View className={`mb-4 ${className ?? ''}`} style={containerStyle}>
+    <View style={[styles.container, containerStyle]}>
       {label && (
-        <Text variant="label" className="mb-2">
+        <Text variant="label" style={styles.label}>
           {label}
         </Text>
       )}
 
       <View
-        className="h-12 flex-row items-center rounded-md border px-2"
-        style={{
-          borderColor,
-          backgroundColor: editable ? colors.surface : colors.surfaceVariant,
-        }}
+        style={[
+          styles.inputRow,
+          {
+            borderColor,
+            backgroundColor: editable ? colors.surface : colors.surfaceVariant,
+          },
+        ]}
       >
         {icon && (
           <Ionicons
             name={icon}
             size={18}
             color={focused ? colors.primary : colors.muted}
-            style={{ marginEnd: 12 }}
+            style={styles.icon}
           />
         )}
 
         <TextInput
-          className="h-full flex-1"
-          style={{
-            color: editable ? colors.textBody : colors.textSecondary,
-            textAlign: isRTL ? 'right' : 'left',
-            backgroundColor: 'transparent',
-            paddingVertical: 0,
-            ...style,
-          }}
+          style={[
+            styles.textInput,
+            {
+              color: editable ? colors.textBody : colors.textSecondary,
+              textAlign: isRTL ? 'right' : 'left',
+              ...style,
+            },
+          ]}
           placeholderTextColor={colors.muted}
           secureTextEntry={secure && !revealed}
           editable={editable}
@@ -98,16 +99,45 @@ export const Input = ({
       </View>
 
       {error ? (
-        <Text variant="caption" tone="error" className="mt-1">
+        <Text variant="caption" tone="error" style={styles.hint}>
           {error}
         </Text>
       ) : hint ? (
-        <Text variant="caption" tone="secondary" className="mt-1">
+        <Text variant="caption" tone="secondary" style={styles.hint}>
           {hint}
         </Text>
       ) : null}
     </View>
   )
 }
+
+const styles = StyleSheet.create({
+  container: {
+    marginBottom: 16,
+  },
+  label: {
+    marginBottom: 8,
+  },
+  inputRow: {
+    height: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+  },
+  icon: {
+    marginEnd: 12,
+  },
+  textInput: {
+    flex: 1,
+    height: '100%',
+    backgroundColor: 'transparent',
+    paddingVertical: 0,
+  },
+  hint: {
+    marginTop: 4,
+  },
+})
 
 export default Input

@@ -4,7 +4,7 @@ import Colors from '../constants/Colors'
 
 export const LoadingSpinner = ({ color = Colors.primary, size = 'large' }) => {
   return (
-    <View style={styles.container} className="flex-1 items-center justify-center bg-transparent">
+    <View style={styles.container}>
       <ActivityIndicator size={size} color={color} />
     </View>
   )

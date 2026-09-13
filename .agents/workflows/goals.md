@@ -1,7 +1,6 @@
 ---
 description: Suhoor Native Goals
 ---
-
 How Groups Work:
 
 Once it's 8 AM in the morning, I get a prompt asking me if I want to fast the next day, that's if the time is before that next day, of course. Once it's 0:00, the prompt is still there(if i havent choosen anything), but now it shows today. This prompt will be there until it's actually the beginning of my wake-up window.

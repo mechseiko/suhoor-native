@@ -77,7 +77,6 @@ export const Text = ({
         wantsColor ? { color: color ?? toneColor } : null,
         style,
       ])}
-      className={className}
       {...rest}
     >
       {children}
