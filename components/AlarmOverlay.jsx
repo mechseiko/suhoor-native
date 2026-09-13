@@ -74,6 +74,8 @@ export const AlarmOverlay = () => {
 
   const soundRef = useRef(null)
   const soundAllowed = userProfile?.preferences?.soundEnabled ?? true
+  const customAudioUrl = userProfile?.preferences?.customAlarmAudioUrl
+  const alarmAudioMode = userProfile?.preferences?.alarmAudioMode || 'default'
 
   // Vibration and audio playback
   useEffect(() => {
@@ -87,6 +89,19 @@ export const AlarmOverlay = () => {
                 staysActiveInBackground: true,
                 shouldDuckAndroid: true,
               })
+
+              // Load and play custom audio if available, otherwise use default
+              if (alarmAudioMode === 'custom' && customAudioUrl) {
+                try {
+                  const { sound } = await Audio.Sound.createAsync(
+                    { uri: customAudioUrl },
+                    { shouldPlay: true, isLooping: true }
+                  )
+                  soundRef.current = sound
+                } catch (customAudioError) {
+                  console.log('Custom audio load failed, falling back to default:', customAudioError)
+                }
+              }
             } catch (audioError) {
               console.log('Audio init failed:', audioError)
             }

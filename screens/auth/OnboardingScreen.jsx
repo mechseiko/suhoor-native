@@ -429,7 +429,7 @@ const AlarmPinStep = ({ alarmPin, setAlarmPin, pinError, setPinError }) => {
           tone="secondary"
           style={{ textAlign: 'center', maxWidth: 300, lineHeight: 20, fontSize: 13 }}
         >
-          Set a personal 4-digit PIN. You'll enter this PIN every morning to dismiss your Suhoor alarm and prove you're truly awake.
+          Set a personal 4-digit PIN. You'll enter this PIN to dismiss your Suhoor alarm and prove you're truly awake.
         </Text>
       </View>
 

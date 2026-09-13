@@ -31,7 +31,7 @@ export const TabNavigator = () => {
         tabBarIcon: ({ focused, color, size: iconSize }) => {
           const NAMES = {
             HomeTab: 'home',
-            FastingTimesTab: 'globe',
+            FastingTimesTab: 'alarm',
             GroupsTab: 'people',
             DuasTab: 'book',
             ProfileTab: 'person',

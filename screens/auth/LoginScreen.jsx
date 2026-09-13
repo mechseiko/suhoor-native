@@ -1,10 +1,13 @@
 import React, { useState } from 'react'
 import { TouchableOpacity, View } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAuth } from '../../context/AuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useTheme } from '../../context/ThemeContext'
 import AuthWrapper from '../../components/AuthWrapper'
 import { Button, Input, Text } from '../../components/ui'
+import { db } from '../../config/firebase'
+import { doc, updateDoc } from 'firebase/firestore'
 
 export const LoginScreen = ({ navigation }) => {
   const { t } = useLanguage()
@@ -25,7 +28,19 @@ export const LoginScreen = ({ navigation }) => {
     setLoading(true)
 
     try {
-      await login(email.trim(), password)
+      const userCredential = await login(email.trim(), password)
+      const user = userCredential.user
+
+      // Sync alarm PIN from AsyncStorage to profile if it exists
+      try {
+        const alarmPin = await AsyncStorage.getItem('suhoor_alarm_pin')
+        if (alarmPin) {
+          const profileRef = doc(db, 'profiles', user.uid)
+          await updateDoc(profileRef, { pin: alarmPin })
+        }
+      } catch (syncErr) {
+        console.log('Error syncing alarm PIN:', syncErr)
+      }
     } catch (err) {
       console.error('Login error:', err)
       const errorCode = err.code

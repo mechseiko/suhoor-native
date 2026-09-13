@@ -13,6 +13,7 @@ import {
   Modal,
   Pressable,
 } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Text } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
@@ -68,10 +69,71 @@ export const ProfileScreen = () => {
   const [deleteEmailInput, setDeleteEmailInput] = useState('')
   const [isDeletingAccount, setIsDeletingAccount] = useState(false)
 
+  // Alarm PIN state
+  const [alarmPin, setAlarmPin] = useState(['', '', '', ''])
+  const [pinError, setPinError] = useState('')
+  const [isSavingPin, setIsSavingPin] = useState(false)
+  const pinRefs = [React.useRef(), React.useRef(), React.useRef(), React.useRef()]
+
   const showToast = (msg, type) => {
     setToastMessage(msg)
     setToastType(type)
     setToastVisible(true)
+  }
+
+  // Load current alarm PIN from profile
+  React.useEffect(() => {
+    if (userProfile?.pin) {
+      const pinDigits = userProfile.pin.split('')
+      setAlarmPin(pinDigits.length === 4 ? pinDigits : ['', '', '', ''])
+    }
+  }, [userProfile])
+
+  // Handle PIN digit changes
+  const handlePinDigitChange = (index, value) => {
+    if (!/^\d*$/.test(value)) return
+    const digit = value.slice(-1)
+    const next = [...alarmPin]
+    next[index] = digit
+    setAlarmPin(next)
+    setPinError('')
+    if (digit && index < 3) {
+      pinRefs[index + 1]?.current?.focus()
+    }
+  }
+
+  const handlePinKeyPress = (index, e) => {
+    if (e.nativeEvent?.key === 'Backspace' && !alarmPin[index] && index > 0) {
+      pinRefs[index - 1]?.current?.focus()
+    }
+  }
+
+  // Save alarm PIN
+  const handleSavePin = async () => {
+    if (!currentUser) return
+    const pinStr = alarmPin.join('')
+    if (pinStr.length < 4 || alarmPin.some(d => d === '')) {
+      setPinError('Please enter all 4 digits of your PIN.')
+      return
+    }
+
+    setIsSavingPin(true)
+    try {
+      // Save to Firestore
+      const userRef = doc(db, COLLECTIONS.profiles, currentUser.uid)
+      await updateDoc(userRef, { pin: pinStr })
+
+      // Save to AsyncStorage for alarm overlay
+      await AsyncStorage.setItem('suhoor_alarm_pin', pinStr)
+
+      showToast('Alarm PIN updated successfully!', 'success')
+      setPinError('')
+    } catch (err) {
+      console.error('Error saving PIN:', err)
+      showToast('Failed to update PIN. Please try again.', 'error')
+    } finally {
+      setIsSavingPin(false)
+    }
   }
 
   const handleUpdateProfile = async () => {
@@ -684,6 +746,73 @@ export const ProfileScreen = () => {
                     />
                     <Text style={styles.primaryButtonText}>
                       {t('settings.changePassword')}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Alarm PIN Section */}
+            <View style={[styles.card, themedStyles.card]}>
+              <View style={styles.cardHeader}>
+                <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
+                  Alarm PIN
+                </Text>
+              </View>
+              <Text style={[styles.dangerSubtext, { color: colors.textSecondary, marginBottom: 16 }]}>
+                Set a 4-digit PIN to dismiss your Suhoor alarm. This ensures you're truly awake when stopping the alarm.
+              </Text>
+
+              <View style={{ flexDirection: 'row', justifyContent: 'center', columnGap: 12, marginBottom: 16 }}>
+                {alarmPin.map((digit, i) => (
+                  <TextInput
+                    key={i}
+                    ref={pinRefs[i]}
+                    value={digit}
+                    onChangeText={(val) => handlePinDigitChange(i, val)}
+                    onKeyPress={(e) => handlePinKeyPress(i, e)}
+                    keyboardType="number-pad"
+                    maxLength={1}
+                    secureTextEntry
+                    style={{
+                      width: 56,
+                      height: 64,
+                      textAlign: 'center',
+                      fontSize: 28,
+                      fontWeight: '900',
+                      borderWidth: 2,
+                      borderColor: digit ? Colors.primary : colors.border,
+                      borderRadius: 12,
+                      backgroundColor: digit ? 'rgba(21,12,51,0.04)' : colors.surfaceVariant,
+                      color: Colors.primary,
+                    }}
+                  />
+                ))}
+              </View>
+
+              {pinError ? (
+                <Text style={[styles.dangerSubtext, { color: Colors.red, marginBottom: 12, textAlign: 'center' }]}>{pinError}</Text>
+              ) : null}
+
+              <TouchableOpacity
+                style={[
+                  styles.primaryButton,
+                  { backgroundColor: Colors.primary },
+                ]}
+                onPress={handleSavePin}
+                disabled={isSavingPin}
+              >
+                {isSavingPin ? (
+                  <ActivityIndicator color={Colors.white} size="small" />
+                ) : (
+                  <>
+                    <Ionicons
+                      name="lock-closed-outline"
+                      size={18}
+                      color={Colors.white}
+                    />
+                    <Text style={styles.primaryButtonText}>
+                      Save Alarm PIN
                     </Text>
                   </>
                 )}

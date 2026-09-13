@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { View, TouchableOpacity, Linking } from 'react-native'
 import Ionicons from 'react-native-vector-icons/Ionicons'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { useLanguage } from '../../context/LanguageContext'
@@ -66,19 +67,34 @@ export const SignupScreen = ({ navigation }) => {
       const userCredential = await signup(email.trim(), password)
       const user = userCredential.user
 
-      // 2. Create User Profile document in Firestore
+      // 2. Get alarm PIN and fasting defaults from AsyncStorage (set during onboarding)
+      let alarmPin = ''
+      let fastingDefaults = {
+        sunnah: true,
+        whiteDays: true,
+        ramadan: true,
+      }
+
+      try {
+        alarmPin = await AsyncStorage.getItem('suhoor_alarm_pin') || ''
+        const storedDefaults = await AsyncStorage.getItem('onboarding_fasting_defaults')
+        if (storedDefaults) {
+          fastingDefaults = JSON.parse(storedDefaults)
+        }
+      } catch (storageErr) {
+        console.log('Error reading from AsyncStorage:', storageErr)
+      }
+
+      // 3. Create User Profile document in Firestore
       await setDoc(doc(db, 'profiles', user.uid), {
         uid: user.uid,
         email: email.trim(),
         display_name: email.trim().split('@')[0],
         isVerified: false,
         country: userCountry,
+        pin: alarmPin, // Save the alarm PIN from onboarding
         createdAt: serverTimestamp(),
-        fastingDefaults: {
-          sunnah: true,
-          whiteDays: true,
-          ramadan: true,
-        },
+        fastingDefaults,
         preferences: {
           soundEnabled: true,
           buzzNotifications: true,

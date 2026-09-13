@@ -178,6 +178,7 @@ export const scheduleNotification = async ({
   message,
   channel = CHANNELS.wakeUp,
   data = {},
+  soundName = 'default',
 }) => {
   const Push = getModule()
   if (!Push) return null
@@ -194,7 +195,7 @@ export const scheduleNotification = async ({
       date: date instanceof Date ? date : new Date(date),
       allowWhileIdle: true, // survives Doze — the whole point of a suhoor alarm
       playSound: true,
-      soundName: 'default',
+      soundName,
       vibrate: true,
       vibration: 1000,
       importance: 'high',

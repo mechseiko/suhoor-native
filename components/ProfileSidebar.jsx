@@ -155,45 +155,6 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
           >
             {/* Menu List */}
             <View style={styles.menuSection}>
-              {/* <TouchableOpacity
-                style={styles.menuRow}
-                onPress={() => navigateTo('ProfileTab')}
-              >
-                <View style={[styles.menuIconBox, { backgroundColor: 'rgba(21, 12, 51, 0.06)' }]}>
-                  <Ionicons name="person-outline" size={18} color={brand.primary} />
-                </View>
-                <Text variant="body" style={styles.menuLabel}>
-                  {t('profile.myProfile', 'My Profile & Details')}
-                </Text>
-                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary || '#9CA3AF'} />
-              </TouchableOpacity> */}
-
-              {/* <TouchableOpacity
-                style={styles.menuRow}
-                onPress={() => navigateTo('FastingTimesTab')}
-              >
-                <View style={[styles.menuIconBox, { backgroundColor: 'rgba(249, 168, 38, 0.12)' }]}>
-                  <Ionicons name="time-outline" size={18} color="#D97706" />
-                </View>
-                <Text variant="body" style={styles.menuLabel}>
-                  {t('nav.fastingTimes', 'Fasting Times & Schedule')}
-                </Text>
-                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary || '#9CA3AF'} />
-              </TouchableOpacity> */}
-
-              {/* <TouchableOpacity
-                style={styles.menuRow}
-                onPress={() => navigateTo('DuasTab')}
-              >
-                <View style={[styles.menuIconBox, { backgroundColor: 'rgba(0, 194, 168, 0.12)' }]}>
-                  <Ionicons name="book-outline" size={18} color="#0D9488" />
-                </View>
-                <Text variant="body" style={styles.menuLabel}>
-                  {t('nav.duas', 'Duas & Hadiths')}
-                </Text>
-                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary || '#9CA3AF'} />
-              </TouchableOpacity> */}
-
               <TouchableOpacity
                 style={styles.menuRow}
                 onPress={toggleTheme}
@@ -206,19 +167,6 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
                 </Text>
                 {/* <Badge label={isDark ? 'Dark' : 'Light'} tone="primary" /> */}
               </TouchableOpacity>
-
-              {/* <TouchableOpacity
-                style={styles.menuRow}
-                onPress={() => navigateTo('ProfileTab', 'Security')}
-              >
-                <View style={[styles.menuIconBox, { backgroundColor: 'rgba(239, 68, 68, 0.08)' }]}>
-                  <Ionicons name="lock-closed-outline" size={18} color="#EF4444" />
-                </View>
-                <Text variant="body" style={styles.menuLabel}>
-                  {t('settings.security', 'Security & Password')}
-                </Text>
-                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary || '#9CA3AF'} />
-              </TouchableOpacity> */}
 
               <TouchableOpacity
                 style={styles.menuRow}
@@ -237,7 +185,7 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
                 style={styles.menuRow}
                 onPress={() => {
                   onClose()
-                  Linking.openURL('https://play.google.com/store/apps/details?id=com.suhoor.app')
+                  Linking.openURL('https://play.google.com/store/apps/details?id=com.mechseiko.suhoor')
                 }}
               >
                 <View style={[styles.menuIconBox, { backgroundColor: 'rgba(34, 197, 94, 0.12)' }]}>

@@ -3,7 +3,10 @@
     "name": "Suhoor",
     "slug": "suhoor",
     "version": "1.0.0",
-    "platforms": ["android", "web"],
+    "platforms": [
+      "android",
+      "web"
+    ],
     "userInterfaceStyle": "automatic",
     "android": {
       "package": "com.mechseiko.suhoor"
@@ -11,6 +14,11 @@
     "web": {
       "bundler": "metro"
     },
-    "jsEngine": "hermes"
+    "jsEngine": "hermes",
+    "extra": {
+      "eas": {
+        "projectId": "85eb894d-aa4f-42e8-9763-2b366cc16bd2"
+      }
+    }
   }
 }

@@ -75,6 +75,12 @@ export const AlarmProvider = ({ children }) => {
         // Cancel previous scheduled daily alarm
         await cancelNotification('suhoor-daily-alarm');
 
+        // Determine sound to use based on user preferences
+        let soundName = 'default';
+        if (userProfile?.preferences?.alarmAudioMode === 'custom' && userProfile?.preferences?.customAlarmAudioUrl) {
+          soundName = userProfile.preferences.customAlarmAudioUrl;
+        }
+
         const scheduledId = await scheduleNotification({
           semanticId: 'suhoor-daily-alarm',
           date: alarmDate,
@@ -83,6 +89,7 @@ export const AlarmProvider = ({ children }) => {
             label ||
             'Wake up for Sahur and your blessed fast. May Allah accept your worship!',
           channel: CHANNELS.wakeUp,
+          soundName,
           data: {
             userId: currentUser?.uid,
             type: 'wake_up_alarm',
@@ -101,7 +108,7 @@ export const AlarmProvider = ({ children }) => {
         return false;
       }
     },
-    [currentUser]
+    [currentUser, userProfile]
   );
 
   const cancelDailySuhoorAlarm = useCallback(async () => {

@@ -10,8 +10,16 @@ import FastingPrompt from '../../components/FastingPrompt';
 import StatsCard from '../../components/StatsCard';
 import ProfileSidebar from '../../components/ProfileSidebar';
 import { Badge, Button, Card, IconTile, Screen, Text } from '../../components/ui';
-import { alpha, brand, radius, spacing } from '../../theme';
+import { brand, radius, spacing } from '../../theme';
 import { useState, useEffect } from 'react';
+
+const alpha = (color, opacity) => {
+  const hex = color.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+};
 
 export const HomeScreen = ({ navigation }) => {
   const { currentUser, userProfile } = useAuth();
@@ -251,7 +259,28 @@ export const HomeScreen = ({ navigation }) => {
         {t('home.blessing')}
       </Text>
 
-      <FastingPrompt />
+      {/* Alarm PIN Setup Prompt Card */}
+      {(userProfile && !userProfile.pin) ? (
+        <Card style={[styles.pinPromptCard, { borderColor: colors.warning, borderWidth: 1.5 }]}>
+          <View style={styles.cardHeader}>
+            <View style={[styles.iconContainer, { backgroundColor: alpha(colors.warning, 0.1) }]}>
+              <Ionicons name="lock-closed-outline" size={20} color={colors.warning} />
+            </View>
+            <View style={styles.cardHeaderText}>
+              <Text variant="h3" style={{ color: colors.primary }}>Set Your Alarm PIN</Text>
+              <Text variant="caption" tone="secondary">
+                You need to set up your 4-digit PIN to be able to receive and dismiss alarms.
+              </Text>
+            </View>
+          </View>
+          <Button
+            title="Set Up PIN"
+            onPress={() => navigation.navigate('Profile')}
+            variant="secondary"
+            style={{ borderRadius: 8 }}
+          />
+        </Card>
+      ) : <FastingPrompt />}
 
       <View style={styles.section}>
         <Text variant="h3">{t('home.dashboardStats')}</Text>
@@ -417,7 +446,7 @@ export const HomeScreen = ({ navigation }) => {
                       flexDirection: 'row',
                       alignItems: 'flex-start',
                       columnGap: 12,
-    rowGap: 12,
+                    rowGap: 12,
                       paddingVertical: 14,
                       paddingHorizontal: 14,
                       borderRadius: 14,
@@ -513,6 +542,16 @@ const styles = StyleSheet.create({
     flex: 1,
     columnGap: spacing.xxs,
     rowGap: spacing.xxs,
+  },
+  iconContainer: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pinPromptCard: {
+    marginBottom: spacing.md,
   },
   weekRow: {
     flexDirection: 'row',
