@@ -117,6 +117,9 @@ dependencies {
     // Gson for JSON serialization in alarm module
     implementation("com.google.code.gson:gson:2.10.1")
 
+    // Firebase Messaging for remote buzz notifications
+    implementation("com.google.firebase:firebase-messaging:23.4.0")
+
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {

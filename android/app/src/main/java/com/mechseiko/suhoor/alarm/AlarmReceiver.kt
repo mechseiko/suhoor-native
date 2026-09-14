@@ -18,7 +18,7 @@ class AlarmReceiver : BroadcastReceiver() {
 
     companion object {
         private const val TAG = "AlarmReceiver"
-        private const val NOTIFICATION_ID = 2001
+        const val NOTIFICATION_ID = 2001
         private const val CHANNEL_ID = "suhoor_alarm_channel"
     }
 
@@ -96,9 +96,12 @@ class AlarmReceiver : BroadcastReceiver() {
      * Create full-screen intent for the alarm
      */
     private fun createFullScreenIntent(context: Context, alarmData: AlarmData): android.app.PendingIntent {
+        val gson = Gson()
+        val alarmDataJson = gson.toJson(alarmData)
+        
         val intent = Intent(context, AlarmActivity::class.java).apply {
             putExtra("alarm_id", alarmData.id)
-            putExtra("alarm_data", alarmData)
+            putExtra("alarm_data", alarmDataJson)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
 
@@ -120,9 +123,12 @@ class AlarmReceiver : BroadcastReceiver() {
      * Launch the full-screen alarm activity
      */
     private fun launchAlarmActivity(context: Context, alarmData: AlarmData) {
+        val gson = Gson()
+        val alarmDataJson = gson.toJson(alarmData)
+        
         val intent = Intent(context, AlarmActivity::class.java).apply {
             putExtra("alarm_id", alarmData.id)
-            putExtra("alarm_data", alarmData)
+            putExtra("alarm_data", alarmDataJson)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
 

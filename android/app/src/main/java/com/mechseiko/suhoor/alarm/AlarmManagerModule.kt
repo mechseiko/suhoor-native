@@ -289,4 +289,4 @@ data class AlarmData(
     val groupId: String,
     val type: String,
     val createdAt: Long
-)
+) : java.io.Serializable

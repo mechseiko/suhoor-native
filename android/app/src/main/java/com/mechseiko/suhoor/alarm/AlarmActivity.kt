@@ -14,6 +14,7 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import com.google.gson.Gson
 import com.mechseiko.suhoor.R
 import java.util.Date
 
@@ -27,6 +28,7 @@ class AlarmActivity : AppCompatActivity() {
     private var vibrator: Vibrator? = null
     private var alarmData: AlarmData? = null
     private var wakeLock: PowerManager.WakeLock? = null
+    private val gson = Gson()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,12 +38,15 @@ class AlarmActivity : AppCompatActivity() {
 
         setContentView(R.layout.alarm_activity)
 
-        // Get alarm data from intent
-        alarmData = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            intent.getSerializableExtra("alarm_data", AlarmData::class.java)
-        } else {
-            @Suppress("DEPRECATION")
-            intent.getSerializableExtra("alarm_data") as? AlarmData
+        // Get alarm data from intent (now as JSON string)
+        val alarmDataJson = intent.getStringExtra("alarm_data")
+        alarmData = alarmDataJson?.let {
+            try {
+                gson.fromJson(it, AlarmData::class.java)
+            } catch (e: Exception) {
+                android.util.Log.e("AlarmActivity", "Error parsing alarm data", e)
+                null
+            }
         }
 
         // Initialize UI
