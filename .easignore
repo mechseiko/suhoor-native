@@ -15,6 +15,7 @@ Podfile.lock
 # Android build artifacts (local build attempts)
 android/app/build/
 android/.gradle/
+android/build/
 android/app/.cxx/
 android/local.properties
 android/.externalNativeBuild/
