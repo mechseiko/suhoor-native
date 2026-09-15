@@ -157,19 +157,6 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
             <View style={styles.menuSection}>
               <TouchableOpacity
                 style={styles.menuRow}
-                onPress={toggleTheme}
-              >
-                <View style={[styles.menuIconBox, { backgroundColor: 'rgba(99, 102, 241, 0.12)' }]}>
-                  <Ionicons name={isDark ? 'sunny-outline' : 'moon-outline'} size={18} color="#6366F1" />
-                </View>
-                <Text variant="body" style={styles.menuLabel}>
-                  {isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-                </Text>
-                {/* <Badge label={isDark ? 'Dark' : 'Light'} tone="primary" /> */}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.menuRow}
                 onPress={() => navigateTo('LeaderboardTab')}
               >
                 <View style={[styles.menuIconBox, { backgroundColor: 'rgba(168, 85, 247, 0.12)' }]}>
@@ -205,9 +192,22 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
                   <Ionicons name="star-outline" size={18} color="#22C55E" />
                 </View>
                 <Text variant="body" style={styles.menuLabel}>
-                  {t('profile.rateUs', 'Rate Us on Play Store')}
+                  {t('profile.rateUs', 'Rate on Play Store')}
                 </Text>
                 <Ionicons name="chevron-forward" size={18} color={colors.textSecondary || '#9CA3AF'} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.menuRow}
+                onPress={toggleTheme}
+              >
+                <View style={[styles.menuIconBox, { backgroundColor: 'rgba(99, 102, 241, 0.12)' }]}>
+                  <Ionicons name={isDark ? 'sunny-outline' : 'moon-outline'} size={18} color="#6366F1" />
+                </View>
+                <Text variant="body" style={styles.menuLabel}>
+                  {isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+                </Text>
+                {/* <Badge label={isDark ? 'Dark' : 'Light'} tone="primary" /> */}
               </TouchableOpacity>
             </View>
 

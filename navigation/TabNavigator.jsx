@@ -1,5 +1,5 @@
 import React from 'react'
-import { Platform } from 'react-native'
+import { Platform, TouchableOpacity } from 'react-native'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import HomeScreen from '../screens/home/HomeScreen'
 import GroupsStack from './GroupsStack'
@@ -15,20 +15,28 @@ import { font, size, weight } from '../theme'
 
 const Tab = createBottomTabNavigator()
 
-/**
- * Chrome styling follows the web `DashboardLayout`, whose mobile top bar is
- * `bg-white border-b border-gray-100` with a `text-xl font-bold text-gray-900`
- * page title — a light bar, not a filled brand-colour one. The tab bar is the
- * phone stand-in for the web sidebar, so it borrows the sidebar's active
- * treatment: brand colour for the current item, `text-gray-600` for the rest.
- */
 export const TabNavigator = () => {
   const { colors } = useTheme()
   const { t } = useLanguage()
 
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
+      screenOptions={({ route, navigation }) => ({
+        // Show back button if there is a back stack available
+        headerLeft: () =>
+          navigation.canGoBack() ? (
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={{ marginLeft: 16, padding: 4 }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons
+                name="chevron-back"
+                size={24}
+                color={colors.text}
+              />
+            </TouchableOpacity>
+          ) : null,
         tabBarIcon: ({ focused, color, size: iconSize }) => {
           const NAMES = {
             HomeTab: 'home',
@@ -124,14 +132,6 @@ export const TabNavigator = () => {
           headerTitle: t('profile.myProfile'),
         }}
       />
-      {/*
-        Registered here so `navigation.navigate('LeaderboardTab')` from the
-        profile sidebar resolves, but kept out of the tab bar itself: five tabs
-        is already the comfortable maximum on a phone, and the sidebar is the
-        only entry point. `tabBarItemStyle: display none` collapses the slot —
-        the bar lays items out with flex, so without it the four visible tabs
-        would leave a gap where this one sits.
-      */}
       <Tab.Screen
         name="LeaderboardTab"
         component={LeaderboardScreen}

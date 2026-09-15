@@ -1118,7 +1118,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       )}
 
       {/* Buzz Alarm Overlay Modal - Similar to main AlarmOverlay */}
-      <Modal visible={!isBuzzing} animationType="fade" transparent={false}>
+      <Modal visible={isBuzzing} animationType="fade" transparent={false}>
         <View style={styles.buzzOverlay}>
           {/* Logo at top */}
           <View style={{ flexDirection: 'row', alignItems: 'center', columnGap: 12, marginBottom: 20 }}>
@@ -1163,8 +1163,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
               textAlign: 'center',
               lineHeight: 24
             }}>
-              {/* {buzzData?.fromUserName || 'Your group member'} from {buzzData?.groupName || 'your group'} is waking you for Suhoor! */}
-              {buzzData?.fromUserName || 'Abdulqoyum'} from {buzzData?.groupName || 'Awolowo Hall'} is waking you for Suhoor!
+              {buzzData?.fromUserName || 'Your group member'} from {buzzData?.groupName || 'your group'} is waking you for Suhoor!
             </Text>
             <Text style={{
               color: 'rgba(255,255,255,0.7)',
