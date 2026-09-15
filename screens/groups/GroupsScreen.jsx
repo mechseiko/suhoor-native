@@ -732,7 +732,7 @@ export const GroupsScreen = ({ navigation }) => {
           <View style={styles.circularLoaderContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-              Loading groups...
+              Loading your groups...
             </Text>
           </View>
           <GroupSkeleton />

@@ -221,7 +221,7 @@ export const MilestonesScreen = () => {
 
 const styles = StyleSheet.create({
   scrollContent: {
-    padding: spacing.base,
+    padding: spacing.sm,
     paddingBottom: 40,
   },
   bold: {
@@ -230,13 +230,13 @@ const styles = StyleSheet.create({
 
   // Level Card
   levelCard: {
-    marginBottom: spacing.base,
+    marginBottom: spacing.sm,
   },
   levelHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    columnGap: spacing.md,
-    rowGap: spacing.md,
+    columnGap: spacing.lg,
+    rowGap: spacing.lg,
   },
   levelIcon: {
     width: 56,
@@ -252,15 +252,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   levelTitle: {
-    marginBottom: spacing.xxs,
+    marginBottom: spacing.sm,
   },
   progressSection: {
-    marginTop: spacing.md,
+    marginTop: spacing.lg,
   },
   progressHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
   progressBar: {
     height: 8,
@@ -274,12 +274,13 @@ const styles = StyleSheet.create({
 
   // Stats Card
   statsCard: {
-    marginBottom: spacing.base,
+    marginBottom: spacing.sm,
   },
   statsGrid: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
+    paddingVertical: spacing.md,
   },
   statItem: {
     alignItems: 'center',
@@ -288,7 +289,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: '700',
-    marginBottom: spacing.xxs,
+    marginBottom: spacing.sm,
   },
   statLabel: {
     fontSize: 12,
@@ -303,20 +304,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
 
   // Badges Grid
   badgesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    columnGap: spacing.sm,
-    rowGap: spacing.sm,
+    columnGap: spacing.md,
+    rowGap: spacing.md,
   },
   badgeCard: {
     width: '48%',
     borderRadius: radius.lg,
-    padding: spacing.sm,
+    padding: spacing.md,
     position: 'relative',
   },
   lockedBadge: {
@@ -324,26 +325,26 @@ const styles = StyleSheet.create({
   },
   badgeEmoji: {
     fontSize: 32,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.md,
   },
   lockedEmoji: {
     opacity: 0.4,
   },
   badgeTitle: {
     fontWeight: '600',
-    marginBottom: spacing.xxs,
+    marginBottom: spacing.sm,
   },
   lockedText: {
     opacity: 0.5,
   },
   badgeDescription: {
     fontSize: 11,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
   badgePoints: {
     flexDirection: 'row',
     alignItems: 'center',
-    columnGap: spacing.xxs,
+    columnGap: spacing.xs,
   },
   badgePointsText: {
     fontSize: 11,
@@ -351,8 +352,8 @@ const styles = StyleSheet.create({
   },
   lockOverlay: {
     position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
+    top: spacing.md,
+    right: spacing.md,
     width: 24,
     height: 24,
     borderRadius: radius.pill,
@@ -362,16 +363,16 @@ const styles = StyleSheet.create({
 
   // Levels List
   levelsList: {
-    columnGap: spacing.sm,
-    rowGap: spacing.sm,
+    columnGap: spacing.md,
+    rowGap: spacing.md,
   },
   levelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    columnGap: spacing.md,
-    rowGap: spacing.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
+    columnGap: spacing.lg,
+    rowGap: spacing.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
     borderTopWidth: 1,
   },
   levelBadge: {
@@ -390,9 +391,9 @@ const styles = StyleSheet.create({
   levelNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    columnGap: spacing.sm,
-    rowGap: spacing.sm,
-    marginBottom: spacing.xxs,
+    columnGap: spacing.md,
+    rowGap: spacing.md,
+    marginBottom: spacing.sm,
   },
   levelName: {
     fontWeight: '600',

@@ -99,6 +99,27 @@ export const AlarmOverlay = () => {
                   soundRef.current = sound
                 } catch (customAudioError) {
                   console.log('Custom audio load failed, falling back to default:', customAudioError)
+                  // Fallback to default alarm sound using Android resource URI
+                  try {
+                    const { sound: defaultSound } = await Audio.Sound.createAsync(
+                      { uri: 'android.resource://com.mechseiko.suhoor/raw/alarm_sound' },
+                      { shouldPlay: true, isLooping: true, volume: 1.0 }
+                    )
+                    soundRef.current = defaultSound
+                  } catch (defaultAudioError) {
+                    console.log('Default audio load failed:', defaultAudioError)
+                  }
+                }
+              } else {
+                // Play default alarm sound using Android resource URI
+                try {
+                  const { sound: defaultSound } = await Audio.Sound.createAsync(
+                    { uri: 'android.resource://com.mechseiko.suhoor/raw/alarm_sound' },
+                    { shouldPlay: true, isLooping: true, volume: 1.0 }
+                  )
+                  soundRef.current = defaultSound
+                } catch (defaultAudioError) {
+                  console.log('Default audio load failed:', defaultAudioError)
                 }
               }
             } catch (audioError) {

@@ -1147,7 +1147,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
           </View>
 
           {/* Titles */}
-          <View style={{ alignItems: 'center', paddingHorizontal: 32 }}>
+          <View style={{ alignItems: 'center', paddingHorizontal: 16 }}>
             <Text style={{
               fontSize: 32,
               fontWeight: '800',
@@ -1166,12 +1166,12 @@ export const GroupDetailScreen = ({ route, navigation }) => {
               {/* {buzzData?.fromUserName || 'Your group member'} from {buzzData?.groupName || 'your group'} is waking you for Suhoor! */}
               {buzzData?.fromUserName || 'Abdulqoyum'} from {buzzData?.groupName || 'Awolowo Hall'} is waking you for Suhoor!
             </Text>
-            <Text style={{ 
-              color: 'rgba(255,255,255,0.7)', 
-              fontSize: 14, 
-              textAlign: 'center', 
+            <Text style={{
+              color: 'rgba(255,255,255,0.7)',
+              fontSize: 14,
+              textAlign: 'center',
               marginTop: 16,
-              paddingHorizontal: 24 
+              paddingHorizontal: 8
             }}>
               Press the button below to dismiss. Check in on the Groups tab to stop being buzzed.
             </Text>
@@ -1759,7 +1759,7 @@ const styles = StyleSheet.create({
     paddingTop: 80,
   },
   buzzDismissBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: Colors.secondary,
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.3)',
     paddingVertical: 18,
