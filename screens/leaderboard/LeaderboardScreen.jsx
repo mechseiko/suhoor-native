@@ -152,7 +152,7 @@ export const LeaderboardScreen = () => {
 
               <View style={styles.meStats}>
                 <Text variant="caption" tone="primary" style={styles.bold}>
-                  {currentUserGroup.suhoorPoints} SuhoorPoints
+                  {currentUserGroup.suhoorPoints} SP
                 </Text>
                 <Text variant="caption" tone="secondary">
                   {currentUserGroup.memberCount} members
@@ -205,7 +205,7 @@ export const LeaderboardScreen = () => {
           <View style={styles.empty}>
             <Ionicons name="people-outline" size={40} color={colors.muted} />
             <Text variant="body" tone="secondary" style={[styles.emptyText, { textAlign: 'center', paddingHorizontal: 20 }]}>
-              No groups want to be displayed in leaderboard. All groups turned off.
+              No groups want to be displayed in leaderboard.
             </Text>
           </View>
         ) : (

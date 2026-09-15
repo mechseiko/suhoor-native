@@ -49,7 +49,7 @@ export const MilestonesScreen = () => {
                 Level {currentLevel.level} • {currentLevel.name}
               </Text>
               <Text variant="caption" tone="secondary">
-                {stats.points} points
+                {stats.points} SP
               </Text>
             </View>
           </View>
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     rowGap: spacing.md,
   },
   badgeCard: {
-    width: '48%',
+    width: '45%',
     borderRadius: radius.lg,
     padding: spacing.md,
     position: 'relative',
