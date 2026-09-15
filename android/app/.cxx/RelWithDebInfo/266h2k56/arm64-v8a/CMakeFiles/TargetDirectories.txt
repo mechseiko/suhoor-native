@@ -1,0 +1,3 @@
+C:/Users/abdul/OneDrive/Desktop/Dev.Seiko/Dev/suhoor-native/android/app/.cxx/RelWithDebInfo/266h2k56/arm64-v8a/CMakeFiles/appmodules.dir
+C:/Users/abdul/OneDrive/Desktop/Dev.Seiko/Dev/suhoor-native/android/app/.cxx/RelWithDebInfo/266h2k56/arm64-v8a/CMakeFiles/edit_cache.dir
+C:/Users/abdul/OneDrive/Desktop/Dev.Seiko/Dev/suhoor-native/android/app/.cxx/RelWithDebInfo/266h2k56/arm64-v8a/CMakeFiles/rebuild_cache.dir
