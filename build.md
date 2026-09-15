@@ -6,15 +6,22 @@ cd android
 
 keytool -printcert -jarfile app/build/outputs/bundle/release/app-release.aab
 
+.aab file | android/app/build/outputs/bundle/release/app-release.aab
+mapping.txt file | android/app/build/outputs/mapping/mapping.txt
+
+
+~~android/app - build.gradle 
 
 namespace 'com.mechseiko.suhoor'
 defaultConfig {
     applicationId 'com.mechseiko.suhoor'
     minSdkVersion 23
     targetSdkVersion 36
-    versionCode 3
-    versionName "1.0.2"
+    versionCode 4
+    versionName "1.0.3"
 
+
+~~android - build.gradle 
 
 buildscript {
   ext {
