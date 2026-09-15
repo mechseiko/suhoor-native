@@ -302,7 +302,7 @@ export const AlarmOverlay = () => {
             </Text>
             <Text variant="bodyLg" style={styles.subtitle}>
               {isBuzz
-                ? 'Your group has been notified that you are awake.'
+                ? 'Your groups have been notified that you are awake.'
                 : 'May Allah bless your day and accept your fast.'}
             </Text>
           </View>
@@ -368,14 +368,14 @@ export const AlarmOverlay = () => {
               <Text variant="bodyLg" style={styles.subtitle}>
                 {isBuzz
                   ? `${alarmData?.fromUserName || 'A group member'}${alarmData?.groupName ? ` from ${alarmData.groupName}` : ''} is waking you for Suhoor. Check in on the Groups tab to stop being buzzed.`
-                  : 'Your own device alarm is going off. Time to rise for Suhoor and your pre-dawn meal.'}
+                  : "It's time to rise for Suhoor and eat your meal."}
               </Text>
             </View>
 
             {/* Bottom Actions */}
             <View style={styles.actionBlock}>
               <Button
-                title={isProcessing ? 'Checking In...' : "I Am Awake — Check In"}
+                title={isProcessing ? 'Checking In...' : "Check In"}
                 onPress={handleCheckIn}
                 loading={isProcessing}
                 variant="secondary"
@@ -411,7 +411,7 @@ export const AlarmOverlay = () => {
               Enter Wake-Up PIN
             </Text>
             <Text variant="body" style={styles.challengeSubtitle}>
-              Enter your personal 4-digit wake-up PIN to stop and dismiss the alarm.
+              Enter your 4-digit wake-up PIN to stop and dismiss the alarm.
             </Text>
 
             <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12, marginVertical: 24 }}>
