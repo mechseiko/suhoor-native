@@ -3,6 +3,8 @@ package com.mechseiko.suhoor.alarm
 import android.content.Intent
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule
+import com.facebook.react.uimanager.ViewManager
+import com.facebook.react.ReactPackage
 
 /**
  * React Native Bridge Module for Alarm Management
@@ -222,11 +224,11 @@ class AlarmBridgeModule(reactContext: ReactApplicationContext) : ReactContextBas
  * Package for registering the module
  */
 class AlarmBridgePackage : ReactPackage {
-    override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
-        return listOf(AlarmBridgeModule(reactContext))
+    override fun createNativeModules(reactContext: ReactApplicationContext): MutableList<NativeModule> {
+        return mutableListOf(AlarmBridgeModule(reactContext))
     }
 
-    override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> {
-        return emptyList()
+    override fun createViewManagers(reactContext: ReactApplicationContext): MutableList<ViewManager<*, *>> {
+        return mutableListOf()
     }
 }

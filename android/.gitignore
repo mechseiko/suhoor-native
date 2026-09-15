@@ -27,3 +27,7 @@ node-modules/*
 *.jsbundle
 dist/
 web-build/
+
+# Keystore (security - never commit)
+*.keystore
+keystore.properties
