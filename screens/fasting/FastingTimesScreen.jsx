@@ -404,20 +404,23 @@ export const FastingTimesScreen = () => {
   const personalWakeUp = calculateWakeUpTime(suhoorTime, personalWakeUpMinutes);
 
   /**
-   * The location notice, shown only when the times are NOT for where the user
-   * is — that is, when `getCurrentCoordinates` fell back to Lagos because device
-   * location was unavailable or denied. Device and saved-location sources say
-   * nothing: the times are already correct, so a banner there is noise.
-   *
-   * The underlying permission/GPS error is deliberately not surfaced; from the
-   * user's side the only actionable fact is that their location is off.
+   * The location notice, shown when no location is available or when using
+   * a fallback location. When source is 'none', the user needs to set their
+   * location in settings. When source is 'profile', we're using their saved
+   * default location from their profile.
    */
   const locationStatus =
-    location?.loaded && location.source === 'default'
+    location?.loaded && location.source === 'none'
       ? {
           icon: 'warning',
           color: colors.warning,
-          message: t('fastingTimes.usingDefaultLocation'),
+          message: location.error || t('fastingTimes.noLocationAvailable'),
+        }
+      : location?.loaded && location.source === 'profile'
+      ? {
+          icon: 'information-circle',
+          color: colors.primary,
+          message: t('fastingTimes.usingProfileLocation'),
         }
       : null;
 

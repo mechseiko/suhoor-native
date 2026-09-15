@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   Alert,
   SafeAreaView,
+  Image,
 } from 'react-native'
 import { copyToClipboard } from '../../utils/clipboard'
 import { Text } from '../../components/ui'
@@ -20,6 +21,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useSocket } from '../../context/SocketContext'
 import { useNetwork } from '../../context/NetworkContext'
 import { useFastingTimes } from '../../hooks/useFastingTimes'
+import { useGamification } from '../../hooks/useGamification'
 import { db } from '../../config/firebase'
 import {
   collection,
@@ -55,6 +57,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     off,
   } = useSocket()
   const { todayData } = useFastingTimes()
+  const { recordActivity } = useGamification()
 
   // Tab state: 'tracker' | 'members'
   const [activeTab, setActiveTab] = useState('tracker')
@@ -197,11 +200,11 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         return `${String(suhoorTime.getHours()).padStart(2, '0')}:${String(suhoorTime.getMinutes()).padStart(2, '0')}`
       }
     }
-    
+
     if (profile?.customWakeUpTime) {
       return profile.customWakeUpTime
     }
-    
+
     return '--:--'
   }
 
@@ -399,21 +402,21 @@ export const GroupDetailScreen = ({ route, navigation }) => {
   useEffect(() => {
     const checkTime = () => {
       if (!todayData?.time?.sahur) return
-      
+
       const now = new Date()
       const [suhoorH, suhoorM] = todayData.time.sahur.split(':').map(Number)
-      
+
       // Wake-up window starts 45 minutes before Suhoor ends
       const suhoorTime = new Date()
       suhoorTime.setHours(suhoorH, suhoorM, 0, 0)
-      
+
       // Adjust for next day if Suhoor time has passed
       if (suhoorTime < now && now.getHours() > 12) {
         suhoorTime.setDate(suhoorTime.getDate() + 1)
       }
-      
+
       const wakeUpTime = new Date(suhoorTime.getTime() - 45 * 60000)
-      
+
       const active = now >= wakeUpTime && now <= suhoorTime
       setIsInWindow(active)
     }
@@ -569,7 +572,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         const now = new Date()
         const gracePeriodMs = 5 * 60 * 1000 // 5 minutes
         const elapsedSinceWakeUp = now.getTime() - wakeTime.getTime()
-        
+
         if (elapsedSinceWakeUp < gracePeriodMs) {
           const remainingSecs = Math.ceil((gracePeriodMs - elapsedSinceWakeUp) / 1000)
           const remainingMins = Math.floor(remainingSecs / 60)
@@ -626,6 +629,9 @@ export const GroupDetailScreen = ({ route, navigation }) => {
 
       // Pass group name to the buzzed user via socket
       buzzUser(member.profiles.id, groupId, fromName, group?.name)
+
+      // Award points for successful buzz
+      await recordActivity('buzz_member')
 
       triggerToast(
         `Buzzed ${member.profiles.display_name || member.profiles.email}!`,
@@ -721,7 +727,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     let savedPin = ''
     try {
       savedPin = (await AsyncStorage.getItem('suhoor_alarm_pin')) || ''
-    } catch {}
+    } catch { }
     if (savedPin && entered !== savedPin) {
       setPinError('Incorrect PIN. Try again.')
       setPinDigits(['', '', '', ''])
@@ -742,6 +748,9 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         date: todayStr,
         woke_up_at: wakeUpTime,
       })
+
+      // Award points for successful wake-up
+      await recordActivity('wake_up', { minutesBeforeFajr: todayData?.minutesBeforeFajr })
 
       const name =
         userProfile?.display_name ||
@@ -1108,22 +1117,67 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         </View>
       )}
 
-      {/* Buzz Alarm Overlay Modal */}
-      <Modal visible={isBuzzing} animationType="fade" transparent={false}>
+      {/* Buzz Alarm Overlay Modal - Similar to main AlarmOverlay */}
+      <Modal visible={!isBuzzing} animationType="fade" transparent={false}>
         <View style={styles.buzzOverlay}>
-          <Ionicons
-            name="notifications"
-            size={120}
-            color="#FBBF24"
-            style={styles.buzzIcon}
-          />
-          <Text style={styles.buzzTitle}>WAKE UP!</Text>
-          <Text style={styles.buzzSubtitle}>
-            {buzzData?.fromUserName || 'Your group member'} from {buzzData?.groupName || 'your group'} is waking you for Suhoor!
-          </Text>
-          <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, textAlign: 'center', marginVertical: 8, paddingHorizontal: 24 }}>
-            Check in on the Groups tab to stop being buzzed.
-          </Text>
+          {/* Logo at top */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', columnGap: 12, marginBottom: 20 }}>
+            <Image
+              source={require('../../assets/icon-nobg.png')}
+              style={{ width: 48, height: 48 }}
+              resizeMode="contain"
+            />
+            <Text variant="display" style={{
+              fontFamily: 'Quicksand-Regular',
+              fontWeight: '700',
+              color: '#FBBF24',
+              fontSize: 28
+            }}>
+              Suhoor
+            </Text>
+          </View>
+
+          {/* Animated notification icon */}
+          <View style={{ alignItems: 'center', marginVertical: 30 }}>
+            <Ionicons
+              name="notifications"
+              size={100}
+              color="#FBBF24"
+            />
+          </View>
+
+          {/* Titles */}
+          <View style={{ alignItems: 'center', paddingHorizontal: 32 }}>
+            <Text style={{
+              fontSize: 32,
+              fontWeight: '800',
+              color: '#FFFFFF',
+              textAlign: 'center',
+              marginBottom: 12
+            }}>
+              WAKE UP!
+            </Text>
+            <Text style={{
+              fontSize: 18,
+              color: 'rgba(255,255,255,0.9)',
+              textAlign: 'center',
+              lineHeight: 24
+            }}>
+              {/* {buzzData?.fromUserName || 'Your group member'} from {buzzData?.groupName || 'your group'} is waking you for Suhoor! */}
+              {buzzData?.fromUserName || 'Abdulqoyum'} from {buzzData?.groupName || 'Awolowo Hall'} is waking you for Suhoor!
+            </Text>
+            <Text style={{ 
+              color: 'rgba(255,255,255,0.7)', 
+              fontSize: 14, 
+              textAlign: 'center', 
+              marginTop: 16,
+              paddingHorizontal: 24 
+            }}>
+              Press the button below to dismiss. Check in on the Groups tab to stop being buzzed.
+            </Text>
+          </View>
+
+          {/* Dismiss Button */}
           <TouchableOpacity
             style={styles.buzzDismissBtn}
             onPress={() => setIsBuzzing(false)}
@@ -1701,27 +1755,18 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
-  },
-  buzzIcon: {
-    marginBottom: 24,
-  },
-  buzzTitle: {
-    fontSize: 44,
-    fontWeight: '900',
-    color: Colors.white,
-    letterSpacing: 2,
-    marginBottom: 8,
-  },
-  buzzSubtitle: {
-    fontSize: 18,
-    color: 'rgba(255, 255, 255, 0.85)',
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 48,
+    padding: 32,
+    paddingTop: 80,
   },
   buzzDismissBtn: {
-    backgroundColor: Colors.white,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    paddingVertical: 18,
+    paddingHorizontal: 56,
+    borderRadius: 16,
+    marginTop: 40,
+    marginBottom: 60,
     width: '100%',
     maxWidth: 280,
     height: 56,

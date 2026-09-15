@@ -75,6 +75,15 @@ export const ProfileScreen = () => {
   const [isSavingPin, setIsSavingPin] = useState(false)
   const pinRefs = [React.useRef(), React.useRef(), React.useRef(), React.useRef()]
 
+  // Location selector state
+  const [showLocationModal, setShowLocationModal] = useState(false)
+  const [locationSearch, setLocationSearch] = useState('')
+  const [locationResults, setLocationResults] = useState([])
+  const [isSearchingLocation, setIsSearchingLocation] = useState(false)
+  const [selectedLocation, setSelectedLocation] = useState(
+    userProfile?.preferences?.defaultLocation || null
+  )
+
   const showToast = (msg, type) => {
     setToastMessage(msg)
     setToastType(type)
@@ -88,6 +97,54 @@ export const ProfileScreen = () => {
       setAlarmPin(pinDigits.length === 4 ? pinDigits : ['', '', '', ''])
     }
   }, [userProfile])
+
+  const searchLocation = React.useCallback(async (query) => {
+    if (!query || query.length < 3) {
+      setLocationResults([])
+      return
+    }
+
+    setIsSearchingLocation(true)
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`
+      )
+      const data = await response.json()
+      const results = data.map(item => ({
+        name: item.display_name,
+        lat: parseFloat(item.lat),
+        lng: parseFloat(item.lon),
+      }))
+      setLocationResults(results)
+    } catch (err) {
+      console.error('Error searching location:', err)
+      showToast('Failed to search location', 'error')
+    } finally {
+      setIsSearchingLocation(false)
+    }
+  }, [showToast])
+
+  // Sync selected location with profile
+  React.useEffect(() => {
+    if (userProfile?.preferences?.defaultLocation) {
+      setSelectedLocation(userProfile.preferences.defaultLocation)
+    } else {
+      setSelectedLocation(null)
+    }
+  }, [userProfile?.preferences?.defaultLocation])
+
+  // Debounced location search
+  React.useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (locationSearch.length >= 3) {
+        searchLocation(locationSearch)
+      } else {
+        setLocationResults([])
+      }
+    }, 500)
+
+    return () => clearTimeout(timeoutId)
+  }, [locationSearch, searchLocation])
 
   // Handle PIN digit changes
   const handlePinDigitChange = (index, value) => {
@@ -217,6 +274,49 @@ export const ProfileScreen = () => {
     } catch (err) {
       console.error('Error updating setting:', err)
       showToast(t('profile.settingUpdateError'), 'error')
+    } finally {
+      setIsUpdatingSettings(false)
+    }
+  }
+
+  const handleSelectLocation = async (location) => {
+    if (!currentUser) return
+    setIsUpdatingSettings(true)
+    try {
+      const userRef = doc(db, COLLECTIONS.profiles, currentUser.uid)
+      await updateDoc(userRef, {
+        'preferences.defaultLocation': {
+          lat: location.lat,
+          lng: location.lng,
+          name: location.name,
+        },
+      })
+      setSelectedLocation(location)
+      setShowLocationModal(false)
+      setLocationSearch('')
+      setLocationResults([])
+      showToast('Default location updated', 'success')
+    } catch (err) {
+      console.error('Error updating location:', err)
+      showToast('Failed to update location', 'error')
+    } finally {
+      setIsUpdatingSettings(false)
+    }
+  }
+
+  const handleClearLocation = async () => {
+    if (!currentUser) return
+    setIsUpdatingSettings(true)
+    try {
+      const userRef = doc(db, COLLECTIONS.profiles, currentUser.uid)
+      await updateDoc(userRef, {
+        'preferences.defaultLocation': null,
+      })
+      setSelectedLocation(null)
+      showToast('Default location cleared', 'success')
+    } catch (err) {
+      console.error('Error clearing location:', err)
+      showToast('Failed to clear location', 'error')
     } finally {
       setIsUpdatingSettings(false)
     }
@@ -357,6 +457,19 @@ export const ProfileScreen = () => {
     },
     versionText: {
       color: colors.textSecondary,
+    },
+    searchInput: {
+      backgroundColor: colors.surface,
+      color: colors.text,
+    },
+    locationResultText: {
+      color: colors.text,
+    },
+    noResultsText: {
+      color: colors.textSecondary,
+    },
+    settingButton: {
+      backgroundColor: colors.surfaceVariant,
     },
   }
 
@@ -1015,6 +1128,56 @@ export const ProfileScreen = () => {
                   thumbColor={Colors.white}
                 />
               </View>
+
+              <View style={styles.settingItem}>
+                <View style={styles.settingTextContainer}>
+                  <Text
+                    style={[styles.settingLabel, themedStyles.settingLabel]}
+                  >
+                    Default Location
+                  </Text>
+                  <Text style={[styles.settingSub, themedStyles.settingSub]}>
+                    {selectedLocation?.name || 'Not set'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setShowLocationModal(true)}
+                  style={[styles.settingButton, themedStyles.settingButton]}
+                  disabled={isUpdatingSettings}
+                >
+                  <Ionicons
+                    name="location-outline"
+                    size={18}
+                    color={Colors.primary}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {selectedLocation && (
+                <View style={styles.settingItem}>
+                  <View style={styles.settingTextContainer}>
+                    <Text
+                      style={[styles.settingLabel, themedStyles.settingLabel]}
+                    >
+                      Clear Default Location
+                    </Text>
+                    <Text style={[styles.settingSub, themedStyles.settingSub]}>
+                      Remove saved location and use GPS
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={handleClearLocation}
+                    style={[styles.settingButton, themedStyles.settingButton]}
+                    disabled={isUpdatingSettings}
+                  >
+                    <Ionicons
+                      name="trash-outline"
+                      size={18}
+                      color={Colors.red}
+                    />
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
 
             {/* Language Selection */}
@@ -1149,6 +1312,80 @@ export const ProfileScreen = () => {
                     {t('profile.deletePermanently')}
                   </Text>
                 )}
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Location Selector Modal */}
+      <Modal
+        visible={showLocationModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowLocationModal(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowLocationModal(false)}
+        >
+          <Pressable style={styles.modalContent} onPress={() => {}}>
+            <View style={styles.modalHeader}>
+              <Ionicons name="location" size={32} color={Colors.primary} />
+              <Text style={styles.modalTitle}>Set Default Location</Text>
+              <Text style={styles.modalSubtext}>
+                Search for your city to set it as your default location for prayer times
+              </Text>
+            </View>
+
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={[styles.searchInput, themedStyles.searchInput]}
+                placeholder="Search city..."
+                placeholderTextColor={colors.textSecondary}
+                value={locationSearch}
+                onChangeText={setLocationSearch}
+                autoCapitalize="words"
+              />
+              {isSearchingLocation && (
+                <ActivityIndicator
+                  size="small"
+                  color={Colors.primary}
+                  style={styles.searchSpinner}
+                />
+              )}
+            </View>
+
+            <ScrollView style={styles.locationResults} keyboardShouldPersistTaps="handled">
+              {locationResults.map((location, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.locationResultItem}
+                  onPress={() => handleSelectLocation(location)}
+                >
+                  <Ionicons name="location-outline" size={20} color={Colors.primary} />
+                  <Text style={[styles.locationResultText, themedStyles.locationResultText]}>
+                    {location.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+              {locationResults.length === 0 && locationSearch.length >= 3 && !isSearchingLocation && (
+                <Text style={[styles.noResultsText, themedStyles.noResultsText]}>
+                  No locations found. Try a different search.
+                </Text>
+              )}
+            </ScrollView>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalCancelButton]}
+                onPress={() => {
+                  setShowLocationModal(false)
+                  setLocationSearch('')
+                  setLocationResults([])
+                }}
+              >
+                <Text style={styles.modalCancelButtonText}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </Pressable>
@@ -1537,6 +1774,53 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: Colors.white,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  searchInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: Colors.muted,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: Colors.dark,
+  },
+  searchSpinner: {
+    marginLeft: 12,
+  },
+  locationResults: {
+    maxHeight: 200,
+    marginBottom: 16,
+  },
+  locationResultItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.muted,
+    columnGap: 12,
+  },
+  locationResultText: {
+    flex: 1,
+    fontSize: 14,
+    color: Colors.dark,
+  },
+  noResultsText: {
+    textAlign: 'center',
+    paddingVertical: 20,
+    fontSize: 14,
+    color: Colors.muted,
+  },
+  settingButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: Colors.lightGray,
   },
 })
 

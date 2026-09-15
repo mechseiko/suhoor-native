@@ -75,6 +75,7 @@ export const lightTheme = {
   success: status.success,
   warning: status.warning,
   error: status.error,
+  info: brand.primary,
 
   white: neutral.white,
   overlay: alpha(brand.primary, 0.6),
@@ -111,6 +112,7 @@ export const darkTheme = {
   success: status.successDark,
   warning: brand.secondary,
   error: status.errorDark,
+  info: brand.secondary,
 
   white: neutral.white,
   overlay: 'rgba(6, 3, 16, 0.78)',

@@ -15,6 +15,8 @@ export const ar = {
   "nav.settings": "الإعدادات",
   "nav.docs": "التوثيق",
   "nav.fastingTimes": "أوقات الصيام",
+  "nav.leaderboard": "لوحة المتصدرين",
+  "nav.milestones": "المحطات",
   "nav.dashboard": "لوحة التحكم",
   "nav.resources": "الموارد",
   "nav.groupDetails": "تفاصيل المجموعة",
@@ -379,8 +381,8 @@ export const ar = {
   "fastingTimes.usingCustomLocation": "استخدام موقع مخصص: {{location}}",
   "fastingTimes.usingCustomLocationDefault": "استخدام موقع مخصص",
   "fastingTimes.usingDeviceLocation": "استخدام موقع GPS الخاص بجهازك",
-  "fastingTimes.usingDefaultLocation": "استخدام الموقع الافتراضي (لاغوس، نيجيريا)",
-  "fastingTimes.usingDefaultLocationWithError": "استخدام الموقع الافتراضي (لاغوس، نيجيريا) - {{error}}",
+  "fastingTimes.noLocationAvailable": "لا يوجد موقع متاح. يرجى تعيين موقعك في الإعدادات.",
+  "fastingTimes.usingProfileLocation": "استخدام موقعك الافتراضي المحفوظ من الإعدادات",
 };
 
 export default ar;

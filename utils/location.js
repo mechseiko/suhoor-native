@@ -6,19 +6,16 @@
  *
  *   1. User-set city/coordinates saved in AsyncStorage (fastest, offline-safe)
  *   2. Device GPS (when permission is granted)
- *   3. Fallback default location (Lagos, Nigeria)
+ *   3. User's default location from database (if set)
+ *   4. No location available (error state)
  *
  * The resolved `source` field tells the caller which path was taken so it can
- * show an appropriate notice when GPS fell back to the default.
+ * show an appropriate notice when no location is available.
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-/** Default location — Lagos, Nigeria */
-const DEFAULT_LOCATION = {
-  coordinates: { lat: 6.5244, lng: 3.3792 },
-  source: 'default',
-};
+import { db } from '../config/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 const USER_LOCATION_KEY = 'suhoor_user_location';
 
@@ -45,12 +42,36 @@ const getDeviceCoordinates = () =>
   });
 
 /**
+ * Get user's default location from their profile in Firestore.
+ * @param {string} userId - The user's Firebase UID
+ * @returns {Promise<{ lat: number, lng: number, name: string } | null>}
+ */
+const getProfileDefaultLocation = async (userId) => {
+  if (!userId) return null;
+  try {
+    const profileRef = doc(db, 'profiles', userId);
+    const profileSnap = await getDoc(profileRef);
+    if (profileSnap.exists()) {
+      const profileData = profileSnap.data();
+      const defaultLocation = profileData?.preferences?.defaultLocation;
+      if (defaultLocation?.lat && defaultLocation?.lng) {
+        return defaultLocation;
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching profile default location:', err);
+  }
+  return null;
+};
+
+/**
  * Resolve the best available coordinates for the current user.
  *
+ * @param {string} userId - The user's Firebase UID (optional, for profile fallback)
  * @returns {Promise<{ coordinates: { lat: number, lng: number }, source: string, error: string | null }>}
  */
-export const getCurrentCoordinates = async () => {
-  // 1. User-set location
+export const getCurrentCoordinates = async (userId) => {
+  // 1. User-set location from AsyncStorage (fastest, offline-safe)
   try {
     const saved = await AsyncStorage.getItem(USER_LOCATION_KEY);
     if (saved) {
@@ -72,7 +93,7 @@ export const getCurrentCoordinates = async () => {
     const coords = await getDeviceCoordinates();
     if (coords) {
       return {
-        coordinates: coords,
+        coordinates: { lat: coords.lat, lng: coords.lng },
         source: 'gps',
         error: null,
       };
@@ -81,10 +102,27 @@ export const getCurrentCoordinates = async () => {
     // GPS unavailable
   }
 
-  // 3. Fallback
+  // 3. User's default location from database profile
+  if (userId) {
+    try {
+      const profileLocation = await getProfileDefaultLocation(userId);
+      if (profileLocation) {
+        return {
+          coordinates: { lat: profileLocation.lat, lng: profileLocation.lng },
+          source: 'profile',
+          error: null,
+        };
+      }
+    } catch {
+      // Profile fetch failed
+    }
+  }
+
+  // 4. No location available
   return {
-    ...DEFAULT_LOCATION,
-    error: 'Using default location (GPS unavailable)',
+    coordinates: null,
+    source: 'none',
+    error: 'No location available. Please set your location in settings.',
   };
 };
 

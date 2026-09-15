@@ -15,6 +15,8 @@ export const ur = {
   "nav.settings": "ترتیبات",
   "nav.docs": "دستاویزی",
   "nav.fastingTimes": "روزے کے اوقات",
+  "nav.leaderboard": "لیڈر بورڈ",
+  "nav.milestones": "میلسٹونز",
   "nav.dashboard": "ڈیش بورڈ",
   "nav.resources": "وسائل",
   "nav.groupDetails": "گروپ کی تفصیلات",
@@ -379,8 +381,8 @@ export const ur = {
   "fastingTimes.usingCustomLocation": "حسب ضرورت مقام استعمال ہو رہا ہے: {{location}}",
   "fastingTimes.usingCustomLocationDefault": "حسب ضرورت مقام استعمال ہو رہا ہے",
   "fastingTimes.usingDeviceLocation": "آپ کے آلے کی GPS مقام استعمال ہو رہی ہے",
-  "fastingTimes.usingDefaultLocation": "ڈیفالٹ مقام استعمال ہو رہا ہے (لاگوس، نائیجیریا)",
-  "fastingTimes.usingDefaultLocationWithError": "ڈیفالٹ مقام استعمال ہو رہا ہے (لاگوس، نائیجیریا) - {{error}}",
+  "fastingTimes.noLocationAvailable": "کوئی مقام دستیاب نہیں ہے۔ براہ کرم سیٹنگز میں اپنا مقام سیٹ کریں۔",
+  "fastingTimes.usingProfileLocation": "سیٹنگز سے محفوظ آپ کا ڈیفالٹ مقام استعمال ہو رہا ہے",
 };
 
 export default ur;

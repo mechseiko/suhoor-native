@@ -15,6 +15,8 @@ export const tr = {
   "nav.settings": "Ayarlar",
   "nav.docs": "Dokümantasyon",
   "nav.fastingTimes": "Oruç Vakitleri",
+  "nav.leaderboard": "Liderlik Tablosu",
+  "nav.milestones": "Kilometre Taşları",
   "nav.dashboard": "Kontrol Paneli",
   "nav.resources": "Kaynaklar",
   "nav.groupDetails": "Grup Detayları",
@@ -379,8 +381,8 @@ export const tr = {
   "fastingTimes.usingCustomLocation": "Özel konum kullanılıyor: {{location}}",
   "fastingTimes.usingCustomLocationDefault": "Özel konum kullanılıyor",
   "fastingTimes.usingDeviceLocation": "Cihazınızın GPS konumu kullanılıyor",
-  "fastingTimes.usingDefaultLocation": "Varsayılan konum kullanılıyor (Lagos, Nijerya)",
-  "fastingTimes.usingDefaultLocationWithError": "Varsayılan konum kullanılıyor (Lagos, Nijerya) - {{error}}",
+  "fastingTimes.noLocationAvailable": "Konum mevcut değil. Lütfen ayarlardan konumunuzu ayarlayın.",
+  "fastingTimes.usingProfileLocation": "Ayarlarından kaydedilen varsayılan konumunuzu kullanıyorsunuz",
 };
 
 export default tr;

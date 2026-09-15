@@ -21,7 +21,6 @@ import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useAlarmState } from '../context/AlarmContext'
-import { useSocket } from '../context/SocketContext'
 import {
   WAKE_VERIFY_PATTERN,
   matchesWakeVerifyDate,
@@ -35,9 +34,8 @@ export const AlarmOverlay = () => {
   const { currentUser, userProfile } = useAuth()
   const { colors } = useTheme()
   const { t } = useLanguage()
-  const { logWakeUpTime, cancelAlarm } = useAlarm()
+  const { cancelAlarm } = useAlarm()
   const { isAlarmActive, alarmData, dismissAlarm } = useAlarmState()
-  const { emitWakeUp } = useSocket()
 
   // Status: 'ringing', 'dismiss_challenge', 'success'
   const [status, setStatus] = useState('ringing')
@@ -46,14 +44,13 @@ export const AlarmOverlay = () => {
   const pinRefs = [useRef(), useRef(), useRef(), useRef()]
   const [isProcessing, setIsProcessing] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
-
+  
   const pulseAnim = useRef(new Animated.Value(1)).current
   const ringAnim1 = useRef(new Animated.Value(0.8)).current
   const ringAnim2 = useRef(new Animated.Value(0.6)).current
 
   const visible = isAlarmActive
   const isBuzz = alarmData?.type === 'buzz'
-  const groupId = alarmData?.groupId
 
   // Clock tick
   useEffect(() => {
@@ -173,36 +170,6 @@ export const AlarmOverlay = () => {
       }
     }
   }, [visible, status, soundAllowed])
-
-  // Immediate Check-In
-  const handleCheckIn = async () => {
-    setIsProcessing(true)
-    if (Platform.OS !== 'web') {
-      Vibration.cancel()
-    }
-    try {
-      if (currentUser) {
-        await logWakeUpTime(currentUser.uid, groupId)
-        if (emitWakeUp && groupId) {
-          emitWakeUp(
-            groupId,
-            currentUser.displayName || currentUser.email?.split('@')[0],
-            new Date().toISOString()
-          )
-        }
-      }
-      cancelAlarm()
-      setStatus('success')
-      setTimeout(() => {
-        dismissAlarm()
-        setIsProcessing(false)
-      }, 1500)
-    } catch (err) {
-      console.error('Error logging wake-up from alarm:', err)
-      dismissAlarm()
-      setIsProcessing(false)
-    }
-  }
 
   // 1-Click dismiss for buzz alarms
   const handleBuzzDismiss = () => {
@@ -362,7 +329,7 @@ export const AlarmOverlay = () => {
               )}
 
               <Text variant="hero" style={styles.mainTitle}>
-                {isBuzz ? "You're Being Buzzed!" : 'Your Alarm Rings'}
+                {isBuzz ? "You're Being Buzzed!" : "It's time for suhoor"}
               </Text>
 
               <Text variant="bodyLg" style={styles.subtitle}>
@@ -374,30 +341,21 @@ export const AlarmOverlay = () => {
 
             {/* Bottom Actions */}
             <View style={styles.actionBlock}>
-              <Button
-                title={isProcessing ? 'Checking In...' : "Check In"}
-                onPress={handleCheckIn}
-                loading={isProcessing}
-                variant="secondary"
-                style={styles.primaryCta}
-                textStyle={{ fontSize: 16, fontWeight: '800', color: brand.primary }}
-              />
-
               {isBuzz ? (
                 <Button
                   title="Dismiss Buzz"
                   onPress={handleBuzzDismiss}
                   variant="outline"
-                  style={styles.secondaryCta}
+                  style={styles.primaryCta}
                   textStyle={{ color: '#F3F4F6' }}
                 />
               ) : (
                 <Button
                   title="Dismiss Alarm (Enter PIN)"
                   onPress={() => setStatus('dismiss_challenge')}
-                  variant="outline"
-                  style={styles.secondaryCta}
-                  textStyle={{ color: '#9CA3AF' }}
+                  variant="secondary"
+                  style={styles.primaryCta}
+                  textStyle={{ fontSize: 16, fontWeight: '800', color: brand.primary }}
                 />
               )}
             </View>
@@ -447,7 +405,7 @@ export const AlarmOverlay = () => {
             ) : null}
 
             <Button
-              title="Verify & Stop Alarm"
+              title="Stop Alarm"
               onPress={() => handlePinVerify()}
               variant="secondary"
               style={{ marginTop: 12, width: '100%' }}
@@ -559,7 +517,8 @@ const styles = StyleSheet.create({
     width: '100%',
     columnGap: 12,
     rowGap: 12,
-    paddingBottom: 16,
+    paddingBottom: 40,
+    paddingHorizontal: 20,
   },
   primaryCta: {
     backgroundColor: brand.secondary,

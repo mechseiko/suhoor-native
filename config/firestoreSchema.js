@@ -159,6 +159,7 @@ export const DEFAULT_FASTING_DEFAULTS = {
 
 export const DEFAULT_PREFERENCES = {
   soundEnabled: true,
+  defaultLocation: null, // { lat: number, lng: number, name: string }
 }
 
 /**

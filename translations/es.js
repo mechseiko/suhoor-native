@@ -15,6 +15,8 @@ export const es = {
   "nav.settings": "Configuración",
   "nav.docs": "Documentación",
   "nav.fastingTimes": "Horarios de ayuno",
+  "nav.leaderboard": "Tabla de clasificación",
+  "nav.milestones": "Hitos",
   "nav.dashboard": "Panel de control",
   "nav.resources": "Recursos",
   "nav.groupDetails": "Detalles del grupo",
@@ -379,8 +381,8 @@ export const es = {
   "fastingTimes.usingCustomLocation": "Usando ubicación personalizada: {{location}}",
   "fastingTimes.usingCustomLocationDefault": "Usando ubicación personalizada",
   "fastingTimes.usingDeviceLocation": "Usando la ubicación GPS de tu dispositivo",
-  "fastingTimes.usingDefaultLocation": "Usando ubicación predeterminada (Lagos, Nigeria)",
-  "fastingTimes.usingDefaultLocationWithError": "Usando ubicación predeterminada (Lagos, Nigeria) - {{error}}",
+  "fastingTimes.noLocationAvailable": "No hay ubicación disponible. Por favor establece tu ubicación en configuración.",
+  "fastingTimes.usingProfileLocation": "Usando tu ubicación predeterminada guardada de configuración",
 };
 
 export default es;

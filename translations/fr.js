@@ -15,6 +15,8 @@ export const fr = {
   "nav.settings": "Paramètres",
   "nav.docs": "Documentation",
   "nav.fastingTimes": "Heures de jeûne",
+  "nav.leaderboard": "Classement",
+  "nav.milestones": "Jalons",
   "nav.dashboard": "Tableau de bord",
   "nav.resources": "Ressources",
   "nav.groupDetails": "Détails du groupe",
@@ -379,6 +381,6 @@ export const fr = {
   "fastingTimes.usingCustomLocation": "Utilisation d'un emplacement personnalisé: {{location}}",
   "fastingTimes.usingCustomLocationDefault": "Utilisation d'un emplacement personnalisé",
   "fastingTimes.usingDeviceLocation": "Utilisation de la position GPS de votre appareil",
-  "fastingTimes.usingDefaultLocation": "Utilisation de l'emplacement par défaut (Lagos, Nigeria)",
-  "fastingTimes.usingDefaultLocationWithError": "Utilisation de l'emplacement par défaut (Lagos, Nigeria) - {{error}}",
+  "fastingTimes.noLocationAvailable": "Aucun emplacement disponible. Veuillez définir votre emplacement dans les paramètres.",
+  "fastingTimes.usingProfileLocation": "Utilisation de votre emplacement par défaut enregistré dans les paramètres",
 };

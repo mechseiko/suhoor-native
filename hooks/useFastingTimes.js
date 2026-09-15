@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getCurrentCoordinates } from '../utils/location';
 import { fastingTimesUrl } from '../config/env';
+import { useAuth } from '../context/AuthContext';
 
 const CACHE_KEY = 'suhoor_fasting_times';
 
@@ -9,9 +10,10 @@ const CACHE_KEY = 'suhoor_fasting_times';
 const todayKey = () => new Date().toLocaleDateString('en-CA');
 
 export function useFastingTimes() {
+  const { currentUser } = useAuth();
   const [location, setLocation] = useState({
     loaded: false,
-    coordinates: { lat: null, lng: null },
+    coordinates: null,
     source: null,
     error: null,
   });
@@ -49,13 +51,13 @@ export function useFastingTimes() {
     };
   }, []);
 
-  // Resolve coordinates: user-set location, else device GPS, else the default
-  // city. utils/location always resolves, so this never leaves the screen
-  // waiting on a permission the user declined.
+  // Resolve coordinates: user-set location, else device GPS, else profile default,
+  // else no location available. utils/location always resolves, so this never leaves
+  // the screen waiting on a permission the user declined.
   useEffect(() => {
     let cancelled = false;
 
-    getCurrentCoordinates().then(({ coordinates, source, error: locationError }) => {
+    getCurrentCoordinates(currentUser?.uid).then(({ coordinates, source, error: locationError }) => {
       if (cancelled) return;
       setLocation({ loaded: true, coordinates, source, error: locationError });
     });
@@ -63,12 +65,16 @@ export function useFastingTimes() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [currentUser?.uid]);
 
   // Fetch times once coordinates are known
   useEffect(() => {
     if (!location.loaded) return;
-    if (!location.coordinates.lat || !location.coordinates.lng) return;
+    if (!location.coordinates?.lat || !location.coordinates?.lng) {
+      setLoading(false);
+      setError('No location available. Please set your location in settings.');
+      return;
+    }
     if (fastingData) {
       setLoading(false);
       return;
@@ -113,7 +119,7 @@ export function useFastingTimes() {
     return () => {
       cancelled = true;
     };
-  }, [location.loaded, location.coordinates.lat, location.coordinates.lng, fastingData]);
+  }, [location.loaded, location.coordinates?.lat, location.coordinates?.lng, fastingData]);
 
   const todayData = fastingData?.fasting?.[0];
 

@@ -7,6 +7,7 @@ import ProfileScreen from '../screens/profile/ProfileScreen'
 import FastingTimesScreen from '../screens/fasting/FastingTimesScreen'
 import DuasScreen from '../screens/duas/DuasScreen'
 import LeaderboardScreen from '../screens/leaderboard/LeaderboardScreen'
+import MilestonesScreen from '../screens/milestones/MilestonesScreen'
 import { useTheme } from '../context/ThemeContext'
 import { useLanguage } from '../context/LanguageContext'
 import Ionicons from 'react-native-vector-icons/Ionicons'
@@ -137,6 +138,16 @@ export const TabNavigator = () => {
         options={{
           title: 'Leaderboard',
           headerTitle: t('nav.leaderboard'),
+          tabBarItemStyle: { display: 'none' },
+          tabBarButton: () => null,
+        }}
+      />
+      <Tab.Screen
+        name="MilestonesTab"
+        component={MilestonesScreen}
+        options={{
+          title: 'Milestones',
+          headerTitle: t('nav.milestones'),
           tabBarItemStyle: { display: 'none' },
           tabBarButton: () => null,
         }}

@@ -27,7 +27,7 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
   const { currentUser, userProfile, logout } = useAuth()
   const { colors, isDark, setThemeMode, themeMode } = useTheme()
   const { t } = useLanguage()
-  const { stats } = useGamification()
+  const { stats, currentLevel } = useGamification()
 
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -136,7 +136,7 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
                 </Text>
                 <View style={{ marginTop: 4, flexDirection: 'row' }}>
                   <Badge
-                    label={`Lv. 1 • Barakah Seeker`}
+                    label={`Lv. ${currentLevel.level} • ${currentLevel.name}`}
                     tone="secondary"
                     bordered
                   />
@@ -177,6 +177,19 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
                 </View>
                 <Text variant="body" style={styles.menuLabel}>
                   {t('nav.leaderboard', 'Leaderboard')}
+                </Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary || '#9CA3AF'} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.menuRow}
+                onPress={() => navigateTo('MilestonesTab')}
+              >
+                <View style={[styles.menuIconBox, { backgroundColor: 'rgba(249, 115, 22, 0.12)' }]}>
+                  <Ionicons name="ribbon-outline" size={18} color="#F97316" />
+                </View>
+                <Text variant="body" style={styles.menuLabel}>
+                  {t('nav.milestones', 'Milestones')}
                 </Text>
                 <Ionicons name="chevron-forward" size={18} color={colors.textSecondary || '#9CA3AF'} />
               </TouchableOpacity>
