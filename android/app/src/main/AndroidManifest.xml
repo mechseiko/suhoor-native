@@ -61,6 +61,8 @@
     </service>
 
     <!-- Alarm Foreground Service -->
-    <service android:name=".alarm.AlarmForegroundService" android:foregroundServiceType="specialUse" android:exported="false"/>
+    <service android:name=".alarm.AlarmForegroundService" android:foregroundServiceType="specialUse" android:exported="false">
+      <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Suhoor alarm service for scheduled prayer/meal notifications"/>
+    </service>
   </application>
 </manifest>

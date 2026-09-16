@@ -11,4 +11,16 @@
 -keep class com.swmansion.reanimated.** { *; }
 -keep class com.facebook.react.turbomodule.** { *; }
 
-# Add any project specific keep options here:
+# Alarm module and Gson serialization
+-keep class com.mechseiko.suhoor.alarm.** { *; }
+-keepclassmembers class com.mechseiko.suhoor.alarm.** { *; }
+-keep class com.google.code.gson.** { *; }
+-keepclassmembers class com.google.code.gson.** { *; }
+
+# React Native bridge reflection
+-keepclassmembers class * extends com.facebook.react.bridge.ReactContextBaseJavaModule {
+   public <init>(...);
+   @com.facebook.react.bridge.ReactMethod *;
+}
+-keep class com.facebook.react.bridge.NativeModule { *; }
+-keep class com.facebook.react.bridge.JavaScriptModule { *; }

@@ -3,13 +3,18 @@
     "name": "Suhoor",
     "slug": "suhoor",
     "version": "1.0.0",
+    "icon": "./assets/icon.png",
     "platforms": [
       "android",
       "web"
     ],
     "userInterfaceStyle": "automatic",
     "android": {
-      "package": "com.mechseiko.suhoor"
+      "package": "com.mechseiko.suhoor",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon-nobg.png",
+        "backgroundColor": "#FFFFFF"
+      }
     },
     "web": {
       "bundler": "metro"
