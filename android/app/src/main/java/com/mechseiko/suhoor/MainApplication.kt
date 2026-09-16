@@ -3,6 +3,7 @@ package com.mechseiko.suhoor
 import android.app.Application
 import android.content.res.Configuration
 
+import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactNativeHost
 import com.facebook.react.ReactPackage
@@ -15,12 +16,11 @@ class MainApplication : Application(), ReactApplication {
 
   override val reactNativeHost: ReactNativeHost =
       object : DefaultReactNativeHost(this) {
-        override fun getPackages(): MutableList<ReactPackage> {
-          val packages: MutableList<ReactPackage> = mutableListOf()
-          // Add AlarmBridgePackage manually
-          packages.add(AlarmBridgePackage() as ReactPackage)
-          return packages
-        }
+        override fun getPackages(): List<ReactPackage> =
+            PackageList(this).packages.apply {
+              // Add AlarmBridgePackage manually alongside autolinked packages
+              add(AlarmBridgePackage())
+            }
 
         override fun getJSMainModuleName(): String = "index"
 
