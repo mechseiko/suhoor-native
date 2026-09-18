@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 24,
     paddingBottom: 4,
   },
   subtitleText: {

@@ -263,8 +263,8 @@ export const LeaderboardScreen = () => {
                   </View>
 
                   <View style={styles.points}>
-                    <Text variant="label" style={styles.bold}>
-                      ⭐ {group.suhoorPoints}
+                    <Text variant="label" numberOfLines={1} style={styles.bold}>
+                      ⭐ {group.suhoorPoints} SP
                     </Text>
                   </View>
                 </View>

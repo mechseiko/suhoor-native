@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Image } from 'react-native';
 import { db } from '../config/firebase';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
@@ -212,17 +212,14 @@ export const FastingPrompt = () => {
           }}
         >
           <View style={styles.header}>
-            <View
-              style={[
-                styles.glyph,
-                { backgroundColor: 'rgba(249, 168, 38, 0.14)' },
-              ]}
-            >
-              <Ionicons name="moon-outline" size={20} color={colors.secondary} />
-            </View>
+            <Image
+              source={require('../assets/icon-nobg.png')}
+              style={styles.logoIcon}
+              resizeMode="contain"
+            />
             <View style={styles.headerText}>
               <Text variant="h3" style={{ color: colors.text }}>
-                {isTodayTarget ? 'Do you want to fast today?' : 'Do you want to fast tomorrow?'}
+                {isTodayTarget ? t('fasting.promptToday') : t('fasting.prompt')}
               </Text>
               <Text variant="caption" tone="secondary">
                 {t('fasting.subtitle', { date: targetDisplay })}
@@ -315,11 +312,11 @@ export const FastingPrompt = () => {
       {status === 'confirming_yes' && (
         <Card style={{ backgroundColor: colors.card, borderColor: colors.border }}>
           <View style={styles.header}>
-            <View
-              style={[styles.glyph, { backgroundColor: alpha(colors.secondary, 0.12) }]}
-            >
-              <Ionicons name="notifications-outline" size={20} color={colors.secondary} />
-            </View>
+            <Image
+              source={require('../assets/icon-nobg.png')}
+              style={styles.logoIcon}
+              resizeMode="contain"
+            />
             <View style={styles.headerText}>
               <Text variant="h3">{t('fasting.confirmTitle')}</Text>
               <Text variant="caption" tone="secondary">
@@ -349,9 +346,11 @@ export const FastingPrompt = () => {
       {status === 'confirming_no' && (
         <Card style={{ backgroundColor: colors.card, borderColor: colors.border }}>
           <View style={styles.header}>
-            <View style={[styles.glyph, { backgroundColor: alpha(colors.error, 0.1) }]}>
-              <Ionicons name="alert-circle-outline" size={20} color={colors.error} />
-            </View>
+            <Image
+              source={require('../assets/icon-nobg.png')}
+              style={styles.logoIcon}
+              resizeMode="contain"
+            />
             <View style={styles.headerText}>
               <Text variant="h3">{t('fasting.skipTitle')}</Text>
               <Text variant="caption" tone="secondary">
@@ -382,6 +381,11 @@ export const FastingPrompt = () => {
         // <Card style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }}>
         <Card>
           <View style={styles.header}>
+            <Image
+              source={require('../assets/icon-nobg.png')}
+              style={styles.logoIcon}
+              resizeMode="contain"
+            />
             <View style={{ flex: 1, gap: 2 }}>
               <Text variant="h3" style={{ color: '#065F46' }}>Fasting intention set</Text>
               <Text variant="caption" style={{ color: '#047857' }}>
@@ -395,10 +399,15 @@ export const FastingPrompt = () => {
       {status === 'confirmed_not_fasting' && (
         <Card style={{ backgroundColor: colors.surfaceVariant, borderColor: colors.border }}>
           <View style={styles.header}>
+            <Image
+              source={require('../assets/icon-nobg.png')}
+              style={styles.logoIcon}
+              resizeMode="contain"
+            />
             <View style={{ flex: 1, gap: 2 }}>
               <Text variant="h3" tone="secondary">Not fasting</Text>
               <Text variant="caption" tone="secondary">
-                Your alarms won't ring. Your group won't be able to buzz you.
+                Your alarms won't ring and Your group won't be able to buzz you.
               </Text>
             </View>
           </View>
@@ -422,6 +431,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  logoIcon: {
+    width: 30,
+    height: 30,
   },
   headerText: {
     flex: 1,

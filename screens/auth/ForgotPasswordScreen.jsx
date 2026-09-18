@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { View } from 'react-native'
 import { sendPasswordResetEmail } from 'firebase/auth'
 import Ionicons from 'react-native-vector-icons/Ionicons'
@@ -15,10 +15,28 @@ export const ForgotPasswordScreen = ({ navigation }) => {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
+  const [cooldownRemaining, setCooldownRemaining] = useState(0)
+
+  // Cooldown timer effect
+  useEffect(() => {
+    let interval
+    if (cooldownRemaining > 0) {
+      interval = setInterval(() => {
+        setCooldownRemaining(prev => prev - 1)
+      }, 1000)
+    }
+    return () => clearInterval(interval)
+  }, [cooldownRemaining])
 
   const handleResetPassword = async () => {
     setError('')
     setSuccess('')
+
+    // Check cooldown
+    if (cooldownRemaining > 0) {
+      setError(`Please wait ${cooldownRemaining} seconds before requesting another reset link`)
+      return
+    }
 
     if (!email) {
       setError(t('auth.enterEmail'))
@@ -37,6 +55,8 @@ export const ForgotPasswordScreen = ({ navigation }) => {
       await sendPasswordResetEmail(auth, email.trim())
       setSuccess(t('auth.resetLinkSent'))
       setEmail('')
+      // Start 30-second cooldown
+      setCooldownRemaining(30)
     } catch (err) {
       console.error('Password reset error:', err)
       const errorCode = err.code
@@ -114,9 +134,11 @@ export const ForgotPasswordScreen = ({ navigation }) => {
       />
 
       <Button
+        // title={cooldownRemaining > 0 ? `Wait ${cooldownRemaining}s` : t('auth.sendResetLink')}
         title={t('auth.sendResetLink')}
         onPress={handleResetPassword}
         loading={loading}
+        disabled={cooldownRemaining > 0 || loading}
         variant="primary"
         style={{ borderRadius: 8 }}
       />
