@@ -26,6 +26,8 @@ export const SignupScreen = ({ navigation }) => {
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showVerificationScreen, setShowVerificationScreen] = useState(false)
+  const [userEmail, setUserEmail] = useState('')
   const { signup } = useAuth()
 
   const handleSignup = async () => {
@@ -112,8 +114,9 @@ export const SignupScreen = ({ navigation }) => {
         // Continue anyway - user can request resend later
       }
 
-      // Success, the AuthContext state change will trigger RootNavigator navigation.
-      // But we can let them know about the verification email.
+      // Show verification screen instead of auto-navigating to home
+      setUserEmail(email.trim())
+      setShowVerificationScreen(true)
     } catch (err) {
       if (err.code === 'auth/email-already-in-use') {
         setError(t('auth.emailInUse'))
@@ -127,14 +130,56 @@ export const SignupScreen = ({ navigation }) => {
 
   return (
     <AuthWrapper
-      title={t('auth.createAccount')}
-      subtitle={t('auth.signupSubtitle')}
+      title={showVerificationScreen ? t('auth.checkYourEmail') : t('auth.createAccount')}
+      subtitle={showVerificationScreen ? t('auth.verificationEmailSent') : t('auth.signupSubtitle')}
       error={error}
-      bottomTitle={t('auth.alreadyHaveAccount')}
-      bottomsubTitle={t('auth.login')}
+      bottomTitle={showVerificationScreen ? t('auth.backToLogin') : t('auth.alreadyHaveAccount')}
+      bottomsubTitle={showVerificationScreen ? t('auth.login') : t('auth.login')}
       onBottomPress={() => navigation.navigate('Login')}
-      onBackPress={() => navigation.goBack()}
+      onBackPress={() => showVerificationScreen ? navigation.navigate('Login') : navigation.goBack()}
     >
+      {showVerificationScreen ? (
+        <View
+          style={{
+            backgroundColor: '#ECFDF5',
+            borderColor: '#A7F3D0',
+            borderWidth: 1,
+            borderRadius: 8,
+            padding: 16,
+            marginBottom: 20,
+            alignItems: 'center',
+          }}
+        >
+          <Ionicons
+            name="mail-outline"
+            size={48}
+            color="#059669"
+            style={{ marginBottom: 12 }}
+          />
+          <Text
+            style={{
+              color: '#065F46',
+              fontSize: 16,
+              fontWeight: '600',
+              textAlign: 'center',
+              marginBottom: 8,
+            }}
+          >
+            {t('auth.verificationEmailSentTo')}
+          </Text>
+          <Text
+            style={{
+              color: '#065F46',
+              fontSize: 18,
+              fontWeight: '700',
+              textAlign: 'center',
+            }}
+          >
+            {userEmail}
+          </Text>
+        </View>
+      ) : (
+        <>
       <Input
         label={t('settings.emailAddress')}
         icon="mail-outline"
@@ -220,6 +265,8 @@ export const SignupScreen = ({ navigation }) => {
         variant="primary"
         style={{ borderRadius: 8 }}
       />
+        </>
+      )}
     </AuthWrapper>
   )
 }

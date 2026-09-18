@@ -1,8 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react'
 import {
   Animated,
+  AppState,
   Dimensions,
   Image,
+  Linking,
+  PermissionsAndroid,
   Platform,
   SafeAreaView,
   StyleSheet,
@@ -216,6 +219,433 @@ const TypewriterHero = () => {
   )
 }
 
+const NotificationPermissionStep = () => {
+  const { t } = useLanguage()
+  const [granted, setGranted] = useState(false)
+
+  const checkStatus = async () => {
+    try {
+      if (Platform.OS === 'android' && Platform.Version >= 33) {
+        const res = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+        )
+        setGranted(!!res)
+      } else if (Platform.OS === 'android') {
+        setGranted(true)
+      }
+    } catch (e) {
+      console.warn('Error checking notification permission', e)
+    }
+  }
+
+  useEffect(() => {
+    checkStatus()
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        checkStatus()
+      }
+    })
+    return () => sub.remove()
+  }, [])
+
+  const handleAction = async () => {
+    try {
+      if (Platform.OS === 'android' && Platform.Version >= 33) {
+        const res = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+        )
+        if (res === PermissionsAndroid.RESULTS.GRANTED) {
+          setGranted(true)
+          return
+        }
+      }
+      await Linking.openSettings()
+    } catch (e) {
+      Linking.openSettings().catch(() => {})
+    }
+  }
+
+  return (
+    <View style={{ flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 12 }}>
+      <View
+        style={{
+          width: 76,
+          height: 76,
+          borderRadius: 38,
+          backgroundColor: 'rgba(21, 12, 51, 0.07)',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: 20,
+        }}
+      >
+        <Ionicons name="notifications-outline" size={36} color={brand.primary} />
+      </View>
+
+      <Text variant="hero" style={{ textAlign: 'center', marginBottom: 10 }}>
+        <Text variant="inherit" style={{ color: brand.primary, fontWeight: '800' }}>Stay </Text>
+        <Text variant="inherit" style={{ color: brand.secondary, fontWeight: '800' }}>Notified</Text>
+      </Text>
+
+      <Text
+        style={{
+          textAlign: 'center',
+          maxWidth: 310,
+          lineHeight: 20,
+          fontSize: 13,
+          color: '#6B7280',
+          fontFamily: 'Quicksand-Regular',
+          marginBottom: 24,
+        }}
+      >
+        {t('onboarding.notificationPermission')}
+      </Text>
+
+      {/* Status Pill */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 14,
+          paddingVertical: 8,
+          borderRadius: 20,
+          backgroundColor: granted ? '#ECFDF5' : '#FFFBEB',
+          borderWidth: 1,
+          borderColor: granted ? '#10B981' : '#FCD34D',
+          marginBottom: 26,
+        }}
+      >
+        <Ionicons
+          name={granted ? 'checkmark-circle' : 'alert-circle-outline'}
+          size={16}
+          color={granted ? '#059669' : '#D97706'}
+          style={{ marginRight: 6 }}
+        />
+        <Text
+          style={{
+            fontSize: 12,
+            fontWeight: '700',
+            color: granted ? '#065F46' : '#B45309',
+            fontFamily: 'SpaceGrotesk-Bold',
+          }}
+        >
+          {granted ? 'Permission granted' : 'Permission not granted'}
+        </Text>
+      </View>
+
+      {/* Action Button */}
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={handleAction}
+        style={{
+          width: '100%',
+          backgroundColor: granted ? '#10B981' : brand.primary,
+          paddingVertical: 15,
+          borderRadius: 10,
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'row',
+          columnGap: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 4,
+          elevation: 2,
+        }}
+      >
+        <Ionicons
+          name={granted ? 'checkmark-outline' : 'notifications'}
+          size={18}
+          color="#FFFFFF"
+        />
+        <Text
+          style={{
+            color: '#FFFFFF',
+            fontSize: 14,
+            fontWeight: '800',
+            letterSpacing: 0.8,
+            fontFamily: 'SpaceGrotesk-Bold',
+          }}
+        >
+          GRANT PERMISSION
+        </Text>
+      </TouchableOpacity>
+    </View>
+  )
+}
+
+const LocationPermissionStep = () => {
+  const { t } = useLanguage()
+  const [detected, setDetected] = useState(false)
+
+  const checkStatus = async () => {
+    try {
+      if (Platform.OS === 'android') {
+        const fine = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+        )
+        const coarse = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION
+        )
+        setDetected(fine || coarse)
+      }
+    } catch (e) {
+      console.warn('Error checking location permission', e)
+    }
+  }
+
+  useEffect(() => {
+    checkStatus()
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        checkStatus()
+      }
+    })
+    return () => sub.remove()
+  }, [])
+
+  const handleAction = async () => {
+    try {
+      if (Platform.OS === 'android') {
+        const res = await PermissionsAndroid.requestMultiple([
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+        ])
+        const fine = res[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED
+        const coarse = res[PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED
+        if (fine || coarse) {
+          setDetected(true)
+          return
+        }
+      }
+      await Linking.openSettings()
+    } catch (e) {
+      Linking.openSettings().catch(() => {})
+    }
+  }
+
+  return (
+    <View style={{ flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 12 }}>
+      <View
+        style={{
+          width: 76,
+          height: 76,
+          borderRadius: 38,
+          backgroundColor: 'rgba(21, 12, 51, 0.07)',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: 20,
+        }}
+      >
+        <Ionicons name="location-outline" size={36} color={brand.primary} />
+      </View>
+
+      <Text variant="hero" style={{ textAlign: 'center', marginBottom: 10 }}>
+        <Text variant="inherit" style={{ color: brand.primary, fontWeight: '800' }}>Precise </Text>
+        <Text variant="inherit" style={{ color: brand.secondary, fontWeight: '800' }}>Location</Text>
+      </Text>
+
+      <Text
+        variant="body"
+        tone="secondary"
+        style={{ textAlign: 'center', maxWidth: 320, lineHeight: 21, fontSize: 13, marginBottom: 24 }}
+      >
+        {t('onboarding.locationPermission')}
+      </Text>
+
+      {/* Status Pill */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 14,
+          paddingVertical: 8,
+          borderRadius: 20,
+          backgroundColor: detected ? '#ECFDF5' : '#FFFBEB',
+          borderWidth: 1,
+          borderColor: detected ? '#10B981' : '#FCD34D',
+          marginBottom: 26,
+        }}
+      >
+        <Ionicons
+          name={detected ? 'checkmark-circle' : 'alert-circle-outline'}
+          size={16}
+          color={detected ? '#059669' : '#D97706'}
+          style={{ marginRight: 6 }}
+        />
+        <Text
+          style={{
+            fontSize: 12,
+            fontWeight: '700',
+            color: detected ? '#065F46' : '#B45309',
+            fontFamily: 'SpaceGrotesk-Bold',
+          }}
+        >
+          {detected ? 'Location detected' :'Location not detected'}
+        </Text>
+      </View>
+
+      {/* Action Button */}
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={handleAction}
+        style={{
+          width: '100%',
+          backgroundColor: detected ? '#10B981' : brand.primary,
+          paddingVertical: 15,
+          borderRadius: 10,
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'row',
+          columnGap: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 4,
+          elevation: 2,
+        }}
+      >
+        <Ionicons
+          name={detected ? 'checkmark-outline' : 'navigate-outline'}
+          size={18}
+          color="#FFFFFF"
+        />
+        <Text
+          style={{
+            color: '#FFFFFF',
+            fontSize: 14,
+            fontWeight: '800',
+            letterSpacing: 0.8,
+            fontFamily: 'SpaceGrotesk-Bold',
+          }}
+        >
+          GRANT LOCATION PERMISSION
+        </Text>
+      </TouchableOpacity>
+    </View>
+  )
+}
+
+const BatteryOptimizationStep = () => {
+  const { t } = useLanguage()
+  const [disabled, setDisabled] = useState(false)
+
+  const handleAction = async () => {
+    setDisabled(true)
+    try {
+      if (Platform.OS === 'android') {
+        try {
+          await Linking.sendIntent('android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS')
+          return
+        } catch (_) {}
+      }
+      await Linking.openSettings()
+    } catch (e) {
+      Linking.openSettings().catch(() => {})
+    }
+  }
+
+  return (
+    <View style={{ flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 12 }}>
+      <View
+        style={{
+          width: 76,
+          height: 76,
+          borderRadius: 38,
+          backgroundColor: 'rgba(21, 12, 51, 0.07)',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: 20,
+        }}
+      >
+        <Ionicons name="battery-charging-outline" size={36} color={brand.primary} />
+      </View>
+
+      <Text variant="hero" style={{ textAlign: 'center', marginBottom: 10 }}>
+        <Text variant="inherit" style={{ color: brand.primary, fontWeight: '800' }}>Reliable </Text>
+        <Text variant="inherit" style={{ color: brand.secondary, fontWeight: '800' }}>Alarms</Text>
+      </Text>
+
+      <Text
+        variant="body"
+        tone="secondary"
+        style={{ textAlign: 'center', maxWidth: 320, lineHeight: 21, fontSize: 13, marginBottom: 24 }}
+      >
+        {t('onboarding.batteryOptimization')}
+      </Text>
+
+      {/* Status Pill */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 14,
+          paddingVertical: 8,
+          borderRadius: 20,
+          backgroundColor: disabled ? '#ECFDF5' : '#FFFBEB',
+          borderWidth: 1,
+          borderColor: disabled ? '#10B981' : '#FCD34D',
+          marginBottom: 26,
+        }}
+      >
+        <Ionicons
+          name={disabled ? 'checkmark-circle' : 'alert-circle-outline'}
+          size={16}
+          color={disabled ? '#059669' : '#D97706'}
+          style={{ marginRight: 6 }}
+        />
+        <Text
+          style={{
+            fontSize: 12,
+            fontWeight: '700',
+            color: disabled ? '#065F46' : '#B45309',
+            fontFamily: 'SpaceGrotesk-Bold',
+          }}
+        >
+          {disabled ? 'Battery Optimization is disabled' : 'Battery Optimization is enabled'}
+        </Text>
+      </View>
+
+      {/* Action Button */}
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={handleAction}
+        style={{
+          width: '100%',
+          backgroundColor: disabled ? '#10B981' : brand.primary,
+          paddingVertical: 15,
+          borderRadius: 10,
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'row',
+          columnGap: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 4,
+          elevation: 2,
+        }}
+      >
+        <Ionicons
+          name={disabled ? 'checkmark-outline' : 'flash-outline'}
+          size={18}
+          color="#FFFFFF"
+        />
+        <Text
+          style={{
+            color: '#FFFFFF',
+            fontSize: 13,
+            fontWeight: '800',
+            letterSpacing: 0.8,
+            fontFamily: 'SpaceGrotesk-Bold',
+          }}
+        >
+          DISABLE BATTERY OPTIMIZATION
+        </Text>
+      </TouchableOpacity>
+    </View>
+  )
+}
+
 const STEPS = [
   {
     id: 1,
@@ -233,7 +663,7 @@ const STEPS = [
     image: require('../../assets/onboarding/3.png'),
     titlePrimary: 'Group ',
     titleSecondary: 'Wake Up',
-    subtitle: "Your groups checks if you haven't checked in. Any member of any group you are in can buzz your phone until you check in.",
+    subtitle: "Your group members checks if you haven't checked in. They can trigger your alarm until you check in.",
   },
   {
     id: 4,
@@ -244,10 +674,22 @@ const STEPS = [
   },
   {
     id: 5,
-    isPin: true,
+    isNotification: true,
   },
   {
     id: 6,
+    isLocation: true,
+  },
+  {
+    id: 7,
+    isBattery: true,
+  },
+  {
+    id: 8,
+    isPin: true,
+  },
+  {
+    id: 9,
     isRoutine: true,
   },
 ]
@@ -516,11 +958,17 @@ export const OnboardingScreen = ({ onComplete }) => {
     setStep((value) => value + 1)
   }
 
+  const back = () => {
+    if (step === 0) return
+    setPinError('')
+    setStep((value) => value - 1)
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       <View style={{ flex: 1, paddingHorizontal: 24, paddingBottom: 24, paddingTop: 32 }}>
         {/* Top Bar with Flexed Logo + App Name and Skip button */}
-        <View style={{ height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <View style={{ height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', columnGap: 12 }}>
             <Image
               source={require('../../assets/icon-nobg.png')}
@@ -535,7 +983,7 @@ export const OnboardingScreen = ({ onComplete }) => {
             </Text>
           </View>
 
-          {!isLastStep ? (
+          {/* {!isLastStep ? (
             <TouchableOpacity
               onPress={onComplete}
               hitSlop={12}
@@ -553,12 +1001,18 @@ export const OnboardingScreen = ({ onComplete }) => {
             </TouchableOpacity>
           ) : (
             <View style={{ width: 48 }} />
-          )}
+          )} */}
         </View>
 
         {/* Center Content */}
         {current.isHero ? (
           <TypewriterHero />
+        ) : current.isNotification ? (
+          <NotificationPermissionStep />
+        ) : current.isLocation ? (
+          <LocationPermissionStep />
+        ) : current.isBattery ? (
+          <BatteryOptimizationStep />
         ) : current.isPin ? (
           <AlarmPinStep
             alarmPin={alarmPin}
@@ -658,17 +1112,40 @@ export const OnboardingScreen = ({ onComplete }) => {
           ))}
         </View>
 
-        {/* Action Button */}
-        <View style={{ paddingTop: 4 }}>
-          <Button
-            title={t(
-              isLastStep ? 'onboarding.getStarted' : 'onboarding.next',
-              isLastStep ? 'Get Started' : 'Continue'
-            )}
-            onPress={next}
-            variant="primary"
-            style={{ borderRadius: 8 }}
-          />
+        {/* Action Row: Back arrow + Continue */}
+        <View style={{ paddingTop: 4, flexDirection: 'row', alignItems: 'center', columnGap: 12 }}>
+          {step > 0 && (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={back}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: 8,
+                borderWidth: 1.5,
+                borderColor: '#E5E7EB',
+                backgroundColor: '#FFFFFF',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="arrow-back" size={22} color={brand.primary} />
+            </TouchableOpacity>
+          )}
+
+          <View style={{ flex: 1 }}>
+            <Button
+              title={t(
+                isLastStep ? 'onboarding.getStarted' : 'onboarding.next',
+                isLastStep ? 'Get Started' : 'Continue'
+              )}
+              onPress={next}
+              variant="primary"
+              style={{ borderRadius: 8 }}
+            />
+          </View>
         </View>
       </View>
     </SafeAreaView>

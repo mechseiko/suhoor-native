@@ -44,6 +44,21 @@ export const GroupsScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
+  
+  const loadingMessages = [
+    'Loading your groups...',
+    'Fetching your fasting community',
+    'Connecting with fellow fasters',
+    'Preparing your group experience...'
+  ]
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLoadingMessageIndex((prev) => (prev + 1) % loadingMessages.length)
+    }, 2000)
+    return () => clearInterval(interval)
+  }, [])
 
   // Wake-up window and check-in state
   const [isInWakeUpWindow, setIsInWakeUpWindow] = useState(false)
@@ -732,7 +747,7 @@ export const GroupsScreen = ({ navigation }) => {
           <View style={styles.circularLoaderContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-              Loading your groups...
+              {t('groups.loadingGroups')}
             </Text>
           </View>
           <GroupSkeleton />
@@ -1023,6 +1038,10 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 16,
+    // Extra breathing room above the search row. It goes inside the header so
+    // the gap is painted in `colors.surface` rather than exposing the page
+    // background between the nav bar and this block.
+    paddingTop: 24,
     borderBottomWidth: 1,
   },
   searchContainer: {

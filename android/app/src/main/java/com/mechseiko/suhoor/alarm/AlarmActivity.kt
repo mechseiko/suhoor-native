@@ -2,6 +2,9 @@ package com.mechseiko.suhoor.alarm
 
 import android.app.KeyguardManager
 import android.content.Context
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.Bundle
@@ -28,6 +31,7 @@ class AlarmActivity : AppCompatActivity() {
     private var vibrator: Vibrator? = null
     private var alarmData: AlarmData? = null
     private var wakeLock: PowerManager.WakeLock? = null
+    private var audioFocusRequest: AudioFocusRequest? = null
     private val gson = Gson()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -162,6 +166,38 @@ class AlarmActivity : AppCompatActivity() {
         try {
             mediaPlayer = MediaPlayer.create(this, R.raw.alarm_sound)
             mediaPlayer?.isLooping = true
+            
+            // Set audio stream type to alarm for maximum volume
+            mediaPlayer?.setAudioStreamType(AudioManager.STREAM_ALARM)
+            
+            // Set volume to maximum
+            val audioManager = getSystemService(AudioManager::class.java)
+            val maxVolume = audioManager?.getStreamMaxVolume(AudioManager.STREAM_ALARM) ?: 1
+            mediaPlayer?.setVolume(1.0f, 1.0f)
+            
+            // Request audio focus for alarm
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+                    .setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_ALARM)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build()
+                    )
+                    .setAcceptsDelayedFocusGain(true)
+                    .setOnAudioFocusChangeListener({ })
+                    .build()
+                
+                audioManager?.requestAudioFocus(audioFocusRequest!!)
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager?.requestAudioFocus(
+                    { },
+                    AudioManager.STREAM_ALARM,
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+                )
+            }
+            
             mediaPlayer?.start()
         } catch (e: Exception) {
             android.util.Log.e("AlarmActivity", "Error starting alarm sound", e)
@@ -179,6 +215,17 @@ class AlarmActivity : AppCompatActivity() {
             it.release()
         }
         mediaPlayer = null
+        
+        // Abandon audio focus
+        val audioManager = getSystemService(AudioManager::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            audioFocusRequest?.let {
+                audioManager?.abandonAudioFocusRequest(it)
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager?.abandonAudioFocus({ })
+        }
     }
 
     /**

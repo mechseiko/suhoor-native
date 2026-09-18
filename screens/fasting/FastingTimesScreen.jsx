@@ -428,7 +428,7 @@ export const FastingTimesScreen = () => {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <Toast message={toastMsg} type={toastType} visible={toastVisible} onDismiss={() => setToastVisible(false)} />
       
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 24, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
         {/* Location Status */}
         {locationStatus && (
           <View

@@ -944,14 +944,15 @@ export const ProfileScreen = () => {
                 </Text>
               </View>
               <Text style={styles.dangerSubtext}>
-                Permanently delete your account and all associated data.
+                {t('profile.deleteAccountWarning')}
               </Text>
+
               <TouchableOpacity
-                style={styles.deleteButton}
+                style={styles.dangerButton}
                 onPress={handleDeleteAccount}
               >
-                <Ionicons name="trash-outline" size={18} color={Colors.red} />
-                <Text style={styles.deleteButtonText}>
+                <Ionicons name="trash-outline" size={18} color={Colors.white} />
+                <Text style={styles.dangerButtonText}>
                   {t('settings.deleteAccount')}
                 </Text>
               </TouchableOpacity>
@@ -962,292 +963,224 @@ export const ProfileScreen = () => {
         {/* Tab 3: Preferences */}
         {activeTab === 'preferences' && (
           <View>
-            {/* Fasting Defaults */}
             <View style={[styles.card, themedStyles.card]}>
               <View style={styles.cardHeader}>
                 <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
-                  {t('settings.fastingDefaults')}
+                  {t('settings.appearance')}
                 </Text>
               </View>
 
-              <View style={styles.settingItem}>
-                <View style={styles.settingTextContainer}>
-                  <Text
-                    style={[styles.settingLabel, themedStyles.settingLabel]}
-                  >
-                    {t('settings.sunnahDays')}
+              <View style={styles.settingRow}>
+                <View style={styles.settingInfo}>
+                  <Text style={[styles.settingLabel, themedStyles.settingLabel]}>
+                    Theme Mode
                   </Text>
                   <Text style={[styles.settingSub, themedStyles.settingSub]}>
-                    {t('settings.sunnahDaysDesc')}
+                    Choose light, dark, or system default
                   </Text>
                 </View>
-                <Switch
-                  value={userProfile?.fastingDefaults?.sunnah ?? true}
-                  onValueChange={() =>
-                    toggleFastingSetting(
-                      'sunnah',
-                      userProfile?.fastingDefaults?.sunnah ?? true
-                    )
-                  }
-                  disabled={isUpdatingSettings}
-                  trackColor={{ false: Colors.muted, true: Colors.primary }}
-                  thumbColor={Colors.white}
-                />
-              </View>
-
-              <View style={styles.settingItem}>
-                <View style={styles.settingTextContainer}>
-                  <Text
-                    style={[styles.settingLabel, themedStyles.settingLabel]}
-                  >
-                    {t('settings.whiteDays')}
-                  </Text>
-                  <Text style={[styles.settingSub, themedStyles.settingSub]}>
-                    {t('settings.whiteDaysDesc')}
-                  </Text>
-                </View>
-                <Switch
-                  value={userProfile?.fastingDefaults?.whiteDays ?? true}
-                  onValueChange={() =>
-                    toggleFastingSetting(
-                      'whiteDays',
-                      userProfile?.fastingDefaults?.whiteDays ?? true
-                    )
-                  }
-                  disabled={isUpdatingSettings}
-                  trackColor={{ false: Colors.muted, true: Colors.primary }}
-                  thumbColor={Colors.white}
-                />
-              </View>
-
-              <View style={styles.settingItem}>
-                <View style={styles.settingTextContainer}>
-                  <Text
-                    style={[styles.settingLabel, themedStyles.settingLabel]}
-                  >
-                    {t('settings.ramadan')}
-                  </Text>
-                  <Text style={[styles.settingSub, themedStyles.settingSub]}>
-                    {t('settings.ramadanDesc')}
-                  </Text>
-                </View>
-                <Switch
-                  value={userProfile?.fastingDefaults?.ramadan ?? true}
-                  onValueChange={() =>
-                    toggleFastingSetting(
-                      'ramadan',
-                      userProfile?.fastingDefaults?.ramadan ?? true
-                    )
-                  }
-                  disabled={isUpdatingSettings}
-                  trackColor={{ false: Colors.muted, true: Colors.primary }}
-                  thumbColor={Colors.white}
-                />
-              </View>
-
-              <View style={styles.settingItem}>
-                <View style={styles.settingTextContainer}>
-                  <Text
-                    style={[styles.settingLabel, themedStyles.settingLabel]}
-                  >
-                    {t('settings.dhulHijjah')}
-                  </Text>
-                  <Text style={[styles.settingSub, themedStyles.settingSub]}>
-                    {t('settings.dhulHijjahDesc')}
-                  </Text>
-                </View>
-                <Switch
-                  value={userProfile?.fastingDefaults?.dhulHijjah ?? true}
-                  onValueChange={() =>
-                    toggleFastingSetting(
-                      'dhulHijjah',
-                      userProfile?.fastingDefaults?.dhulHijjah ?? true
-                    )
-                  }
-                  disabled={isUpdatingSettings}
-                  trackColor={{ false: Colors.muted, true: Colors.primary }}
-                  thumbColor={Colors.white}
-                />
-              </View>
-            </View>
-
-            {/* Audio & Notifications */}
-            <View style={[styles.card, themedStyles.card]}>
-              <View style={styles.cardHeader}>
-                <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
-                  {t('settings.preferences')}
-                </Text>
-              </View>
-
-              <View style={styles.settingItem}>
-                <View style={styles.settingTextContainer}>
-                  <Text
-                    style={[styles.settingLabel, themedStyles.settingLabel]}
-                  >
-                    {t('settings.notificationSounds')}
-                  </Text>
-                  <Text style={[styles.settingSub, themedStyles.settingSub]}>
-                    {t('settings.notificationSoundsDesc')}
-                  </Text>
-                </View>
-                <Switch
-                  value={userProfile?.preferences?.soundEnabled ?? true}
-                  onValueChange={() =>
-                    toggleFastingSetting(
-                      'preferences.soundEnabled',
-                      userProfile?.preferences?.soundEnabled ?? true
-                    )
-                  }
-                  disabled={isUpdatingSettings}
-                  trackColor={{ false: Colors.muted, true: Colors.primary }}
-                  thumbColor={Colors.white}
-                />
-              </View>
-
-              <View style={styles.settingItem}>
-                <View style={styles.settingTextContainer}>
-                  <Text
-                    style={[styles.settingLabel, themedStyles.settingLabel]}
-                  >
-                    {t('settings.buzzAlerts')}
-                  </Text>
-                  <Text style={[styles.settingSub, themedStyles.settingSub]}>
-                    {t('settings.buzzAlertsDesc')}
-                  </Text>
-                </View>
-                <Switch
-                  value={userProfile?.preferences?.buzzNotifications ?? true}
-                  onValueChange={() =>
-                    toggleFastingSetting(
-                      'preferences.buzzNotifications',
-                      userProfile?.preferences?.buzzNotifications ?? true
-                    )
-                  }
-                  disabled={isUpdatingSettings}
-                  trackColor={{ false: Colors.muted, true: Colors.primary }}
-                  thumbColor={Colors.white}
-                />
-              </View>
-
-              <View style={styles.settingItem}>
-                <View style={styles.settingTextContainer}>
-                  <Text
-                    style={[styles.settingLabel, themedStyles.settingLabel]}
-                  >
-                    Default Location
-                  </Text>
-                  <Text style={[styles.settingSub, themedStyles.settingSub]}>
-                    {selectedLocation?.name || 'Not set'}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => setShowLocationModal(true)}
-                  style={[styles.settingButton, themedStyles.settingButton]}
-                  disabled={isUpdatingSettings}
-                >
-                  <Ionicons
-                    name="location-outline"
-                    size={18}
-                    color={Colors.primary}
-                  />
-                </TouchableOpacity>
-              </View>
-
-              {selectedLocation && (
-                <View style={styles.settingItem}>
-                  <View style={styles.settingTextContainer}>
-                    <Text
-                      style={[styles.settingLabel, themedStyles.settingLabel]}
+                <View style={styles.themeSelector}>
+                  {['system', 'light', 'dark'].map(mode => (
+                    <TouchableOpacity
+                      key={mode}
+                      style={[
+                        styles.themeOptionBtn,
+                        themedStyles.settingButton,
+                        themeMode === mode && { backgroundColor: Colors.primary },
+                      ]}
+                      onPress={() => setThemeMode(mode)}
                     >
-                      Clear Default Location
-                    </Text>
-                    <Text style={[styles.settingSub, themedStyles.settingSub]}>
-                      Remove saved location and use GPS
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    onPress={handleClearLocation}
-                    style={[styles.settingButton, themedStyles.settingButton]}
-                    disabled={isUpdatingSettings}
-                  >
-                    <Ionicons
-                      name="trash-outline"
-                      size={18}
-                      color={Colors.red}
-                    />
-                  </TouchableOpacity>
+                      <Text
+                        style={[
+                          styles.themeOptionText,
+                          { color: themeMode === mode ? Colors.white : colors.text },
+                        ]}
+                      >
+                        {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-              )}
-            </View>
+              </View>
 
-            {/* Language Selection */}
-            <View style={[styles.card, themedStyles.card]}>
+              <View style={styles.sectionDivider} />
+
               <View style={styles.cardHeader}>
                 <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
-                  {t('settings.language')}
+                  Language
                 </Text>
               </View>
               <LanguageSelector />
+
+              <View style={styles.sectionDivider} />
+
+              <View style={styles.cardHeader}>
+                <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
+                  Location Preferences
+                </Text>
+              </View>
+
+              <View style={styles.settingRow}>
+                <View style={styles.settingInfo}>
+                  <Text style={[styles.settingLabel, themedStyles.settingLabel]}>
+                    Default Location
+                  </Text>
+                  <Text style={[styles.settingSub, themedStyles.settingSub]}>
+                    {selectedLocation
+                      ? selectedLocation.name
+                      : 'Not set (using device GPS)'}
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {selectedLocation && (
+                    <TouchableOpacity
+                      style={[styles.actionBtn, { backgroundColor: colors.surfaceVariant }]}
+                      onPress={handleClearLocation}
+                      disabled={isUpdatingSettings}
+                    >
+                      <Ionicons name="close-outline" size={18} color={colors.text} />
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    style={[styles.actionBtn, { backgroundColor: Colors.primary }]}
+                    onPress={() => setShowLocationModal(true)}
+                    disabled={isUpdatingSettings}
+                  >
+                    <Ionicons name="location-outline" size={18} color={Colors.white} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.sectionDivider} />
+
+              <View style={styles.cardHeader}>
+                <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
+                  Fasting Defaults
+                </Text>
+              </View>
+
+              <View style={styles.settingRow}>
+                <View style={styles.settingInfo}>
+                  <Text style={[styles.settingLabel, themedStyles.settingLabel]}>
+                    Auto-start Fasting
+                  </Text>
+                  <Text style={[styles.settingSub, themedStyles.settingSub]}>
+                    Automatically begin fast tracking at Fajr time
+                  </Text>
+                </View>
+                <Switch
+                  value={userProfile?.fastingDefaults?.autoStart ?? true}
+                  onValueChange={() =>
+                    toggleFastingSetting(
+                      'autoStart',
+                      userProfile?.fastingDefaults?.autoStart ?? true
+                    )
+                  }
+                  disabled={isUpdatingSettings}
+                  trackColor={{ false: colors.border, true: Colors.primary }}
+                />
+              </View>
+
+              <View style={styles.settingRow}>
+                <View style={styles.settingInfo}>
+                  <Text style={[styles.settingLabel, themedStyles.settingLabel]}>
+                    Show Fasting Streak
+                  </Text>
+                  <Text style={[styles.settingSub, themedStyles.settingSub]}>
+                    Display active streak on dashboard
+                  </Text>
+                </View>
+                <Switch
+                  value={userProfile?.preferences?.showStreak ?? true}
+                  onValueChange={() =>
+                    toggleFastingSetting(
+                      'preferences.showStreak',
+                      userProfile?.preferences?.showStreak ?? true
+                    )
+                  }
+                  disabled={isUpdatingSettings}
+                  trackColor={{ false: colors.border, true: Colors.primary }}
+                />
+              </View>
             </View>
           </View>
         )}
 
-        {/* Tab 4: About */}
+        {/* Tab 4: About & Support */}
         {activeTab === 'about' && (
           <View>
             <View style={[styles.card, themedStyles.card]}>
               <View style={styles.cardHeader}>
                 <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
-                  {t('profile.supportAndLinks')}
+                  About App
+                </Text>
+              </View>
+
+              <View style={styles.supportRow}>
+                <Text style={[styles.supportLabel, themedStyles.supportLabel]}>
+                  App Name
+                </Text>
+                <Text style={[styles.supportValue, themedStyles.supportValue]}>
+                  Suhoor Group Alarm
+                </Text>
+              </View>
+
+              <View style={styles.supportRow}>
+                <Text style={[styles.supportLabel, themedStyles.supportLabel]}>
+                  Version
+                </Text>
+                <Text style={[styles.supportValue, themedStyles.supportValue]}>
+                  {APP_VERSION}
+                </Text>
+              </View>
+
+              <View style={styles.sectionDivider} />
+
+              <View style={styles.cardHeader}>
+                <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
+                  Support & Resources
                 </Text>
               </View>
 
               <TouchableOpacity
-                style={styles.supportLink}
-                onPress={() => Linking.openURL('mailto:suhoorapp@gmail.com')}
+                style={styles.supportLinkRow}
+                onPress={() => Linking.openURL('https://suhoor-group.web.app/privacy')}
               >
-                <View style={styles.supportLeft}>
-                  <Ionicons name="mail" size={20} color={Colors.primary} />
-                  <Text
-                    style={[styles.supportLabel, themedStyles.supportLabel]}
-                  >
-                    {t('profile.supportEmail')}
+                <View style={styles.supportLinkInfo}>
+                  <Ionicons name="shield-outline" size={20} color={colors.textSecondary} />
+                  <Text style={[styles.supportLabel, themedStyles.supportLabel]}>
+                    Privacy Policy
                   </Text>
                 </View>
-                <Text style={[styles.supportValue, themedStyles.supportValue]}>
-                  suhoorapp@gmail.com
-                </Text>
+                <Ionicons name="chevron-forward-outline" size={18} color={colors.textSecondary} />
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.supportLink, styles.lastSupportLink]}
-                onPress={() =>
-                  Linking.openURL(
-                    'https://mechseiko.com/contact?from=suhoor'
-                  )
-                }
+                style={styles.supportLinkRow}
+                onPress={() => Linking.openURL('https://suhoor-group.web.app/terms')}
               >
-                <View style={styles.supportLeft}>
-                  <Ionicons
-                    name="code-slash"
-                    size={20}
-                    color={Colors.primary}
-                  />
-                  <Text
-                    style={[styles.supportLabel, themedStyles.supportLabel]}
-                  >
-                    {t('profile.developerProfile')}
+                <View style={styles.supportLinkInfo}>
+                  <Ionicons name="document-text-outline" size={20} color={colors.textSecondary} />
+                  <Text style={[styles.supportLabel, themedStyles.supportLabel]}>
+                    Terms of Service
                   </Text>
                 </View>
-                <Text style={[styles.supportValue, themedStyles.supportValue]}>
-                  mechseiko
-                </Text>
+                <Ionicons name="chevron-forward-outline" size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.supportLinkRow}
+                onPress={() => Linking.openURL('mailto:support@suhoor-group.com')}
+              >
+                <View style={styles.supportLinkInfo}>
+                  <Ionicons name="mail-outline" size={20} color={colors.textSecondary} />
+                  <Text style={[styles.supportLabel, themedStyles.supportLabel]}>
+                    Contact Support
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward-outline" size={18} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
-
-            <Text style={[styles.versionText, themedStyles.versionText]}>
-              {t('settings.appVersion', { version: APP_VERSION })}
-            </Text>
           </View>
         )}
       </ScrollView>
@@ -1256,60 +1189,55 @@ export const ProfileScreen = () => {
       <Modal
         visible={deleteModalVisible}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setDeleteModalVisible(false)}
       >
         <Pressable
           style={styles.modalOverlay}
           onPress={() => setDeleteModalVisible(false)}
         >
-          <Pressable style={styles.modalContent} onPress={() => {}}>
-            <View style={styles.modalHeader}>
-              <Ionicons name="warning" size={32} color={Colors.red} />
-              <Text style={styles.modalTitle}>{t('settings.deleteAccount')}</Text>
-            </View>
-
-            <Text style={styles.modalWarningText}>
+          <Pressable style={[styles.modalContent, themedStyles.card]}>
+            <Text style={[styles.modalTitle, { color: Colors.red }]}>
+              {t('settings.deleteAccount')}
+            </Text>
+            <Text style={[styles.modalSub, themedStyles.sectionInfo]}>
               {t('profile.deleteAccountWarning')}
             </Text>
 
-            <Text style={styles.modalInputLabel}>
-              {t('profile.confirmDeletionMessage')}
+            <Text style={[styles.label, themedStyles.label, { marginTop: 16 }]}>
+              Type your email ({currentUser?.email}) to confirm:
             </Text>
-            <TextInput
-              style={styles.modalInput}
-              value={deleteEmailInput}
-              onChangeText={setDeleteEmailInput}
-              placeholder={currentUser?.email}
-              placeholderTextColor={Colors.gray}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
+            <View style={[styles.inputContainer, themedStyles.inputContainer, { marginTop: 8 }]}>
+              <TextInput
+                style={[styles.input, themedStyles.input]}
+                value={deleteEmailInput}
+                onChangeText={setDeleteEmailInput}
+                placeholder={currentUser?.email}
+                placeholderTextColor={colors.textSecondary}
+                autoCapitalize="none"
+              />
+            </View>
 
-            <View style={styles.modalButtons}>
+            <View style={styles.modalActions}>
               <TouchableOpacity
-                style={[styles.modalButton, styles.modalCancelButton]}
-                onPress={() => {
-                  setDeleteModalVisible(false)
-                  setDeleteEmailInput('')
-                }}
-                disabled={isDeletingAccount}
+                style={[styles.modalBtn, { backgroundColor: colors.surfaceVariant }]}
+                onPress={() => setDeleteModalVisible(false)}
               >
-                <Text style={styles.modalCancelButtonText}>
+                <Text style={{ color: colors.text }}>
                   {t('common.cancel')}
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.modalButton, styles.modalDeleteButton]}
+                style={[styles.modalBtn, { backgroundColor: Colors.red }]}
                 onPress={confirmDeleteAccount}
                 disabled={isDeletingAccount}
               >
                 {isDeletingAccount ? (
                   <ActivityIndicator color={Colors.white} size="small" />
                 ) : (
-                  <Text style={styles.modalDeleteButtonText}>
-                    {t('profile.deletePermanently')}
+                  <Text style={{ color: Colors.white, fontWeight: 'bold' }}>
+                    {t('settings.deleteAccount')}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -1318,78 +1246,59 @@ export const ProfileScreen = () => {
         </Pressable>
       </Modal>
 
-      {/* Location Selector Modal */}
+      {/* Location Search Modal */}
       <Modal
         visible={showLocationModal}
         transparent
         animationType="slide"
         onRequestClose={() => setShowLocationModal(false)}
       >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setShowLocationModal(false)}
-        >
-          <Pressable style={styles.modalContent} onPress={() => {}}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, themedStyles.card, { maxHeight: '80%' }]}>
             <View style={styles.modalHeader}>
-              <Ionicons name="location" size={32} color={Colors.primary} />
-              <Text style={styles.modalTitle}>Set Default Location</Text>
-              <Text style={styles.modalSubtext}>
-                Search for your city to set it as your default location for prayer times
+              <Text style={[styles.modalTitle, themedStyles.cardTitle]}>
+                Select Default Location
               </Text>
+              <TouchableOpacity onPress={() => setShowLocationModal(false)}>
+                <Ionicons name="close-outline" size={24} color={colors.text} />
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.searchContainer}>
+            <View style={[styles.inputContainer, themedStyles.inputContainer, { marginBottom: 16 }]}>
+              <Ionicons name="search-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
               <TextInput
-                style={[styles.searchInput, themedStyles.searchInput]}
-                placeholder="Search city..."
-                placeholderTextColor={colors.textSecondary}
+                style={[styles.input, themedStyles.input]}
                 value={locationSearch}
                 onChangeText={setLocationSearch}
-                autoCapitalize="words"
+                placeholder="Search city, region..."
+                placeholderTextColor={colors.textSecondary}
               />
               {isSearchingLocation && (
-                <ActivityIndicator
-                  size="small"
-                  color={Colors.primary}
-                  style={styles.searchSpinner}
-                />
+                <ActivityIndicator size="small" color={Colors.primary} />
               )}
             </View>
 
-            <ScrollView style={styles.locationResults} keyboardShouldPersistTaps="handled">
-              {locationResults.map((location, index) => (
+            <ScrollView style={{ maxHeight: 300 }}>
+              {locationResults.map((item, idx) => (
                 <TouchableOpacity
-                  key={index}
-                  style={styles.locationResultItem}
-                  onPress={() => handleSelectLocation(location)}
+                  key={idx}
+                  style={styles.locationItem}
+                  onPress={() => handleSelectLocation(item)}
                 >
-                  <Ionicons name="location-outline" size={20} color={Colors.primary} />
-                  <Text style={[styles.locationResultText, themedStyles.locationResultText]}>
-                    {location.name}
+                  <Ionicons name="location-outline" size={18} color={Colors.primary} />
+                  <Text style={[styles.locationItemText, themedStyles.locationResultText]}>
+                    {item.name}
                   </Text>
                 </TouchableOpacity>
               ))}
-              {locationResults.length === 0 && locationSearch.length >= 3 && !isSearchingLocation && (
-                <Text style={[styles.noResultsText, themedStyles.noResultsText]}>
-                  No locations found. Try a different search.
+              {!isSearchingLocation && locationSearch.length >= 3 && locationResults.length === 0 && (
+                <Text style={[styles.noResults, themedStyles.noResultsText]}>
+                  No locations found
                 </Text>
               )}
             </ScrollView>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalCancelButton]}
-                onPress={() => {
-                  setShowLocationModal(false)
-                  setLocationSearch('')
-                  setLocationResults([])
-                }}
-              >
-                <Text style={styles.modalCancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </View>
   )
@@ -1401,32 +1310,28 @@ const styles = StyleSheet.create({
   },
   container: {
     padding: 16,
-    paddingBottom: 40,
   },
   headerBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    padding: 18,
-    marginBottom: 16,
-    columnGap: 14,
-    rowGap: 14,
+    marginBottom: 20,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: 'rgba(61, 31, 148, 0.05)',
   },
   avatarCircle: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    marginRight: 16,
   },
   avatarInitial: {
     fontSize: 24,
-    fontWeight: '800',
-    color: Colors.secondary,
+    fontWeight: 'bold',
+    color: Colors.white,
   },
   headerInfo: {
     flex: 1,
@@ -1434,65 +1339,53 @@ const styles = StyleSheet.create({
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    columnGap: 8,
-    rowGap: 8,
-    marginBottom: 4,
+    flexWrap: 'wrap',
+    gap: 8,
   },
   headerName: {
     fontSize: 18,
-    fontWeight: '800',
-    color: Colors.white,
-  },
-  headerEmail: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.75)',
+    fontWeight: 'bold',
   },
   verifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    paddingHorizontal: 8,
     paddingVertical: 2,
-    paddingHorizontal: 6,
-    borderRadius: 10,
-    columnGap: 3,
-    rowGap: 3,
+    borderRadius: 12,
+    gap: 4,
   },
   unverifiedBadge: {
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
   },
   verifiedText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#34D399',
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#10B981',
   },
   unverifiedText: {
-    color: '#FBBF24',
+    color: '#F59E0B',
+  },
+  headerEmail: {
+    fontSize: 13,
+    color: Colors.gray,
+    marginVertical: 2,
   },
   memberSinceBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    columnGap: 4,
-    rowGap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    width: 'fit-content',
-    marginTop: 6,
+    gap: 4,
+    marginTop: 2,
   },
   memberSinceText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: Colors.secondary,
   },
   segmentContainer: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(61, 31, 148, 0.08)',
-    borderRadius: 14,
+    borderRadius: 12,
     padding: 4,
-    marginBottom: 16,
-    columnGap: 4,
-    rowGap: 4,
+    marginBottom: 20,
   },
   segmentBtn: {
     flex: 1,
@@ -1500,328 +1393,235 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 8,
-    borderRadius: 10,
-    columnGap: 4,
-    rowGap: 4,
+    borderRadius: 8,
+    gap: 6,
   },
   segmentBtnActive: {
-    backgroundColor: Colors.primary,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
     elevation: 2,
   },
   segmentBtnInactive: {
     backgroundColor: 'transparent',
   },
   segmentText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: Colors.primary,
-  },
-  segmentTextActive: {
-    color: Colors.white,
-    fontWeight: '700',
-  },
-  card: {
-    backgroundColor: Colors.white,
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: 'rgba(61, 31, 148, 0.05)',
-  },
-  dangerCard: {
-    borderColor: 'rgba(239, 68, 68, 0.2)',
-    backgroundColor: 'rgba(239, 68, 68, 0.02)',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.muted,
-    paddingBottom: 10,
-    marginBottom: 14,
-  },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: Colors.dark,
-  },
-  inputGroup: {
-    marginBottom: 14,
-  },
-  label: {
     fontSize: 12,
     fontWeight: '600',
-    color: Colors.dark,
+  },
+  card: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 16,
+  },
+  cardHeader: {
+    marginBottom: 16,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
     marginBottom: 6,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: Colors.muted,
     borderRadius: 10,
     paddingHorizontal: 12,
-    height: 44,
-    backgroundColor: Colors.white,
+    height: 48,
   },
   disabledInput: {
-    backgroundColor: Colors.lightGray,
+    opacity: 0.7,
   },
   inputIcon: {
     marginRight: 8,
   },
   input: {
     flex: 1,
+    height: '100%',
     fontSize: 14,
-    color: Colors.dark,
   },
   primaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.primary,
+    height: 48,
     borderRadius: 10,
-    paddingVertical: 12,
-    marginTop: 4,
-    columnGap: 6,
-    rowGap: 6,
+    gap: 8,
+    marginTop: 8,
   },
   primaryButtonText: {
     color: Colors.white,
+    fontWeight: 'bold',
     fontSize: 14,
-    fontWeight: '700',
-  },
-  settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.04)',
-  },
-  settingTextContainer: {
-    flex: 1,
-    paddingRight: 12,
-  },
-  settingLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.dark,
-  },
-  settingSub: {
-    fontSize: 11,
-    color: Colors.gray,
-    marginTop: 2,
-  },
-  supportLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.04)',
-  },
-  lastSupportLink: {
-    borderBottomWidth: 0,
-  },
-  supportLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    columnGap: 8,
-    rowGap: 8,
-  },
-  supportLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.dark,
-  },
-  supportValue: {
-    fontSize: 12,
-    color: Colors.gray,
   },
   logoutBannerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 10,
+    padding: 14,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(61, 31, 148, 0.2)',
-    backgroundColor: 'rgba(61, 31, 148, 0.05)',
-    columnGap: 6,
-    rowGap: 6,
-    marginTop: 4,
+    borderColor: Colors.primary,
+    gap: 8,
+    marginTop: 8,
   },
   logoutBannerText: {
-    fontSize: 13,
-    fontWeight: '700',
     color: Colors.primary,
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  dangerCard: {
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    backgroundColor: 'rgba(239, 68, 68, 0.02)',
   },
   dangerSubtext: {
     fontSize: 12,
     color: Colors.gray,
-    marginBottom: 12,
+    marginBottom: 16,
     lineHeight: 18,
+  },
+  dangerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.red,
+    height: 44,
+    borderRadius: 10,
+    gap: 8,
+  },
+  dangerButtonText: {
+    color: Colors.white,
+    fontWeight: 'bold',
+    fontSize: 14,
   },
   sectionDivider: {
     height: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
-    marginVertical: 24,
+    backgroundColor: 'rgba(150, 150, 150, 0.15)',
+    marginVertical: 16,
   },
-  deleteButton: {
+  settingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  settingInfo: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  settingLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  settingSub: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  themeSelector: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  themeOptionBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  themeOptionText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  actionBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  supportRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  supportLabel: {
+    fontSize: 14,
+  },
+  supportValue: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  supportLinkRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  supportLinkInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.red,
-    backgroundColor: 'rgba(239, 68, 68, 0.05)',
-    columnGap: 6,
-    rowGap: 6,
-  },
-  deleteButtonText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.red,
-  },
-  versionText: {
-    textAlign: 'center',
-    fontSize: 11,
-    color: Colors.gray,
-    marginTop: 16,
+    gap: 12,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   modalContent: {
-    backgroundColor: Colors.white,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    paddingBottom: 32,
+    width: '100%',
+    borderRadius: 16,
+    padding: 20,
   },
   modalHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    columnGap: 12,
-    rowGap: 12,
     marginBottom: 16,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: Colors.dark,
+    fontSize: 18,
+    fontWeight: 'bold',
   },
-  modalWarningText: {
-    fontSize: 14,
-    color: Colors.gray,
-    lineHeight: 20,
-    marginBottom: 20,
-  },
-  modalInputLabel: {
+  modalSub: {
     fontSize: 13,
-    fontWeight: '600',
-    color: Colors.dark,
-    marginBottom: 8,
+    marginTop: 4,
   },
-  modalInput: {
-    borderWidth: 1,
-    borderColor: Colors.muted,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: Colors.dark,
-    marginBottom: 20,
-  },
-  modalButtons: {
+  modalActions: {
     flexDirection: 'row',
-    columnGap: 12,
-    rowGap: 12,
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginTop: 20,
   },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalCancelButton: {
-    backgroundColor: Colors.lightGray,
-  },
-  modalCancelButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: Colors.dark,
-  },
-  modalDeleteButton: {
-    backgroundColor: Colors.red,
-  },
-  modalDeleteButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: Colors.white,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  searchInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: Colors.muted,
-    borderRadius: 10,
+  modalBtn: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: Colors.dark,
-  },
-  searchSpinner: {
-    marginLeft: 12,
-  },
-  locationResults: {
-    maxHeight: 200,
-    marginBottom: 16,
-  },
-  locationResultItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.muted,
-    columnGap: 12,
-  },
-  locationResultText: {
-    flex: 1,
-    fontSize: 14,
-    color: Colors.dark,
-  },
-  noResultsText: {
-    textAlign: 'center',
-    paddingVertical: 20,
-    fontSize: 14,
-    color: Colors.muted,
-  },
-  settingButton: {
-    padding: 8,
+    paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: Colors.lightGray,
+  },
+  locationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(150, 150, 150, 0.1)',
+    gap: 8,
+  },
+  locationItemText: {
+    fontSize: 13,
+    flex: 1,
+  },
+  noResults: {
+    textAlign: 'center',
+    paddingVertical: 16,
+    fontSize: 13,
   },
 })
-
-export default ProfileScreen

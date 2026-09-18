@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { StyleSheet, View, ScrollView, RefreshControl } from 'react-native'
+import { StyleSheet, View, RefreshControl } from 'react-native'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
@@ -34,10 +34,10 @@ export const MilestonesScreen = () => {
         />
       }
     >
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
+      {/* A plain View, not a ScrollView: `Screen` already scrolls and owns the
+          RefreshControl, and a nested vertical ScrollView swallowed both the
+          pull-to-refresh gesture and the frame's top padding. */}
+      <View style={styles.scrollContent}>
         {/* Current Level Card */}
         <Card style={styles.levelCard}>
           <View style={styles.levelHeader}>
@@ -214,24 +214,24 @@ export const MilestonesScreen = () => {
             })}
           </View>
         </Card>
-      </ScrollView>
+      </View>
     </Screen>
   )
 }
 
 const styles = StyleSheet.create({
   scrollContent: {
-    padding: spacing.sm,
-    paddingBottom: 40,
+    // Screen's contentContainer already supplies the gutter and its `rowGap`
+    // only reaches its own direct children, so the section spacing is repeated
+    // here for the cards inside this wrapper.
+    rowGap: 18,
   },
   bold: {
     fontWeight: '700',
   },
 
   // Level Card
-  levelCard: {
-    marginBottom: spacing.sm,
-  },
+  levelCard: {},
   levelHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -273,9 +273,7 @@ const styles = StyleSheet.create({
   },
 
   // Stats Card
-  statsCard: {
-    marginBottom: spacing.sm,
-  },
+  statsCard: {},
   statsGrid: {
     flexDirection: 'row',
     alignItems: 'center',

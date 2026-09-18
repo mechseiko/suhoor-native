@@ -57,8 +57,15 @@ export const Screen = ({
   // On web, use regular View instead of SafeAreaView
   const Container = Platform.OS === 'web' ? View : SafeAreaView
 
+  // `paddingTop` is spelled out rather than left to `padding` because the top
+  // gap must not depend on the safe-area inset. On tabs with `headerShown:
+  // false` (Home) the SafeAreaView below contributes a real status-bar inset;
+  // on tabs with a native header React Navigation has already eaten that inset,
+  // so `edges: ['top']` resolves to 0 there. Without an explicit value the same
+  // component lands content 24-48px higher on one screen than another.
   const containerPaddingStyle = {
     padding: 16,
+    paddingTop: 24,
     paddingBottom: 40,
     rowGap: 18,
   }

@@ -7,6 +7,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../config/firebase';
 import { collection, query, where, getDocs, orderBy, limit, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import FastingPrompt from '../../components/FastingPrompt';
+import AudioModeWarning from '../../components/AudioModeWarning';
 import StatsCard from '../../components/StatsCard';
 import ProfileSidebar from '../../components/ProfileSidebar';
 import { Badge, Button, Card, IconTile, Screen, Text } from '../../components/ui';
@@ -220,6 +221,7 @@ export const HomeScreen = ({ navigation }) => {
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
       }
+      contentStyle={{ paddingTop: 24 }}
     >
       <View style={styles.greeting}>
         <View style={styles.greetingText}>
@@ -324,6 +326,8 @@ export const HomeScreen = ({ navigation }) => {
           />
         </Card>
       ) : <FastingPrompt />}
+
+      <AudioModeWarning />
 
       <View style={styles.section}>
         <Text variant="h3">{t('home.dashboardStats')}</Text>
