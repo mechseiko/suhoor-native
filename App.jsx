@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Platform, StatusBar, View, StyleSheet, Text, ActivityIndicator } from 'react-native'
+import { Platform, StatusBar, View, StyleSheet, Text, ActivityIndicator, LogBox } from 'react-native'
 import { useFonts } from 'expo-font'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { AuthProvider } from './context/AuthContext'
@@ -15,6 +15,36 @@ import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated'
 import { configureNotifications } from './services/notifications'
 import FastingNotificationsManager from './components/FastingNotificationsManager'
 import NetworkStatusNotification from './components/NetworkStatusNotification'
+
+// Suppress known third-party web deprecation warnings (react-native-web & @react-navigation)
+LogBox.ignoreLogs([
+  'props.pointerEvents is deprecated',
+  '"shadow*" style props are deprecated',
+])
+
+if (typeof console !== 'undefined') {
+  const isIgnoredWarning = (msg) => {
+    if (typeof msg !== 'string') return false
+    return (
+      msg.includes('props.pointerEvents is deprecated') ||
+      msg.includes('"shadow*" style props are deprecated') ||
+      (msg.includes('pointerEvents') && msg.includes('deprecated')) ||
+      (msg.includes('shadow*') && msg.includes('boxShadow'))
+    )
+  }
+
+  const origWarn = console.warn
+  console.warn = (...args) => {
+    if (isIgnoredWarning(args[0])) return
+    origWarn(...args)
+  }
+
+  const origError = console.error
+  console.error = (...args) => {
+    if (isIgnoredWarning(args[0])) return
+    origError(...args)
+  }
+}
 
 // Polyfill for random values (needed for Firebase/Socket.IO in React Native)
 import 'react-native-get-random-values'
@@ -44,47 +74,7 @@ if (Platform.OS === 'web') {
   document.head.appendChild(meta)
 }
 
-const LogoLoader = () => {
-  const [messageIndex, setMessageIndex] = useState(0)
-  const loadingMessages = [
-    'Loading...',
-    'Fetching your fasting times',
-    'Fetching your data',
-    'Bundling your experience...'
-  ]
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setMessageIndex((prev) => (prev + 1) % loadingMessages.length)
-    }, 2000)
-    return () => clearInterval(interval)
-  }, [])
-
-  return (
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
-      <Animated.View 
-        entering={FadeIn.duration(800)}
-        style={{ alignItems: 'center', justifyContent: 'center' }}
-      >
-        <Animated.View 
-          entering={FadeIn.duration(1200).delay(200)}
-          style={{ alignItems: 'center', justifyContent: 'center' }}
-        >
-          <ActivityIndicator size="large" color="#6366F1" style={{ marginBottom: 20 }} />
-          <Text style={{ 
-            fontSize: 16, 
-            fontWeight: '600', 
-            color: '#374151',
-            fontFamily: 'Quicksand-Regular',
-            textAlign: 'center'
-          }}>
-            {loadingMessages[messageIndex]}
-          </Text>
-        </Animated.View>
-      </Animated.View>
-    </View>
-  )
-}
+import LogoLoader from './components/LogoLoader'
 
 export default function App() {
   // Registers the eight Quicksand / Space Grotesk faces with the native font

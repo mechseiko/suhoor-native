@@ -47,3 +47,7 @@ android/.gradle/
 # Temporary files
 *.log
 *.tmp
+
+suhoor-backend
+suhoor-backend/
+suhoor-backend/*

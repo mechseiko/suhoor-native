@@ -729,7 +729,7 @@ export const GroupsScreen = ({ navigation }) => {
           <View style={styles.checkInContent}>
             <Ionicons name="alarm-outline" size={20} color={colors.white} />
             <View style={styles.checkInText}>
-              <Text style={styles.checkInTitle}>Wake Up Window Active</Text>
+              <Text style={styles.checkInTitle}>Are you Awake?</Text>
               <Text style={styles.checkInSubtitle}>Check in to prevent buzzing from group members</Text>
             </View>
           </View>
@@ -737,7 +737,7 @@ export const GroupsScreen = ({ navigation }) => {
             style={styles.checkInBtn}
             onPress={handleDirectCheckIn}
           >
-            <Text style={styles.checkInBtnText}>I'm Awake</Text>
+            <Text style={styles.checkInBtnText}>Check in</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -1020,7 +1020,7 @@ export const GroupsScreen = ({ navigation }) => {
                   <ActivityIndicator color={colors.white} size="small" />
                 ) : (
                   <Text style={[styles.modalBtnConfirmText, { color: colors.white }]}>
-                    Confirm — I'm Awake
+                    Confirm - I'm Awake
                   </Text>
                 )}
               </TouchableOpacity>
@@ -1038,9 +1038,6 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 16,
-    // Extra breathing room above the search row. It goes inside the header so
-    // the gap is painted in `colors.surface` rather than exposing the page
-    // background between the nav bar and this block.
     paddingTop: 24,
     borderBottomWidth: 1,
   },

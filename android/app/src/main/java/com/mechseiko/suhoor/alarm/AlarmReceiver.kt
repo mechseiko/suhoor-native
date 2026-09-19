@@ -64,10 +64,10 @@ class AlarmReceiver : BroadcastReceiver() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = android.app.NotificationChannel(
                 CHANNEL_ID,
-                "Suhoor Alarms",
+                "Suhoor Alarm",
                 android.app.NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Notifications for Suhoor wake-up alarms"
+                description = "Notifications for Suhoor alarms"
                 enableVibration(true)
                 enableLights(true)
                 setShowBadge(true)
@@ -80,8 +80,8 @@ class AlarmReceiver : BroadcastReceiver() {
         // Build notification
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.notification_icon)
-            .setContentTitle("WAKE UP! ⏰")
-            .setContentText("Time for Suhoor! Wake up and verify you are awake.")
+            .setContentTitle("It's time for suhoor")
+            .setContentText("It's time for Suhoor! Wake up and check in")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setOngoing(true)

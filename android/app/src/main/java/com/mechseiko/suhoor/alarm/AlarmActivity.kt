@@ -117,10 +117,10 @@ class AlarmActivity : AppCompatActivity() {
         val snoozeButton = findViewById<Button>(R.id.snooze_button)
 
         titleTextView.text = when (alarmData?.type) {
-            "wake_up" -> "WAKE UP! ⏰"
-            "recheck" -> "Re-check Alarm ⏰"
-            "remote_buzz" -> "Remote Buzz! 🔔"
-            else -> "Alarm ⏰"
+            "wake_up" -> "Wake Up, It's time for suhoor"
+            "recheck" -> "You haven't checked in, check in now to stop being buzzed"
+            "remote_buzz" -> "A member of your group is buzzing you"
+            else -> "Alarm"
         }
 
         timeTextView.text = alarmData?.let { Date(it.triggerTime).toString() } ?: "Now"

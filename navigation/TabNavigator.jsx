@@ -1,5 +1,5 @@
 import React from 'react'
-import { Platform, TouchableOpacity } from 'react-native'
+import { Platform, TouchableOpacity, View } from 'react-native'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import HomeScreen from '../screens/home/HomeScreen'
 import GroupsStack from './GroupsStack'
@@ -13,11 +13,23 @@ import { useLanguage } from '../context/LanguageContext'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import { font, size, weight } from '../theme'
 
+// Only import safe area context on mobile platforms
+let useSafeAreaInsets
+if (Platform.OS !== 'web') {
+  try {
+    useSafeAreaInsets = require('react-native-safe-area-context').useSafeAreaInsets
+  } catch (e) {
+    console.warn('react-native-safe-area-context not available')
+  }
+}
+
 const Tab = createBottomTabNavigator()
 
 export const TabNavigator = () => {
   const { colors } = useTheme()
   const { t } = useLanguage()
+  // Only use safe area insets on mobile (not web) to avoid SafeAreaProvider requirement
+  const insets = Platform.OS === 'web' ? { top: 0 } : (useSafeAreaInsets ? useSafeAreaInsets() : { top: 0 })
 
   return (
     <Tab.Navigator

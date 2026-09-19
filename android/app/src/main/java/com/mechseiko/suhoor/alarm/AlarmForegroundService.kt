@@ -73,7 +73,7 @@ class AlarmForegroundService : Service() {
         )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Suhoor Alarm Active")
+            .setContentTitle("Your suhoor alarm is active")
             .setContentText("Alarm scheduled for ${formatTime(alarmTime)}")
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentIntent(pendingIntent)
