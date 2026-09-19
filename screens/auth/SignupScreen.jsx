@@ -243,14 +243,14 @@ export const SignupScreen = ({ navigation }) => {
           By continuing, you agree to Suhoor's{' '}
           <Text
             style={{ color: colors.primary, textDecorationLine: 'underline' }}
-            onPress={() => Linking.openURL('https://suhoorapp.cv/terms')}
+            onPress={() => Linking.openURL('https://suhoor-group.web.app/terms')}
           >
             Terms of Use
           </Text>{' '}
           and{' '}
           <Text
             style={{ color: colors.primary, textDecorationLine: 'underline' }}
-            onPress={() => Linking.openURL('https://suhoorapp.cv/privacy')}
+            onPress={() => Linking.openURL('https://suhoor-group.web.app/privacy')}
           >
             Privacy Policy
           </Text>

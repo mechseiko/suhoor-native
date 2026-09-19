@@ -35,6 +35,7 @@ export const SocketProvider = ({ children }) => {
     // reading process.env directly here always yielded undefined, so the app
     // silently fell back to localhost, which on an Android emulator means the
     // emulator itself rather than the dev machine.
+    // For production, deploy backend and update SOCKET_URL in .env
     const newSocket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
       reconnection: true,

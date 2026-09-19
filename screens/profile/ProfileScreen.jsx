@@ -33,9 +33,9 @@ import { COLLECTIONS } from '../../config/firestoreSchema'
 import Toast from '../../components/Toast'
 import LanguageSelector from '../../components/LanguageSelector'
 
-const APP_VERSION = '1.12.0'
+const APP_VERSION = '1.0.4'
 
-export const ProfileScreen = () => {
+const ProfileScreen = () => {
   const { currentUser, userProfile, logout, deleteAccount } = useAuth()
   const { colors, themeMode, setThemeMode, isDark } = useTheme()
   const { t, isRTL } = useLanguage()
@@ -255,30 +255,6 @@ export const ProfileScreen = () => {
     }
   }
 
-  const toggleFastingSetting = async (key, currentValue) => {
-    if (!currentUser) return
-    setIsUpdatingSettings(true)
-    try {
-      const userRef = doc(db, COLLECTIONS.profiles, currentUser.uid)
-      if (key.includes('.')) {
-        const [parent, child] = key.split('.')
-        await updateDoc(userRef, {
-          [`${parent}.${child}`]: !currentValue,
-        })
-      } else {
-        await updateDoc(userRef, {
-          [`fastingDefaults.${key}`]: !currentValue,
-        })
-      }
-      showToast('Setting updated', 'success')
-    } catch (err) {
-      console.error('Error updating setting:', err)
-      showToast(t('profile.settingUpdateError'), 'error')
-    } finally {
-      setIsUpdatingSettings(false)
-    }
-  }
-
   const handleSelectLocation = async (location) => {
     if (!currentUser) return
     setIsUpdatingSettings(true)
@@ -493,11 +469,11 @@ export const ProfileScreen = () => {
           </View>
           <View style={styles.headerInfo}>
             <View style={styles.nameRow}>
-              <Text style={styles.headerName}>{displayName || 'Member'}</Text>
+              <Text style={styles.headerName}>{displayName || t('common.member', 'Member')}</Text>
               {isVerified ? (
                 <View style={styles.verifiedBadge}>
                   <Ionicons name="checkmark-circle" size={12} color="#10B981" />
-                  <Text style={styles.verifiedText}>Verified</Text>
+                  <Text style={styles.verifiedText}>{t('profile.verified', 'Verified')}</Text>
                 </View>
               ) : (
                 <TouchableOpacity
@@ -508,7 +484,7 @@ export const ProfileScreen = () => {
                 >
                   <Ionicons name="alert-circle" size={12} color="#F59E0B" />
                   <Text style={[styles.verifiedText, styles.unverifiedText]}>
-                    {isResendingVerification ? 'Sending...' : 'Unverified • Resend'}
+                    {isResendingVerification ? t('profile.resending', 'Sending...') : t('profile.unverified', 'Unverified • Resend')}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -516,7 +492,9 @@ export const ProfileScreen = () => {
             <Text style={styles.headerEmail}>{currentUser?.email}</Text>
             <View style={styles.memberSinceBadge}>
               <Ionicons name="calendar-outline" size={13} color={Colors.secondary} />
-              <Text style={styles.memberSinceText}>Member since {createdDate}</Text>
+              <Text style={styles.memberSinceText}>
+                {t('profile.memberSince', { date: createdDate }, `Member since ${createdDate}`)}
+              </Text>
             </View>
           </View>
         </View>
@@ -544,7 +522,7 @@ export const ProfileScreen = () => {
                 { color: activeTab === 'profile' ? colors.white : isDark ? colors.text : colors.text },
               ]}
             >
-              Profile
+              {t('settings.profile', 'Profile')}
             </Text>
           </TouchableOpacity>
 
@@ -569,7 +547,7 @@ export const ProfileScreen = () => {
                 { color: activeTab === 'security' ? colors.white : isDark ? colors.text : colors.text },
               ]}
             >
-              Security
+              {t('settings.security', 'Security')}
             </Text>
           </TouchableOpacity>
 
@@ -594,7 +572,7 @@ export const ProfileScreen = () => {
                 { color: activeTab === 'preferences' ? colors.white : isDark ? colors.text : colors.text },
               ]}
             >
-              Preferences
+              {t('settings.preferences', 'Preferences')}
             </Text>
           </TouchableOpacity>
 
@@ -619,7 +597,7 @@ export const ProfileScreen = () => {
                 { color: activeTab === 'about' ? colors.white : isDark ? colors.text : colors.text },
               ]}
             >
-              Help
+              {t('settings.help', 'Help')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -709,15 +687,26 @@ export const ProfileScreen = () => {
             </View>
 
             <TouchableOpacity
-              style={styles.logoutBannerBtn}
+              style={[
+                styles.logoutBannerBtn,
+                {
+                  borderColor: isDark ? 'rgba(239, 68, 68, 0.4)' : '#FCA5A5',
+                  backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.05)',
+                },
+              ]}
               onPress={handleLogout}
             >
               <Ionicons
                 name="log-out-outline"
                 size={18}
-                color={Colors.primary}
+                color={isDark ? '#F87171' : '#DC2626'}
               />
-              <Text style={styles.logoutBannerText}>
+              <Text
+                style={[
+                  styles.logoutBannerText,
+                  { color: isDark ? '#F87171' : '#DC2626' },
+                ]}
+              >
                 {t('settings.logout')}
               </Text>
             </TouchableOpacity>
@@ -737,14 +726,14 @@ export const ProfileScreen = () => {
               {/* Alarm PIN Section */}
               <View style={{ marginBottom: 32 }}>
                 <Text style={[styles.label, themedStyles.label, { marginBottom: 8 }]}>
-                  Alarm PIN
+                  {t('profile.alarmPin', 'Alarm PIN')}
                 </Text>
                 <Text style={[styles.dangerSubtext, { color: colors.textSecondary, marginBottom: 16 }]}>
-                  Set a 4-digit PIN to dismiss your Suhoor alarm. This ensures you're truly awake when stopping the alarm.
-                  Your current pin is: {alarmPin.join('')}
-                </Text>
-                <Text style={[styles.label, themedStyles.label, { marginBottom: 2 }]}>
-                  Enter new PIN
+                  {t(
+                    'profile.alarmPinDescription',
+                    { pin: alarmPin.join('') },
+                    `Set a 4-digit PIN to dismiss your Suhoor alarm. This ensures you're truly awake when stopping the alarm. Your current pin is: ${alarmPin.join('')}`
+                  )}
                 </Text>
 
                 <View style={{ flexDirection: 'row', justifyContent: 'center', columnGap: 12, marginBottom: 16 }}>
@@ -765,10 +754,10 @@ export const ProfileScreen = () => {
                         fontSize: 28,
                         fontWeight: '900',
                         borderWidth: 2,
-                        borderColor: digit ? Colors.primary : colors.border,
+                        borderColor: digit ? (isDark ? colors.secondary : Colors.primary) : colors.border,
                         borderRadius: 12,
-                        backgroundColor: digit ? 'rgba(21,12,51,0.04)' : colors.surfaceVariant,
-                        color: Colors.primary,
+                        backgroundColor: digit ? (isDark ? 'rgba(249, 168, 38, 0.12)' : 'rgba(21,12,51,0.04)') : colors.surfaceVariant,
+                        color: isDark ? colors.secondary : Colors.primary,
                       }}
                     />
                   ))}
@@ -796,7 +785,7 @@ export const ProfileScreen = () => {
                         color={Colors.white}
                       />
                       <Text style={styles.primaryButtonText}>
-                        Save Alarm PIN
+                        {t('profile.saveAlarmPin', 'Save Alarm PIN')}
                       </Text>
                     </>
                   )}
@@ -973,10 +962,10 @@ export const ProfileScreen = () => {
               <View style={styles.settingRow}>
                 <View style={styles.settingInfo}>
                   <Text style={[styles.settingLabel, themedStyles.settingLabel]}>
-                    Theme Mode
+                    {t('profile.themeMode', 'Theme Mode')}
                   </Text>
                   <Text style={[styles.settingSub, themedStyles.settingSub]}>
-                    Choose light, dark, or system default
+                    {t('profile.themeModeSub', 'Choose light, dark, or system default')}
                   </Text>
                 </View>
                 <View style={styles.themeSelector}>
@@ -996,7 +985,7 @@ export const ProfileScreen = () => {
                           { color: themeMode === mode ? Colors.white : colors.text },
                         ]}
                       >
-                        {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                        {t(`theme.${mode}`, mode.charAt(0).toUpperCase() + mode.slice(1))}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -1007,7 +996,7 @@ export const ProfileScreen = () => {
 
               <View style={styles.cardHeader}>
                 <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
-                  Language
+                  {t('settings.language', 'Language')}
                 </Text>
               </View>
               <LanguageSelector />
@@ -1016,19 +1005,19 @@ export const ProfileScreen = () => {
 
               <View style={styles.cardHeader}>
                 <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
-                  Location Preferences
+                  {t('profile.locationPreferences', 'Location Preferences')}
                 </Text>
               </View>
 
               <View style={styles.settingRow}>
                 <View style={styles.settingInfo}>
                   <Text style={[styles.settingLabel, themedStyles.settingLabel]}>
-                    Default Location
+                    {t('profile.defaultLocation', 'Default Location')}
                   </Text>
                   <Text style={[styles.settingSub, themedStyles.settingSub]}>
                     {selectedLocation
                       ? selectedLocation.name
-                      : 'Not set (using device GPS)'}
+                      : t('profile.locationNotSet', 'Not set (using device GPS)')}
                   </Text>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -1051,57 +1040,6 @@ export const ProfileScreen = () => {
                 </View>
               </View>
 
-              <View style={styles.sectionDivider} />
-
-              <View style={styles.cardHeader}>
-                <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
-                  Fasting Defaults
-                </Text>
-              </View>
-
-              <View style={styles.settingRow}>
-                <View style={styles.settingInfo}>
-                  <Text style={[styles.settingLabel, themedStyles.settingLabel]}>
-                    Auto-start Fasting
-                  </Text>
-                  <Text style={[styles.settingSub, themedStyles.settingSub]}>
-                    Automatically begin fast tracking at Fajr time
-                  </Text>
-                </View>
-                <Switch
-                  value={userProfile?.fastingDefaults?.autoStart ?? true}
-                  onValueChange={() =>
-                    toggleFastingSetting(
-                      'autoStart',
-                      userProfile?.fastingDefaults?.autoStart ?? true
-                    )
-                  }
-                  disabled={isUpdatingSettings}
-                  trackColor={{ false: colors.border, true: Colors.primary }}
-                />
-              </View>
-
-              <View style={styles.settingRow}>
-                <View style={styles.settingInfo}>
-                  <Text style={[styles.settingLabel, themedStyles.settingLabel]}>
-                    Show Fasting Streak
-                  </Text>
-                  <Text style={[styles.settingSub, themedStyles.settingSub]}>
-                    Display active streak on dashboard
-                  </Text>
-                </View>
-                <Switch
-                  value={userProfile?.preferences?.showStreak ?? true}
-                  onValueChange={() =>
-                    toggleFastingSetting(
-                      'preferences.showStreak',
-                      userProfile?.preferences?.showStreak ?? true
-                    )
-                  }
-                  disabled={isUpdatingSettings}
-                  trackColor={{ false: colors.border, true: Colors.primary }}
-                />
-              </View>
             </View>
           </View>
         )}
@@ -1112,22 +1050,22 @@ export const ProfileScreen = () => {
             <View style={[styles.card, themedStyles.card]}>
               <View style={styles.cardHeader}>
                 <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
-                  About App
+                  {t('profile.aboutApp', 'About App')}
                 </Text>
               </View>
 
               <View style={styles.supportRow}>
                 <Text style={[styles.supportLabel, themedStyles.supportLabel]}>
-                  App Name
+                  {t('profile.appName', 'App Name')}
                 </Text>
                 <Text style={[styles.supportValue, themedStyles.supportValue]}>
-                  Suhoor Group Alarm
+                  {t('profile.appValue', 'Suhoor: Alarm & Group Wake-Ups')}
                 </Text>
               </View>
 
               <View style={styles.supportRow}>
                 <Text style={[styles.supportLabel, themedStyles.supportLabel]}>
-                  Version
+                  {t('profile.version', 'Version')}
                 </Text>
                 <Text style={[styles.supportValue, themedStyles.supportValue]}>
                   {APP_VERSION}
@@ -1138,7 +1076,7 @@ export const ProfileScreen = () => {
 
               <View style={styles.cardHeader}>
                 <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
-                  Support & Resources
+                  {t('profile.supportResources', 'Support & Resources')}
                 </Text>
               </View>
 
@@ -1149,7 +1087,7 @@ export const ProfileScreen = () => {
                 <View style={styles.supportLinkInfo}>
                   <Ionicons name="shield-outline" size={20} color={colors.textSecondary} />
                   <Text style={[styles.supportLabel, themedStyles.supportLabel]}>
-                    Privacy Policy
+                    {t('profile.privacyPolicy', 'Privacy Policy')}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward-outline" size={18} color={colors.textSecondary} />
@@ -1162,7 +1100,7 @@ export const ProfileScreen = () => {
                 <View style={styles.supportLinkInfo}>
                   <Ionicons name="document-text-outline" size={20} color={colors.textSecondary} />
                   <Text style={[styles.supportLabel, themedStyles.supportLabel]}>
-                    Terms of Service
+                    {t('profile.termsOfService', 'Terms of Service')}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward-outline" size={18} color={colors.textSecondary} />
@@ -1175,7 +1113,7 @@ export const ProfileScreen = () => {
                 <View style={styles.supportLinkInfo}>
                   <Ionicons name="mail-outline" size={20} color={colors.textSecondary} />
                   <Text style={[styles.supportLabel, themedStyles.supportLabel]}>
-                    Contact Support
+                    {t('profile.contactSupport', 'Contact Support')}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward-outline" size={18} color={colors.textSecondary} />
@@ -1205,7 +1143,11 @@ export const ProfileScreen = () => {
             </Text>
 
             <Text style={[styles.label, themedStyles.label, { marginTop: 16 }]}>
-              Type your email ({currentUser?.email}) to confirm:
+              {t(
+                'profile.typeEmailToConfirm',
+                { email: currentUser?.email },
+                `Type your email (${currentUser?.email}) to confirm:`
+              )}
             </Text>
             <View style={[styles.inputContainer, themedStyles.inputContainer, { marginTop: 8 }]}>
               <TextInput
@@ -1257,7 +1199,7 @@ export const ProfileScreen = () => {
           <View style={[styles.modalContent, themedStyles.card, { maxHeight: '80%' }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, themedStyles.cardTitle]}>
-                Select Default Location
+                {t('profile.selectDefaultLocation', 'Select Default Location')}
               </Text>
               <TouchableOpacity onPress={() => setShowLocationModal(false)}>
                 <Ionicons name="close-outline" size={24} color={colors.text} />
@@ -1270,7 +1212,7 @@ export const ProfileScreen = () => {
                 style={[styles.input, themedStyles.input]}
                 value={locationSearch}
                 onChangeText={setLocationSearch}
-                placeholder="Search city, region..."
+                placeholder={t('profile.searchCityPlaceholder', 'Search city, region...')}
                 placeholderTextColor={colors.textSecondary}
               />
               {isSearchingLocation && (
@@ -1293,7 +1235,7 @@ export const ProfileScreen = () => {
               ))}
               {!isSearchingLocation && locationSearch.length >= 3 && locationResults.length === 0 && (
                 <Text style={[styles.noResults, themedStyles.noResultsText]}>
-                  No locations found
+                  {t('profile.noLocationsFound', 'No locations found')}
                 </Text>
               )}
             </ScrollView>
@@ -1625,3 +1567,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 })
+
+export default ProfileScreen

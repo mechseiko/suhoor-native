@@ -30,7 +30,7 @@ def enableMinifyInReleaseBuilds = false
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
 android {
-    ndkVersion "25.1.8937393"
+    ndkVersion "26.1.10909125"
     buildToolsVersion "34.0.0"
     compileSdk 36
 
@@ -56,6 +56,11 @@ android {
         versionName "1.0.4"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
+        
+        // Enable 16KB page size alignment for Android 15+ devices
+        ndk {
+            abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
+        }
     }
     signingConfigs {
         debug {
@@ -127,6 +132,9 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+
+    // AndroidX Core for edge-to-edge support
+    implementation("androidx.core:core-ktx:1.12.0")
 
     // Gson for JSON serialization in alarm module
     implementation("com.google.code.gson:gson:2.10.1")

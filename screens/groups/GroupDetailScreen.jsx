@@ -179,6 +179,17 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       return 'awake'
     }
 
+    // UI-level status: the current user is active on this screen and connected,
+    // or member is actively online in the app. They cannot be asleep.
+    const isCurrentUser = member.profiles.id === currentUser?.uid
+    if (isCurrentUser && isNetworkConnected) {
+      return 'awake'
+    }
+
+    if (isOnline(member.profiles.id)) {
+      return 'awake'
+    }
+
     return 'sleeping'
   }
 
@@ -544,6 +555,10 @@ export const GroupDetailScreen = ({ route, navigation }) => {
 
   const handleBuzzMember = async member => {
     if (!currentUser || !member?.profiles) return
+    if (member.profiles.id === currentUser.uid) {
+      triggerToast('You cannot buzz yourself.', 'info')
+      return
+    }
     const targetMemberIntent = memberIntentions[member.profiles.id] !== false
     if (!targetMemberIntent) {
       triggerToast(
@@ -841,14 +856,12 @@ export const GroupDetailScreen = ({ route, navigation }) => {
               {showStatus ? (
                 memberStatus === 'awake' ? (
                   <View style={styles.awakeBadge}>
-                    <Ionicons name="checkmark-circle" size={11} color={Colors.accent} />
                     <Text style={styles.awakeBadgeText}>
                       Awake{wakeUpLog ? ` (${new Date(wakeUpLog.woke_up_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : ''}
                     </Text>
                   </View>
                 ) : memberStatus === 'sleeping' && intendsToFast ? (
                   <View style={styles.sleepingBadge}>
-                    <Ionicons name="moon" size={10} color={Colors.secondary} />
                     <Text style={styles.sleepingBadgeText}>Asleep</Text>
                   </View>
                 ) : memberStatus === 'not_fasting' || !intendsToFast ? (
@@ -867,7 +880,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
             !isSelf &&
             isMemberInWakeUpWindow(item) && (
               <TouchableOpacity
-                style={styles.buzzIconBtn}
+                style={styles.buzzYellowBtn}
                 onPress={() => handleBuzzMember(item)}
                 activeOpacity={0.8}
               >
@@ -876,7 +889,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                   size={15}
                   color={Colors.secondary}
                 />
-                <Text style={styles.buzzBtnText}>Buzz</Text>
+                <Text style={styles.buzzYellowBtnText}>Buzz</Text>
               </TouchableOpacity>
             )}
 
@@ -1076,7 +1089,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
               <Text style={styles.trackerTitle}>Wake Up Tracker</Text>
             </View>
 
-            {hasWokenUp ? (
+            {hasWokenUp || currentUser ? (
               <View style={styles.awakeSuccess}>
                 <Ionicons
                   name="checkmark-circle"
@@ -1172,7 +1185,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
               marginTop: 16,
               paddingHorizontal: 8
             }}>
-              Press the button below to dismiss. Check in on the Groups tab to stop being buzzed.
+              Press the button below to dismiss and check in on the Groups tab to stop being buzzed.
             </Text>
           </View>
 
@@ -1232,7 +1245,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
               style={styles.modalConfirmBtn}
               onPress={() => validateAndWakeUp()}
             >
-              <Text style={styles.modalConfirmText}>Confirm — I'm Awake</Text>
+              <Text style={styles.modalConfirmText}>Confirm, I'm Awake</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1287,7 +1300,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
               {getMemberStatus(selectedMemberForAction) === 'sleeping' &&
                 memberIntentions[selectedMemberForAction?.profiles?.id] !== false &&
                 selectedMemberForAction?.profiles?.id !== currentUser?.uid &&
-                isMemberInWakeUpWindow(selectedMemberForAction) && (
+                isMemberInWakeUpWindow(selectedMemberForAction) && !currentUser && (
                   <TouchableOpacity
                     style={styles.actionModalItem}
                     onPress={() => {
@@ -1714,20 +1727,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     columnGap: 8,
   },
-  buzzIconBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFBEB',
-    borderWidth: 1,
-    borderColor: 'rgba(249, 168, 38, 0.2)',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+  buzzYellowBtn: {
+    backgroundColor: '#F59E0B',
+    paddingVertical: 5,
+    paddingHorizontal: 12,
     borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
     columnGap: 4,
   },
-  buzzBtnText: {
-    fontSize: 10,
-    color: Colors.secondary,
+  buzzYellowBtnText: {
+    fontSize: 12,
+    color: '#1D1145',
     fontWeight: '700',
   },
   findBtn: {

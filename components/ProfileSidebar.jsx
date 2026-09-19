@@ -214,17 +214,27 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
             {/* Logout Row */}
             <View style={[styles.logoutSection, { borderTopColor: colors.border || '#E5E7EB' }]}>
               <TouchableOpacity
-                style={styles.logoutBtn}
+                style={[
+                  styles.logoutBtn,
+                  {
+                    backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.05)',
+                    borderWidth: 1,
+                    borderColor: isDark ? 'rgba(239, 68, 68, 0.35)' : '#FCA5A5',
+                    borderRadius: 10,
+                  },
+                ]}
                 onPress={handleLogout}
               >
-                <Ionicons name="log-out-outline" size={20} color="#EF4444" />
-                <Text style={styles.logoutText}>{t('profile.logout', 'Log Out')}</Text>
+                <Ionicons name="log-out-outline" size={20} color={isDark ? '#F87171' : '#EF4444'} />
+                <Text style={[styles.logoutText, { color: isDark ? '#F87171' : '#EF4444' }]}>
+                  {t('profile.logout', 'Log Out')}
+                </Text>
               </TouchableOpacity>
             </View>
 
             {/* Version */}
             <View style={styles.versionSection}>
-              <Text style={styles.versionText}>v1.0.3</Text>
+              <Text style={styles.versionText}>v1.0.4</Text>
             </View>
           </ScrollView>
         </Animated.View>

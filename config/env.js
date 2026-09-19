@@ -44,5 +44,6 @@ export const fastingTimesUrl = (lat, lng) => {
  *
  * `localhost` from an Android emulator points at the emulator itself, not the
  * host machine — use 10.0.2.2 (emulator) or the host's LAN IP (physical device).
+ * For production, deploy backend and use deployed URL.
  */
 export const SOCKET_URL = EXPO_PUBLIC_SOCKET_URL ?? 'http://10.0.2.2:3001';

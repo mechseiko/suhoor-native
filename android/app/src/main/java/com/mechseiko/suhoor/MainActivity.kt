@@ -2,6 +2,7 @@ package com.mechseiko.suhoor
 
 import android.os.Build
 import android.os.Bundle
+import androidx.core.view.WindowCompat
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
@@ -10,6 +11,8 @@ import com.facebook.react.defaults.DefaultReactActivityDelegate
 
 class MainActivity : ReactActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
+    // Enable edge-to-edge display for Android 15+ compatibility
+    WindowCompat.setDecorFitsSystemWindows(window, false)
     super.onCreate(null)
   }
 

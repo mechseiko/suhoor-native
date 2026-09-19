@@ -24,7 +24,7 @@ import { alpha, radius, spacing } from '../theme';
 
 export const FastingPrompt = () => {
   const { currentUser, userProfile } = useAuth();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { t, locale, formatDate } = useLanguage();
   const { scheduleDailySuhoorAlarm, cancelDailySuhoorAlarm } = useAlarmState();
   const [status, setStatus] = useState('idle');
@@ -206,8 +206,8 @@ export const FastingPrompt = () => {
         <Card
           variant="default"
           style={{
-            backgroundColor: '#FFFFFF',
-            borderColor: '#E5E7EB',
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
             borderWidth: 1,
           }}
         >
@@ -270,7 +270,7 @@ export const FastingPrompt = () => {
               variant="outline"
               style={[
                 styles.flexButton,
-                { borderColor: '#E5E7EB' },
+                { borderColor: colors.border },
               ]}
               textStyle={{ color: colors.textSecondary }}
             />
@@ -282,16 +282,16 @@ export const FastingPrompt = () => {
                 styles.flexButton,
                 { backgroundColor: colors.secondary },
               ]}
-              textStyle={{ color: colors.primary, fontWeight: '700' }}
+              textStyle={{ color: '#1D1145', fontWeight: '700' }}
             />
           </View>
 
           {isSpecial && defaultAnswer && (
             <Text
               variant="caption"
-              style={[styles.footNote, { color: '#F59E0B' }]}
+              style={[styles.footNote, { color: isDark ? '#FBBF24' : '#D97706' }]}
             >
-              This defaults to Yes based on your settings, your alarm will be active during your wake-up window.
+              {t('fasting.defaultYesNote', 'This defaults to Yes based on your settings, your alarm will be active during your wake-up window.')}
             </Text>
           )}
 
@@ -310,7 +310,7 @@ export const FastingPrompt = () => {
       )}
 
       {status === 'confirming_yes' && (
-        <Card style={{ backgroundColor: colors.card, borderColor: colors.border }}>
+        <Card style={{ backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }}>
           <View style={styles.header}>
             <Image
               source={require('../assets/icon-nobg.png')}
@@ -344,7 +344,7 @@ export const FastingPrompt = () => {
       )}
 
       {status === 'confirming_no' && (
-        <Card style={{ backgroundColor: colors.card, borderColor: colors.border }}>
+        <Card style={{ backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }}>
           <View style={styles.header}>
             <Image
               source={require('../assets/icon-nobg.png')}
@@ -378,8 +378,13 @@ export const FastingPrompt = () => {
       )}
 
       {status === 'confirmed_fasting' && (
-        // <Card style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }}>
-        <Card>
+        <Card
+          style={{
+            backgroundColor: colors.surface,
+            borderColor: isDark ? 'rgba(52, 211, 153, 0.3)' : '#BBF7D0',
+            borderWidth: 1,
+          }}
+        >
           <View style={styles.header}>
             <Image
               source={require('../assets/icon-nobg.png')}
@@ -387,9 +392,11 @@ export const FastingPrompt = () => {
               resizeMode="contain"
             />
             <View style={{ flex: 1, gap: 2 }}>
-              <Text variant="h3" style={{ color: '#065F46' }}>Fasting intention set</Text>
-              <Text variant="caption" style={{ color: '#047857' }}>
-                Your alarm is active. Check in during your wake-up window to dismiss it completely.
+              <Text variant="h3" style={{ color: isDark ? '#34D399' : '#065F46' }}>
+                {t('fasting.intentionSet', 'Fasting intention set')}
+              </Text>
+              <Text variant="caption" style={{ color: isDark ? '#A7F3D0' : '#047857' }}>
+                {t('fasting.alarmActiveNotice', 'Your alarm is active. Check in during your wake-up window to dismiss it completely.')}
               </Text>
             </View>
           </View>
@@ -397,7 +404,7 @@ export const FastingPrompt = () => {
       )}
 
       {status === 'confirmed_not_fasting' && (
-        <Card style={{ backgroundColor: colors.surfaceVariant, borderColor: colors.border }}>
+        <Card style={{ backgroundColor: colors.surfaceVariant, borderColor: colors.border, borderWidth: 1 }}>
           <View style={styles.header}>
             <Image
               source={require('../assets/icon-nobg.png')}
@@ -405,9 +412,11 @@ export const FastingPrompt = () => {
               resizeMode="contain"
             />
             <View style={{ flex: 1, gap: 2 }}>
-              <Text variant="h3" tone="secondary">Not fasting</Text>
+              <Text variant="h3" tone="secondary">
+                {t('fasting.notFasting', 'Not fasting')}
+              </Text>
               <Text variant="caption" tone="secondary">
-                Your alarms won't ring and Your group won't be able to buzz you.
+                {t('fasting.notFastingSub', "Your alarms won't ring and Your group won't be able to buzz you.")}
               </Text>
             </View>
           </View>

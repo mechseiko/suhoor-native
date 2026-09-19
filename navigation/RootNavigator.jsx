@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import AuthStack from './AuthStack'
 import TabNavigator from './TabNavigator'
-import LoadingSpinner from '../components/LoadingSpinner'
+import LogoLoader from '../components/LogoLoader'
 
 export const RootNavigator = () => {
   const { currentUser, loading } = useAuth()
@@ -20,20 +20,7 @@ export const RootNavigator = () => {
   }, [])
 
   if (loading || onboardingComplete === null) {
-    return (
-      <View
-        className="flex-1 items-center justify-center"
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: colors.background,
-          ...(Platform.OS === 'web' && { height: '100vh', width: '100vw' }),
-        }}
-      >
-        <LoadingSpinner />
-      </View>
-    )
+    return <LogoLoader />
   }
 
   const navContainerStyle = Platform.OS === 'web' ? {
