@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Text,
   View,
@@ -10,7 +10,9 @@ import {
   Alert,
   PanResponder,
   Dimensions,
+  RefreshControl,
 } from 'react-native';
+
 import { useFastingTimes } from '../../hooks/useFastingTimes';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -203,12 +205,29 @@ export const FastingTimesScreen = () => {
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [toastType, setToastType] = useState('info');
+  const [refreshing, setRefreshing] = useState(false);
+
 
   const triggerToast = (msg, type) => {
     setToastMsg(msg);
     setToastType(type);
     setToastVisible(true);
   };
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      // Clear cached fasting times so useFastingTimes re-fetches
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      await AsyncStorage.removeItem('suhoor_fasting_times');
+      // Also clear saved location so GPS is retried
+      const { clearUserLocation } = require('../../utils/location');
+      await clearUserLocation();
+    } catch {}
+    // The hook re-runs on location change; give it a moment then stop spinner
+    setTimeout(() => setRefreshing(false), 1500);
+  }, []);
+
 
   // Load user's preferred wake-up time
   useEffect(() => {
@@ -387,13 +406,33 @@ export const FastingTimesScreen = () => {
   if (error) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+        <ScrollView
+          contentContainerStyle={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
+          }
+        >
           <Ionicons name="alert-circle" size={48} color={colors.error} />
           <Text style={{ marginTop: 16, fontSize: 17, fontWeight: '700', textAlign: 'center', color: colors.text }}>
             {t('fastingTimes.loadError')}
           </Text>
           <Text style={{ marginTop: 8, fontSize: 13, textAlign: 'center', color: colors.textSecondary }}>{error}</Text>
-        </View>
+          <TouchableOpacity
+            onPress={handleRefresh}
+            style={{
+              marginTop: 20,
+              paddingHorizontal: 24,
+              paddingVertical: 12,
+              borderRadius: 10,
+              backgroundColor: colors.primary,
+            }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Retry</Text>
+          </TouchableOpacity>
+          <Text style={{ marginTop: 12, fontSize: 11, color: colors.textSecondary, textAlign: 'center' }}>
+            Pull down to refresh or tap Retry.
+          </Text>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -428,7 +467,14 @@ export const FastingTimesScreen = () => {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <Toast message={toastMsg} type={toastType} visible={toastVisible} onDismiss={() => setToastVisible(false)} />
       
-      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 24, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={{ padding: 16, paddingTop: 24, paddingBottom: 40 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
+        }
+      >
+
         {/* Location Status */}
         {locationStatus && (
           <View

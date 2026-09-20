@@ -309,11 +309,12 @@ const styles = StyleSheet.create({
   badgesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    columnGap: spacing.md,
-    rowGap: spacing.md,
+    gap: spacing.md,
   },
   badgeCard: {
-    width: '45%',
+    flex: 1,
+    flexBasis: '45%',
+    maxWidth: '50%',
     borderRadius: radius.lg,
     padding: spacing.md,
     position: 'relative',

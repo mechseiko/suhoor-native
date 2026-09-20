@@ -968,7 +968,7 @@ export const OnboardingScreen = ({ onComplete }) => {
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       <View style={{ flex: 1, paddingHorizontal: 24, paddingBottom: 24, paddingTop: 32 }}>
         {/* Top Bar with Flexed Logo + App Name and Skip button */}
-        <View style={{ height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+        <View style={{ height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', columnGap: 12 }}>
             <Image
               source={require('../../assets/icon-nobg.png')}
