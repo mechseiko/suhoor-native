@@ -1,3 +1,5 @@
+import 'react-native-get-random-values'
+
 // Suppress react-native-web deprecation warnings immediately before any modules load
 if (typeof console !== 'undefined') {
   const isIgnored = (...args) => {
@@ -24,7 +26,15 @@ if (typeof console !== 'undefined') {
 }
 
 import './global.css'
-import { registerRootComponent } from 'expo'
+import { AppRegistry, Platform } from 'react-native'
 import App from './App'
 
-registerRootComponent(App)
+AppRegistry.registerComponent('main', () => App)
+
+if (Platform.OS === 'web' && typeof document !== 'undefined') {
+  const rootTag = document.getElementById('root') || document.getElementById('main')
+  if (rootTag) {
+    AppRegistry.runApplication('main', { rootTag })
+  }
+}
+

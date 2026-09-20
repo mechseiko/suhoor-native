@@ -15,7 +15,6 @@ import {
 } from 'react-native'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { Audio } from 'expo-av'
 import { useAlarm } from '../hooks/useAlarm'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
@@ -44,7 +43,7 @@ export const AlarmOverlay = () => {
   const pinRefs = [useRef(), useRef(), useRef(), useRef()]
   const [isProcessing, setIsProcessing] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
-  
+
   const pulseAnim = useRef(new Animated.Value(1)).current
   const ringAnim1 = useRef(new Animated.Value(0.8)).current
   const ringAnim2 = useRef(new Animated.Value(0.6)).current
@@ -237,7 +236,7 @@ export const AlarmOverlay = () => {
       if (!savedPin && userProfile?.pin) {
         savedPin = userProfile.pin
       }
-    } catch {}
+    } catch { }
 
     if (savedPin && entered !== savedPin) {
       setPinError('Incorrect PIN. Try again.')

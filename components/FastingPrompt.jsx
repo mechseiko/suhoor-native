@@ -19,6 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Toast from './Toast';
 import { useAlarmState } from '../context/AlarmContext';
+import { useFastingTimes } from '../hooks/useFastingTimes';
 import { Badge, Button, Card, Text } from './ui';
 import { alpha, radius, spacing } from '../theme';
 
@@ -27,6 +28,7 @@ export const FastingPrompt = () => {
   const { colors, isDark } = useTheme();
   const { t, locale, formatDate } = useLanguage();
   const { scheduleDailySuhoorAlarm, cancelDailySuhoorAlarm } = useAlarmState();
+  const { todayData } = useFastingTimes();
   const [status, setStatus] = useState('idle');
   const [loading, setLoading] = useState(false);
   const [targetDate, setTargetDate] = useState('');
@@ -179,6 +181,8 @@ export const FastingPrompt = () => {
     }
   };
 
+  // Hide entirely during the wake-up window — not the time for tomorrow's fasting prompt
+  if (todayData?.isWakeUpWindow) return null;
   if (status === 'hidden' || !targetDate) return null;
 
   const dateObj = new Date(targetDate + 'T00:00:00');

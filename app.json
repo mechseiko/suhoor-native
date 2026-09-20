@@ -13,7 +13,7 @@
       "package": "com.mechseiko.suhoor",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon-nobg.png",
-        "backgroundColor": "#FFFFFF"
+        "backgroundColor": "#F29F1D"
       }
     },
     "web": {

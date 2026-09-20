@@ -33,7 +33,7 @@ import { COLLECTIONS } from '../../config/firestoreSchema'
 import Toast from '../../components/Toast'
 import LanguageSelector from '../../components/LanguageSelector'
 
-const APP_VERSION = '1.0.4'
+const APP_VERSION = '1.0.5'
 
 const ProfileScreen = () => {
   const { currentUser, userProfile, logout, deleteAccount } = useAuth()

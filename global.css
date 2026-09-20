@@ -5,7 +5,8 @@
 @tailwind utilities;
 
 /* Basic web layout to ensure content is visible */
-html, body {
+html,
+body {
   height: 100%;
   margin: 0;
   padding: 0;
@@ -23,54 +24,120 @@ html, body {
   flex-direction: column;
 }
 
-/* These eight rules are **web only** — NativeWind does not compile @font-face
-   for Android or iOS. `theme/fonts.js` + the `useFonts` call in `App.jsx` are
-   what register the same eight faces natively. Keep both lists in step. */
+/* These @font-face rules are web-only — NativeWind does not compile @font-face
+   for Android or iOS. Android receives the same files in
+   android/app/src/main/assets/fonts. Keep both lists in step.
 
+   On web: we register each variant under BOTH its exact name (for RN-style
+   fontFamily lookups via react-native-web) AND under the shared family name
+   (for CSS weight resolution). This covers all usage patterns. */
+
+/* -- Quicksand (exact-name aliases, for react-native-web fontFamily lookup) -- */
 @font-face {
-  font-family: 'Quicksand-Regular';
-  src: url('./assets/fonts/Quicksand-Regular.ttf');
+  font-family: "Quicksand-Regular";
+  src: url("./assets/fonts/Quicksand-Regular.ttf") format("truetype");
   font-weight: 400;
+  font-style: normal;
 }
-
 @font-face {
-  font-family: 'Quicksand-Medium';
-  src: url('./assets/fonts/Quicksand-Medium.ttf');
+  font-family: "Quicksand-Medium";
+  src: url("./assets/fonts/Quicksand-Medium.ttf") format("truetype");
   font-weight: 500;
+  font-style: normal;
 }
-
 @font-face {
-  font-family: 'Quicksand-SemiBold';
-  src: url('./assets/fonts/Quicksand-SemiBold.ttf');
+  font-family: "Quicksand-SemiBold";
+  src: url("./assets/fonts/Quicksand-SemiBold.ttf") format("truetype");
   font-weight: 600;
+  font-style: normal;
 }
-
 @font-face {
-  font-family: 'Quicksand-Bold';
-  src: url('./assets/fonts/Quicksand-Bold.ttf');
+  font-family: "Quicksand-Bold";
+  src: url("./assets/fonts/Quicksand-Bold.ttf") format("truetype");
   font-weight: 700;
+  font-style: normal;
 }
 
+/* -- Quicksand (unified family, for browser weight resolution) -- */
 @font-face {
-  font-family: 'SpaceGrotesk-Regular';
-  src: url('./assets/fonts/SpaceGrotesk-Regular.ttf');
+  font-family: "Quicksand";
+  src: url("./assets/fonts/Quicksand-Regular.ttf") format("truetype");
   font-weight: 400;
+  font-style: normal;
 }
-
 @font-face {
-  font-family: 'SpaceGrotesk-Medium';
-  src: url('./assets/fonts/SpaceGrotesk-Medium.ttf');
+  font-family: "Quicksand";
+  src: url("./assets/fonts/Quicksand-Medium.ttf") format("truetype");
   font-weight: 500;
+  font-style: normal;
 }
-
 @font-face {
-  font-family: 'SpaceGrotesk-SemiBold';
-  src: url('./assets/fonts/SpaceGrotesk-SemiBold.ttf');
+  font-family: "Quicksand";
+  src: url("./assets/fonts/Quicksand-SemiBold.ttf") format("truetype");
   font-weight: 600;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Quicksand";
+  src: url("./assets/fonts/Quicksand-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
 }
 
+/* -- SpaceGrotesk (exact-name aliases) -- */
 @font-face {
-  font-family: 'SpaceGrotesk-Bold';
-  src: url('./assets/fonts/SpaceGrotesk-Bold.ttf');
+  font-family: "SpaceGrotesk-Regular";
+  src: url("./assets/fonts/SpaceGrotesk-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: "SpaceGrotesk-Medium";
+  src: url("./assets/fonts/SpaceGrotesk-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+}
+@font-face {
+  font-family: "SpaceGrotesk-SemiBold";
+  src: url("./assets/fonts/SpaceGrotesk-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+}
+@font-face {
+  font-family: "SpaceGrotesk-Bold";
+  src: url("./assets/fonts/SpaceGrotesk-Bold.ttf") format("truetype");
   font-weight: 700;
+  font-style: normal;
+}
+
+/* -- SpaceGrotesk (unified family) -- */
+@font-face {
+  font-family: "SpaceGrotesk";
+  src: url("./assets/fonts/SpaceGrotesk-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: "SpaceGrotesk";
+  src: url("./assets/fonts/SpaceGrotesk-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+}
+@font-face {
+  font-family: "SpaceGrotesk";
+  src: url("./assets/fonts/SpaceGrotesk-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+}
+@font-face {
+  font-family: "SpaceGrotesk";
+  src: url("./assets/fonts/SpaceGrotesk-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+}
+
+/* Default body font for the web shell */
+body {
+  font-family: "Quicksand", sans-serif;
+  font-weight: 400;
 }

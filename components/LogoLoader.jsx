@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text, ActivityIndicator } from 'react-native'
+import { View, Text, ActivityIndicator, Image } from 'react-native'
 import Animated, { FadeIn } from 'react-native-reanimated'
 
 export const LogoLoader = () => {
@@ -24,6 +24,11 @@ export const LogoLoader = () => {
         entering={FadeIn.duration(800)}
         style={{ alignItems: 'center', justifyContent: 'center' }}
       >
+        <Image
+          source={require('../assets/icon-nobg.png')}
+          style={{ width: 100, height: 100, marginBottom: 24 }}
+          resizeMode="contain"
+        />
         <Animated.View
           entering={FadeIn.duration(1200).delay(200)}
           style={{ alignItems: 'center', justifyContent: 'center' }}
