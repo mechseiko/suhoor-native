@@ -4,8 +4,8 @@ buildscript {
   ext {
     buildToolsVersion = "34.0.0"
     minSdkVersion = 23
-    compileSdkVersion = 35
-    targetSdkVersion = 35
+    compileSdkVersion = 36
+    targetSdkVersion = 36
     ndkVersion = "25.1.8937393"
     kotlinVersion = "1.9.0"
   }
@@ -15,7 +15,7 @@ buildscript {
     gradlePluginPortal()
     maven { url "https://maven-central.storage-download.googleapis.com/maven2/" }
     maven { url "https://jitpack.io" }
-    
+
     // React Native Maven repository
     maven {
         url("$rootDir/../node_modules/react-native/android")
@@ -40,7 +40,7 @@ allprojects {
     gradlePluginPortal()
     maven { url "https://maven-central.storage-download.googleapis.com/maven2/" }
     maven { url "https://jitpack.io" }
-    
+
     // Ensure Gradle looks inside node_modules for native dependencies
     maven {
         url("$rootDir/../node_modules/react-native/android")

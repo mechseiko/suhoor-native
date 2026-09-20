@@ -32,7 +32,7 @@ def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 android {
     ndkVersion "26.1.10909125"
     buildToolsVersion "34.0.0"
-    compileSdk 35
+    compileSdk 36
 
     buildFeatures {
         buildConfig true
@@ -51,12 +51,12 @@ android {
     defaultConfig {
         applicationId 'com.mechseiko.suhoor'
         minSdkVersion 23
-        targetSdkVersion 35
-        versionCode 8
-        versionName "1.0.6"
+        targetSdkVersion 36
+        versionCode 9
+        versionName "1.0.7"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
-        
+
         // Enable 16KB page size alignment for Android 15+ devices
         ndk {
             abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
