@@ -51,3 +51,5 @@ android/.gradle/
 suhoor-backend
 suhoor-backend/
 suhoor-backend/*
+
+.metro-cache/
