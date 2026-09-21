@@ -1,13 +1,13 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from "react";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
   deleteUser,
-} from 'firebase/auth';
-import { auth, db } from '../config/firebase';
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+} from "firebase/auth";
+import { auth, db } from "../config/firebase";
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 
 const AuthContext = createContext({});
 
@@ -50,7 +50,7 @@ export const AuthProvider = ({ children }) => {
       if (user) {
         // Subscribe to profile updates
         unsubscribeProfile = onSnapshot(
-          doc(db, 'profiles', user.uid),
+          doc(db, "profiles", user.uid),
           (docSnapshot) => {
             if (docSnapshot.exists()) {
               const profileData = docSnapshot.data();
@@ -59,14 +59,14 @@ export const AuthProvider = ({ children }) => {
               // Sync verification status if needed
               if (user.emailVerified && !profileData.isVerified) {
                 updateDoc(docSnapshot.ref, { isVerified: true }).catch((err) =>
-                  console.error('Error syncing verification status:', err)
+                  console.error("Error syncing verification status:", err)
                 );
               }
             }
             setProfileLoading(false);
           },
           (error) => {
-            console.error('Profile listen error:', error);
+            console.error("Profile listen error:", error);
             setProfileLoading(false);
           }
         );

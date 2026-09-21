@@ -7,9 +7,9 @@
  * collection (gamification_stats/{uid}).
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { db } from '../config/firebase';
+import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "../context/AuthContext";
+import { db } from "../config/firebase";
 import {
   collection,
   query,
@@ -18,7 +18,7 @@ import {
   doc,
   setDoc,
   onSnapshot,
-} from 'firebase/firestore';
+} from "firebase/firestore";
 import {
   COLLECTIONS,
   BADGES,
@@ -26,7 +26,7 @@ import {
   getBarakahLevel,
   gamificationStatsId,
   gamificationDoc,
-} from '../config/firestoreSchema';
+} from "../config/firestoreSchema";
 
 const EMPTY_STATS = {
   points: 0,
@@ -42,6 +42,7 @@ export function useGamification() {
   const [stats, setStats] = useState(EMPTY_STATS);
   const [loading, setLoading] = useState(true);
   const [wakeDates, setWakeDates] = useState([]);
+  const [celebration, setCelebration] = useState(null);
 
   // Live-sync gamification stats from Firestore
   useEffect(() => {
@@ -76,7 +77,7 @@ export function useGamification() {
         setLoading(false);
       },
       (err) => {
-        console.warn('Gamification stats offline fallback:', err);
+        console.warn("Gamification stats offline fallback:", err);
         setLoading(false);
       }
     );
@@ -97,14 +98,16 @@ export function useGamification() {
       try {
         const logsQuery = query(
           collection(db, COLLECTIONS.wakeUpLogs),
-          where('user_id', '==', currentUser.uid)
+          where("user_id", "==", currentUser.uid)
         );
         const snap = await getDocs(logsQuery);
         if (cancelled) return;
-        const dates = snap.docs.map(d => d.data().date).filter(Boolean);
+        const dates = [
+          ...new Set(snap.docs.map((d) => d.data().date).filter(Boolean)),
+        ];
         setWakeDates(dates);
       } catch (err) {
-        console.warn('Could not fetch wake dates:', err);
+        console.warn("Could not fetch wake dates:", err);
       }
     };
 
@@ -133,7 +136,7 @@ export function useGamification() {
         let sunnahFasts = stats.sunnahFasts;
         const badgeSet = new Set(stats.badges);
 
-        if (type === 'wake_up') {
+        if (type === "wake_up") {
           successfulWakeups += 1;
           totalFastingDays = wakeDates.length + 1;
           points += 20;
@@ -148,21 +151,21 @@ export function useGamification() {
             badgeSet.add(BADGES.EARLY_BIRD.id);
             points += BADGES.EARLY_BIRD.points;
           }
-        } else if (type === 'buzz_member') {
+        } else if (type === "buzz_member") {
           membersBuzzed += 1;
           points += 15;
           if (membersBuzzed >= 5) {
             badgeSet.add(BADGES.GROUP_GUARDIAN.id);
             points += BADGES.GROUP_GUARDIAN.points;
           }
-        } else if (type === 'sunnah_fast') {
+        } else if (type === "sunnah_fast") {
           sunnahFasts += 1;
           points += 25;
           if (sunnahFasts >= 8) {
             badgeSet.add(BADGES.SUNNAH_DEVOTEE.id);
             points += BADGES.SUNNAH_DEVOTEE.points;
           }
-        } else if (type === 'read_resource') {
+        } else if (type === "read_resource") {
           points += 10;
           badgeSet.add(BADGES.KNOWLEDGE_SEEKER.id);
         }
@@ -178,8 +181,18 @@ export function useGamification() {
         });
 
         await setDoc(docRef, updated, { merge: true });
+
+        const previousLevel = getBarakahLevel(stats.points);
+        const updatedLevel = getBarakahLevel(points);
+        if (updatedLevel.level > previousLevel.level) {
+          setCelebration({
+            level: updatedLevel.level,
+            name: updatedLevel.name,
+            points,
+          });
+        }
       } catch (err) {
-        console.error('Error recording gamification activity:', err);
+        console.error("Error recording gamification activity:", err);
       }
     },
     [currentUser, stats, wakeDates]
@@ -187,7 +200,9 @@ export function useGamification() {
 
   const currentLevel = getBarakahLevel(stats.points);
   const statsWithTotalDays = { ...stats, totalFastingDays: wakeDates.length };
-  const nextTier = BARAKAH_TIERS.find(t => t.level === currentLevel.level + 1);
+  const nextTier = BARAKAH_TIERS.find(
+    (t) => t.level === currentLevel.level + 1
+  );
   const progressPercent = nextTier
     ? Math.min(
         100,
@@ -209,6 +224,8 @@ export function useGamification() {
     nextTier,
     progressPercent,
     recordActivity,
+    celebration,
+    dismissCelebration: () => setCelebration(null),
     allBadges: Object.values(BADGES),
     // Legacy-compat exports (for any screens still using old API)
     badges: stats.badges,
