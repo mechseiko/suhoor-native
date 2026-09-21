@@ -444,7 +444,20 @@ export const GroupsScreen = ({ navigation }) => {
       const groupData = groupDoc.data()
       const groupName = groupData.name
 
-      // 2. Check if user was previously removed or left (permanent exclusion)
+      // 2. Check if group key has expired (7 days from creation)
+      if (groupData.key_generated_at) {
+        const keyGeneratedAt = groupData.key_generated_at.toMillis ? groupData.key_generated_at.toMillis() : groupData.key_generated_at
+        const sevenDaysMs = 7 * 24 * 60 * 60 * 1000
+        const now = Date.now()
+        
+        if (now - keyGeneratedAt > sevenDaysMs) {
+          triggerToast('This group invite link has expired (7-day limit). Please request a new invite.', 'error')
+          setModalLoading(false)
+          return
+        }
+      }
+
+      // 3. Check if user was previously removed or left (permanent exclusion)
       const exclusionRef = doc(
         db,
         'group_exclusions',
@@ -462,7 +475,7 @@ export const GroupsScreen = ({ navigation }) => {
         return
       }
 
-      // 3. Check if already a member
+      // 4. Check if already a member
       const membersRef = collection(db, 'group_members')
       const memberQ = query(
         membersRef,
@@ -480,7 +493,7 @@ export const GroupsScreen = ({ navigation }) => {
         return
       }
 
-      // 3. Join the group
+      // 5. Join the group
       const newMemberRef = doc(collection(db, 'group_members'))
       await setDoc(newMemberRef, {
         group_id: groupId,

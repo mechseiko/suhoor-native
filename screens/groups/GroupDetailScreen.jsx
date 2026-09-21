@@ -515,6 +515,23 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     triggerToast("Group invite link copied!", "success");
   };
 
+  const handleRegenerateInviteLink = async () => {
+    if (!group || !isCurrentUserAdmin) return;
+    try {
+      const newKey = Math.random().toString(36).substring(2, 10).toUpperCase();
+      const groupRef = doc(db, "groups", groupId);
+      await updateDoc(groupRef, {
+        group_key: newKey,
+        key_generated_at: serverTimestamp(),
+      });
+      setGroup((prev) => ({ ...prev, group_key: newKey }));
+      triggerToast("Invite link regenerated! New key is valid for 7 days.", "success");
+    } catch (err) {
+      console.error("Error regenerating invite link:", err);
+      triggerToast("Failed to regenerate invite link.", "error");
+    }
+  };
+
   const handleLeaveGroup = () => {
     if (!currentUser) return;
     if (isCurrentUserAdmin) {
@@ -922,7 +939,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                   </View>
                 ) : memberStatus === "sleeping" && intendsToFast ? (
                   <View style={[styles.sleepingBadge, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}>
-                    <Text style={[styles.sleepingBadgeText, { color: '#3B82F6' }]}>Asleep</Text>
+                    <Text style={[styles.sleepingBadgeText, { color: isDark ? '#60A5FA' : '#3B82F6' }]}>Asleep</Text>
                   </View>
                 ) : memberStatus === "not_fasting" || !intendsToFast ? (
                   <View style={[styles.notFastingBadge, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)' }]}>
@@ -1072,6 +1089,19 @@ export const GroupDetailScreen = ({ route, navigation }) => {
           {isCurrentUserAdmin && (
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              onPress={handleRegenerateInviteLink}
+            >
+              <Ionicons
+                name="refresh-outline"
+                size={16}
+                color={colors.primary}
+              />
+              <Text style={[styles.shareBtnText, { color: colors.primary }]}>Regenerate Link</Text>
+            </TouchableOpacity>
+          )}
+          {isCurrentUserAdmin && (
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
               onPress={handleToggleLeaderboard}
             >
               <Ionicons
@@ -1171,7 +1201,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
               </View>
             ) : wantsToFast ? (
               <View style={[styles.sleepingBadge, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}>
-                <Text style={[styles.sleepingBadgeText, { color: '#3B82F6' }]}>Asleep</Text>
+                <Text style={[styles.sleepingBadgeText, { color: isDark ? '#60A5FA' : '#3B82F6' }]}>Asleep</Text>
               </View>
             ) : null}
           </View>
