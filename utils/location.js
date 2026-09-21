@@ -9,7 +9,9 @@ const USER_LOCATION_KEY = "suhoor_user_location";
 let Geolocation;
 try {
   Geolocation = require("@react-native-community/geolocation").default;
-} catch {
+  console.log("Using @react-native-community/geolocation");
+} catch (e) {
+  console.log("Failed to load @react-native-community/geolocation:", e);
   Geolocation = typeof navigator !== "undefined" ? navigator.geolocation : null;
 }
 
@@ -20,32 +22,60 @@ try {
  */
 const getDeviceCoordinates = async () => {
   if (Platform.OS === "android") {
-    const result = await PermissionsAndroid.requestMultiple([
-      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-      PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
-    ]);
-    if (
-      result[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] !==
-      PermissionsAndroid.RESULTS.GRANTED
-    ) {
+    try {
+      const result = await PermissionsAndroid.requestMultiple([
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+      ]);
+      console.log("Location permission request result:", result);
+      
+      const fineGranted = result[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED;
+      
+      if (!fineGranted) {
+        console.log("Fine location permission not granted:", result);
+        return null;
+      }
+    } catch (error) {
+      console.log("Error requesting location permission:", error);
       return null;
     }
   }
 
   return new Promise((resolve) => {
     if (!Geolocation) {
+      console.log("Geolocation not available");
       resolve(null);
       return;
     }
+    
+    console.log("Attempting to get current position with high accuracy...");
+    // First try with high accuracy
     Geolocation.getCurrentPosition(
       (position) => {
+        console.log("High accuracy position obtained successfully:", position);
         resolve({
           lat: position.coords.latitude,
           lng: position.coords.longitude,
         });
       },
-      () => resolve(null),
-      { timeout: 12000, maximumAge: 60000, enableHighAccuracy: true }
+      (error) => {
+        console.log("High accuracy geolocation error, trying low accuracy:", error);
+        // Fallback to low accuracy
+        Geolocation.getCurrentPosition(
+          (position) => {
+            console.log("Low accuracy position obtained successfully:", position);
+            resolve({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            });
+          },
+          (error2) => {
+            console.log("Low accuracy geolocation also failed:", error2);
+            resolve(null);
+          },
+          { timeout: 30000, maximumAge: 300000, enableHighAccuracy: false }
+        );
+      },
+      { timeout: 15000, maximumAge: 300000, enableHighAccuracy: true }
     );
   });
 };

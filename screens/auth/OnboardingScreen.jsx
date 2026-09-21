@@ -442,25 +442,30 @@ const LocationPermissionStep = ({ onStatusChange }) => {
         const fine = await PermissionsAndroid.check(
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
         );
-        const coarse = await PermissionsAndroid.check(
-          PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION
-        );
+        
+        console.log("Location permission check - fine:", fine);
+        
         if (!fine) {
           setDetected(false);
           onStatusChange?.(false);
           return;
         }
 
+        // Try to get actual location - but don't block if it fails
+        console.log("Attempting to get location...");
         Geolocation.getCurrentPosition(
-          () => {
+          (position) => {
+            console.log("Location detected successfully:", position);
             setDetected(true);
             onStatusChange?.(true);
           },
-          () => {
+          (error) => {
+            console.warn("Location detection failed, but permission granted:", error);
+            // Even if GPS fails, if permission is granted, allow proceeding
             setDetected(false);
-            onStatusChange?.(false);
+            onStatusChange?.(true);
           },
-          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+          { enableHighAccuracy: false, timeout: 30000, maximumAge: 300000 }
         );
       }
     } catch (e) {
@@ -483,25 +488,26 @@ const LocationPermissionStep = ({ onStatusChange }) => {
       if (Platform.OS === "android") {
         const res = await PermissionsAndroid.requestMultiple([
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
         ]);
         const fine =
           res[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] ===
           PermissionsAndroid.RESULTS.GRANTED;
-        const coarse =
-          res[PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION] ===
-          PermissionsAndroid.RESULTS.GRANTED;
-        if (fine && coarse) {
+        
+        console.log("Permission request result - fine:", fine);
+        
+        if (fine) {
           Geolocation.getCurrentPosition(
-            () => {
+            (position) => {
+              console.log("Location detected successfully:", position);
               setDetected(true);
               onStatusChange?.(true);
             },
-            () => {
+            (error) => {
+              console.warn("Location detection failed, but permission granted:", error);
               setDetected(false);
-              onStatusChange?.(false);
+              onStatusChange?.(true); // Allow proceeding with permission granted
             },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            { enableHighAccuracy: false, timeout: 30000, maximumAge: 300000 }
           );
           return;
         }
@@ -634,6 +640,8 @@ const LocationPermissionStep = ({ onStatusChange }) => {
           GRANT LOCATION PERMISSION
         </Text>
       </TouchableOpacity>
+      
+
     </View>
   );
 };
@@ -654,10 +662,10 @@ const BatteryOptimizationStep = ({ onStatusChange }) => {
         await NativeModules.AlarmBridge?.isBatteryOptimizationDisabled();
       const isDisabled = value === true;
       setDisabled(isDisabled);
-      onStatusChange?.(isDisabled);
+      onStatusChange?.(true);
     } catch (error) {
       setDisabled(false);
-      onStatusChange?.(false);
+      onStatusChange?.(true);
     }
   };
 
@@ -812,9 +820,11 @@ const BatteryOptimizationStep = ({ onStatusChange }) => {
             fontFamily: "SpaceGrotesk-Bold",
           }}
         >
-          DISABLE BATTERY OPTIMIZATION
+          {disabled ? "BATTERY OPTIMIZATION DISABLED" : "DISABLE BATTERY OPTIMIZATION"}
         </Text>
       </TouchableOpacity>
+      
+
     </View>
   );
 };
@@ -1196,18 +1206,7 @@ export const OnboardingScreen = ({ onComplete }) => {
       );
       return;
     }
-    if (current.isLocation && !requirements.location) {
-      setRequirementError(
-        "Please grant precise location and enable device location before continuing."
-      );
-      return;
-    }
-    if (current.isBattery && !requirements.battery) {
-      setRequirementError(
-        "Please disable battery optimization before continuing."
-      );
-      return;
-    }
+    // Location and battery optimization are now optional - remove mandatory checks
     setRequirementError("");
 
     // Validate PIN before advancing past the PIN step
