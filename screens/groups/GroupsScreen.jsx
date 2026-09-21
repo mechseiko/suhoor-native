@@ -444,26 +444,6 @@ export const GroupsScreen = ({ navigation }) => {
       const groupData = groupDoc.data()
       const groupName = groupData.name
 
-      // Check 7-day invite key expiry
-      const keyGenTime = groupData.key_generated_at?.toDate
-        ? groupData.key_generated_at.toDate()
-        : groupData.created_at?.toDate
-        ? groupData.created_at.toDate()
-        : null
-
-      if (keyGenTime) {
-        const diffDays =
-          (Date.now() - keyGenTime.getTime()) / (1000 * 60 * 60 * 24)
-        if (diffDays > 7) {
-          triggerToast(
-            'This invite link has expired. Please ask the group admin for a fresh link.',
-            'error'
-          )
-          setModalLoading(false)
-          return
-        }
-      }
-
       // 2. Check if user was previously removed or left (permanent exclusion)
       const exclusionRef = doc(
         db,

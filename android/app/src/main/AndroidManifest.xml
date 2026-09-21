@@ -2,6 +2,9 @@
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
   <uses-permission android:name="android.permission.INTERNET"/>
+  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+  <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
   <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
@@ -27,7 +30,7 @@
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
     </activity>
-    
+
     <!-- Alarm Activity -->
     <activity android:name=".alarm.AlarmActivity" android:exported="true" android:showOnLockScreen="true" android:turnScreenOn="true">
       <intent-filter>
@@ -35,14 +38,14 @@
         <category android:name="android.intent.category.DEFAULT"/>
       </intent-filter>
     </activity>
-    
+
     <!-- Alarm Receiver -->
     <receiver android:name=".alarm.AlarmReceiver" android:exported="true">
       <intent-filter>
         <action android:name="com.mechseiko.suhoor.ALARM_TRIGGER"/>
       </intent-filter>
     </receiver>
-    
+
     <!-- Boot Receiver -->
     <receiver android:name=".alarm.BootReceiver" android:enabled="true" android:exported="true">
       <intent-filter>

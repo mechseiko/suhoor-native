@@ -1,6 +1,10 @@
 package com.mechseiko.suhoor.alarm
 
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.PowerManager
+import android.provider.Settings
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.facebook.react.uimanager.ViewManager
@@ -17,6 +21,36 @@ class AlarmBridgeModule(reactContext: ReactApplicationContext) : ReactContextBas
 
     override fun getName(): String {
         return "AlarmBridge"
+    }
+
+    @ReactMethod
+    fun isBatteryOptimizationDisabled(promise: Promise) {
+        try {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+                promise.resolve(true)
+                return
+            }
+            val powerManager = reactApplicationContext.getSystemService(PowerManager::class.java)
+            promise.resolve(powerManager?.isIgnoringBatteryOptimizations(reactApplicationContext.packageName) == true)
+        } catch (e: Exception) {
+            promise.reject("BATTERY_STATUS_ERROR", e.message, e)
+        }
+    }
+
+    @ReactMethod
+    fun openBatteryOptimizationSettings(promise: Promise) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val intent = Intent(
+                    Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                    Uri.parse("package:${reactApplicationContext.packageName}")
+                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                reactApplicationContext.startActivity(intent)
+            }
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("BATTERY_SETTINGS_ERROR", e.message, e)
+        }
     }
 
     /**

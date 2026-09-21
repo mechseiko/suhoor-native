@@ -1,123 +1,131 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { RefreshControl, StyleSheet, TouchableOpacity, View } from 'react-native'
-import Ionicons from 'react-native-vector-icons/Ionicons'
-import { collection, getDocs, query, where } from 'firebase/firestore'
-import { db } from '../../config/firebase'
-import { useAuth } from '../../context/AuthContext'
-import { useTheme } from '../../context/ThemeContext'
-import { useLanguage } from '../../context/LanguageContext'
-import { Badge, Card, Screen, Text } from '../../components/ui'
-import { alpha, radius, spacing } from '../../theme'
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  RefreshControl,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import Ionicons from "react-native-vector-icons/Ionicons";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../../config/firebase";
+import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
+import { useLanguage } from "../../context/LanguageContext";
+import { Badge, Card, Screen, Text } from "../../components/ui";
+import { alpha, radius, spacing } from "../../theme";
 
 /**
  * The mobile Leaderboard — shows groups ranked by SuhoorPoints.
  *
- * SuhoorPoints = total fasting days of all group members combined.
- * Groups are sorted by SuhoorPoints in descending order.
+ * SuhoorPoints = actual fasting check-ins (wake_up_logs) of all group
+ * members combined. Intention prompts are deliberately excluded.
  */
 
 export const LeaderboardScreen = () => {
-  const { currentUser } = useAuth()
-  const { colors } = useTheme()
-  const { t } = useLanguage()
+  const { currentUser } = useAuth();
+  const { colors } = useTheme();
+  const { t } = useLanguage();
 
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [groups, setGroups] = useState([])
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [groups, setGroups] = useState([]);
 
   const fetchLeaderboard = useCallback(async () => {
-    if (!currentUser) return
+    if (!currentUser) return;
 
     try {
       // Fetch all groups
-      const groupsSnap = await getDocs(collection(db, 'groups'))
-      
-      // Fetch all group members
-      const membersSnap = await getDocs(collection(db, 'group_members'))
-      
-      // Fetch all completed check-ins (wantsToFast === true) — source of truth
-      const checkInsSnap = await getDocs(
-        query(collection(db, 'daily_fasting_status'), where('wantsToFast', '==', true))
-      )
+      const groupsSnap = await getDocs(collection(db, "groups"));
 
-      // Build a map of user_id -> count of completed fasts
-      const completedFastsMap = {}
-      checkInsSnap.docs.forEach(doc => {
-        const uid = doc.data().userId
-        if (uid) {
-          completedFastsMap[uid] = (completedFastsMap[uid] || 0) + 1
+      // Fetch all group members
+      const membersSnap = await getDocs(collection(db, "group_members"));
+
+      // Only actual wake-up check-ins count as fasting days. The
+      // daily_fasting_status collection contains intentions/prompts and must
+      // not contribute to SuhoorPoints.
+      const wakeUpLogsSnap = await getDocs(collection(db, "wake_up_logs"));
+
+      const completedFastsMap = {};
+      const countedCheckIns = new Set();
+      wakeUpLogsSnap.docs.forEach((logDoc) => {
+        const data = logDoc.data();
+        const uid = data.user_id;
+        const checkInKey = `${uid}:${data.date || logDoc.id}`;
+        if (uid && !countedCheckIns.has(checkInKey)) {
+          countedCheckIns.add(checkInKey);
+          completedFastsMap[uid] = (completedFastsMap[uid] || 0) + 1;
         }
-      })
+      });
 
       // Build a map of group_id -> member_ids
-      const groupMembersMap = {}
-      membersSnap.docs.forEach(doc => {
-        const data = doc.data()
-        const groupId = data.group_id
-        const userId = data.user_id
+      const groupMembersMap = {};
+      membersSnap.docs.forEach((doc) => {
+        const data = doc.data();
+        const groupId = data.group_id;
+        const userId = data.user_id;
         if (!groupMembersMap[groupId]) {
-          groupMembersMap[groupId] = []
+          groupMembersMap[groupId] = [];
         }
-        groupMembersMap[groupId].push(userId)
-      })
+        groupMembersMap[groupId].push(userId);
+      });
 
       // Calculate SuhoorPoints for each group: sum of completed fasts by all members
       // Only include groups where the admin set show_on_leaderboard === true
       const compiled = groupsSnap.docs
-        .map(groupDoc => {
-          const groupData = groupDoc.data()
-          const groupId = groupDoc.id
-          const memberIds = groupMembersMap[groupId] || []
-          
-          let suhoorPoints = 0
-          memberIds.forEach(userId => {
-            suhoorPoints += completedFastsMap[userId] || 0
-          })
+        .map((groupDoc) => {
+          const groupData = groupDoc.data();
+          const groupId = groupDoc.id;
+          const memberIds = groupMembersMap[groupId] || [];
+
+          let suhoorPoints = 0;
+          memberIds.forEach((userId) => {
+            suhoorPoints += completedFastsMap[userId] || 0;
+          });
 
           return {
             id: groupId,
-            name: groupData.name || 'Unnamed Group',
-            group_key: groupData.group_key || '',
+            name: groupData.name || "Unnamed Group",
+            group_key: groupData.group_key || "",
             memberCount: memberIds.length,
             suhoorPoints,
             show_on_leaderboard: groupData.show_on_leaderboard || false,
             isCurrentUserGroup: memberIds.includes(currentUser?.uid),
-          }
+          };
         })
-        .filter(group => group.show_on_leaderboard === true)
+        .filter((group) => group.show_on_leaderboard === true);
 
       // Sort by SuhoorPoints descending
-      compiled.sort((a, b) => b.suhoorPoints - a.suhoorPoints)
+      compiled.sort((a, b) => b.suhoorPoints - a.suhoorPoints);
 
-      setGroups(compiled)
+      setGroups(compiled);
     } catch (error) {
-      console.error('Error fetching leaderboard:', error)
+      console.error("Error fetching leaderboard:", error);
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      setLoading(false);
+      setRefreshing(false);
     }
-  }, [currentUser])
+  }, [currentUser]);
 
   useEffect(() => {
-    fetchLeaderboard()
-  }, [fetchLeaderboard])
+    fetchLeaderboard();
+  }, [fetchLeaderboard]);
 
   const onRefresh = () => {
-    setRefreshing(true)
-    fetchLeaderboard()
-  }
+    setRefreshing(true);
+    fetchLeaderboard();
+  };
 
   const currentUserGroup = useMemo(() => {
-    const found = groups.find(g => g.isCurrentUserGroup)
+    const found = groups.find((g) => g.isCurrentUserGroup);
     if (found) {
-      const rankIndex = groups.findIndex(g => g.id === found.id)
+      const rankIndex = groups.findIndex((g) => g.id === found.id);
       return {
         ...found,
         rank: rankIndex !== -1 ? rankIndex + 1 : 1,
-      }
+      };
     }
-    return null
-  }, [groups])
+    return null;
+  }, [groups]);
 
   return (
     <Screen
@@ -165,7 +173,9 @@ export const LeaderboardScreen = () => {
 
       {/* The board */}
       <Card padded={false}>
-        <View style={[styles.boardHeader, { borderBottomColor: colors.border }]}>
+        <View
+          style={[styles.boardHeader, { borderBottomColor: colors.border }]}
+        >
           <Text variant="h3">Group Leaderboard</Text>
           {!loading && (
             <Text variant="caption" tone="secondary">
@@ -188,13 +198,13 @@ export const LeaderboardScreen = () => {
                   <View
                     style={[
                       styles.skeletonLine,
-                      { backgroundColor: colors.surfaceVariant, width: '55%' },
+                      { backgroundColor: colors.surfaceVariant, width: "55%" },
                     ]}
                   />
                   <View
                     style={[
                       styles.skeletonLine,
-                      { backgroundColor: colors.surfaceVariant, width: '30%' },
+                      { backgroundColor: colors.surfaceVariant, width: "30%" },
                     ]}
                   />
                 </View>
@@ -204,15 +214,22 @@ export const LeaderboardScreen = () => {
         ) : groups.length === 0 ? (
           <View style={styles.empty}>
             <Ionicons name="people-outline" size={40} color={colors.muted} />
-            <Text variant="body" tone="secondary" style={[styles.emptyText, { textAlign: 'center', paddingHorizontal: 20 }]}>
+            <Text
+              variant="body"
+              tone="secondary"
+              style={[
+                styles.emptyText,
+                { textAlign: "center", paddingHorizontal: 20 },
+              ]}
+            >
               No groups want to be displayed in leaderboard.
             </Text>
           </View>
         ) : (
           <View>
             {groups.map((group, index) => {
-              const rank = index + 1
-              const medal = { 1: '🥇', 2: '🥈', 3: '🥉' }[rank]
+              const rank = index + 1;
+              const medal = { 1: "🥇", 2: "🥈", 3: "🥉" }[rank];
 
               return (
                 <View
@@ -227,8 +244,8 @@ export const LeaderboardScreen = () => {
                   ]}
                 >
                   <Text
-                    variant={medal ? 'h3' : 'caption'}
-                    tone={medal ? 'default' : 'muted'}
+                    variant={medal ? "h3" : "caption"}
+                    tone={medal ? "default" : "muted"}
                     style={styles.rank}
                   >
                     {medal ?? `#${rank}`}
@@ -250,7 +267,11 @@ export const LeaderboardScreen = () => {
 
                   <View style={styles.memberMeta}>
                     <View style={styles.memberNameRow}>
-                      <Text variant="label" numberOfLines={1} style={styles.flex}>
+                      <Text
+                        variant="label"
+                        numberOfLines={1}
+                        style={styles.flex}
+                      >
                         {group.name}
                       </Text>
                       {group.isCurrentUserGroup && (
@@ -268,27 +289,27 @@ export const LeaderboardScreen = () => {
                     </Text>
                   </View>
                 </View>
-              )
+              );
             })}
           </View>
         )}
       </Card>
     </Screen>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
   bold: {
-    fontWeight: '700',
+    fontWeight: "700",
   },
 
   // Your standing
   meRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     columnGap: spacing.md,
     rowGap: spacing.md,
   },
@@ -296,8 +317,8 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: radius.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   tierEmoji: {
     fontSize: 22,
@@ -308,8 +329,8 @@ const styles = StyleSheet.create({
     rowGap: spacing.xs,
   },
   meNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     columnGap: spacing.sm,
     rowGap: spacing.sm,
   },
@@ -317,9 +338,9 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   meStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
     columnGap: spacing.sm,
     rowGap: spacing.sm,
   },
@@ -333,10 +354,10 @@ const styles = StyleSheet.create({
   track: {
     height: 6,
     borderRadius: radius.pill,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   trackFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: radius.pill,
   },
 
@@ -346,7 +367,7 @@ const styles = StyleSheet.create({
     rowGap: spacing.sm,
   },
   toggleGroup: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: 3,
     borderRadius: radius.xl,
     columnGap: 3,
@@ -354,9 +375,9 @@ const styles = StyleSheet.create({
   },
   toggle: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     columnGap: spacing.xs,
     rowGap: spacing.xs,
     paddingVertical: spacing.sm,
@@ -366,15 +387,15 @@ const styles = StyleSheet.create({
 
   // Board
   boardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: spacing.base,
     borderBottomWidth: 1,
   },
   memberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     columnGap: spacing.md,
     rowGap: spacing.md,
     paddingVertical: spacing.md,
@@ -386,15 +407,15 @@ const styles = StyleSheet.create({
   },
   rank: {
     width: 28,
-    textAlign: 'center',
+    textAlign: "center",
   },
   avatar: {
     width: 38,
     height: 38,
     borderRadius: radius.pill,
     borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   memberMeta: {
     flex: 1,
@@ -402,13 +423,13 @@ const styles = StyleSheet.create({
     rowGap: spacing.xxs,
   },
   memberNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     columnGap: spacing.sm,
     rowGap: spacing.sm,
   },
   points: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
 
   // Board placeholder / empty
@@ -418,8 +439,8 @@ const styles = StyleSheet.create({
     rowGap: spacing.base,
   },
   skeletonRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     columnGap: spacing.md,
     rowGap: spacing.md,
   },
@@ -438,15 +459,15 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
   },
   empty: {
-    alignItems: 'center',
+    alignItems: "center",
     columnGap: spacing.md,
     rowGap: spacing.md,
     paddingVertical: spacing.xxl,
     paddingHorizontal: spacing.base,
   },
   emptyText: {
-    textAlign: 'center',
+    textAlign: "center",
   },
-})
+});
 
-export default LeaderboardScreen
+export default LeaderboardScreen;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState } from "react";
 import {
   StyleSheet,
   View,
@@ -12,382 +12,431 @@ import {
   Linking,
   Modal,
   Pressable,
-} from 'react-native'
-import AsyncStorage from '@react-native-async-storage/async-storage'
-import { Text } from '../../components/ui'
-import { useAuth } from '../../context/AuthContext'
-import { useTheme } from '../../context/ThemeContext'
-import { useLanguage } from '../../context/LanguageContext'
-import { db } from '../../config/firebase'
-import { doc, updateDoc } from 'firebase/firestore'
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Text } from "../../components/ui";
+import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
+import {
+  clearUserLocation,
+  getCurrentCoordinates,
+  saveUserLocation,
+} from "../../utils/location";
+import { useLanguage } from "../../context/LanguageContext";
+import { db } from "../../config/firebase";
+import { doc, updateDoc } from "firebase/firestore";
 import {
   updateProfile,
   updatePassword,
   reauthenticateWithCredential,
   EmailAuthProvider,
   sendEmailVerification,
-} from 'firebase/auth'
-import Ionicons from 'react-native-vector-icons/Ionicons'
-import { Colors } from '../../constants/Colors'
-import { COLLECTIONS } from '../../config/firestoreSchema'
-import Toast from '../../components/Toast'
-import LanguageSelector from '../../components/LanguageSelector'
+} from "firebase/auth";
+import Ionicons from "react-native-vector-icons/Ionicons";
+import { Colors } from "../../constants/Colors";
+import { COLLECTIONS } from "../../config/firestoreSchema";
+import Toast from "../../components/Toast";
+import LanguageSelector from "../../components/LanguageSelector";
 
-const APP_VERSION = '1.0.5'
+const APP_VERSION = "1.0.5";
 
 const ProfileScreen = () => {
-  const { currentUser, userProfile, logout, deleteAccount } = useAuth()
-  const { colors, themeMode, setThemeMode, isDark } = useTheme()
-  const { t, isRTL } = useLanguage()
+  const { currentUser, userProfile, logout, deleteAccount } = useAuth();
+  const { colors, themeMode, setThemeMode, isDark } = useTheme();
+  const { t, isRTL } = useLanguage();
 
-  const [activeTab, setActiveTab] = useState('profile') // 'profile' | 'security' | 'preferences' | 'about'
+  const [activeTab, setActiveTab] = useState("profile"); // 'profile' | 'security' | 'preferences' | 'about'
   const [displayName, setDisplayName] = useState(
-    userProfile?.display_name || ''
-  )
-  const [isSavingProfile, setIsSavingProfile] = useState(false)
+    userProfile?.display_name || ""
+  );
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // Password fields
-  const [currentPassword, setCurrentPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [isChangingPassword, setIsChangingPassword] = useState(false)
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
-  const [showNewPassword, setShowNewPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Settings updating indicator
-  const [isUpdatingSettings, setIsUpdatingSettings] = useState(false)
-  const [isResendingVerification, setIsResendingVerification] = useState(false)
+  const [isUpdatingSettings, setIsUpdatingSettings] = useState(false);
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
 
   // Toast notifications state
-  const [toastVisible, setToastVisible] = useState(false)
-  const [toastMessage, setToastMessage] = useState('')
-  const [toastType, setToastType] = useState('info')
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState("info");
 
   // Delete account modal state
-  const [deleteModalVisible, setDeleteModalVisible] = useState(false)
-  const [deleteEmailInput, setDeleteEmailInput] = useState('')
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [deleteEmailInput, setDeleteEmailInput] = useState("");
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   // Alarm PIN state
-  const [alarmPin, setAlarmPin] = useState(['', '', '', ''])
-  const [pinError, setPinError] = useState('')
-  const [isSavingPin, setIsSavingPin] = useState(false)
-  const pinRefs = [React.useRef(), React.useRef(), React.useRef(), React.useRef()]
+  const [alarmPin, setAlarmPin] = useState(["", "", "", ""]);
+  const [pinError, setPinError] = useState("");
+  const [isSavingPin, setIsSavingPin] = useState(false);
+  const pinRefs = [
+    React.useRef(),
+    React.useRef(),
+    React.useRef(),
+    React.useRef(),
+  ];
 
   // Location selector state
-  const [showLocationModal, setShowLocationModal] = useState(false)
-  const [locationSearch, setLocationSearch] = useState('')
-  const [locationResults, setLocationResults] = useState([])
-  const [isSearchingLocation, setIsSearchingLocation] = useState(false)
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [locationSearch, setLocationSearch] = useState("");
+  const [locationResults, setLocationResults] = useState([]);
+  const [isSearchingLocation, setIsSearchingLocation] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(
     userProfile?.preferences?.defaultLocation || null
-  )
+  );
 
   const showToast = (msg, type) => {
-    setToastMessage(msg)
-    setToastType(type)
-    setToastVisible(true)
-  }
+    setToastMessage(msg);
+    setToastType(type);
+    setToastVisible(true);
+  };
 
   // Load current alarm PIN from profile
   React.useEffect(() => {
     if (userProfile?.pin) {
-      const pinDigits = userProfile.pin.split('')
-      setAlarmPin(pinDigits.length === 4 ? pinDigits : ['', '', '', ''])
+      const pinDigits = userProfile.pin.split("");
+      setAlarmPin(pinDigits.length === 4 ? pinDigits : ["", "", "", ""]);
     }
-  }, [userProfile])
+  }, [userProfile]);
 
-  const searchLocation = React.useCallback(async (query) => {
-    if (!query || query.length < 3) {
-      setLocationResults([])
-      return
-    }
+  const searchLocation = React.useCallback(
+    async (query) => {
+      if (!query || query.length < 3) {
+        setLocationResults([]);
+        return;
+      }
 
-    setIsSearchingLocation(true)
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`
-      )
-      const data = await response.json()
-      const results = data.map(item => ({
-        name: item.display_name,
-        lat: parseFloat(item.lat),
-        lng: parseFloat(item.lon),
-      }))
-      setLocationResults(results)
-    } catch (err) {
-      console.error('Error searching location:', err)
-      showToast('Failed to search location', 'error')
-    } finally {
-      setIsSearchingLocation(false)
-    }
-  }, [showToast])
+      setIsSearchingLocation(true);
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(
+            query
+          )}&limit=5&addressdetails=1&accept-language=en`,
+          { headers: { Accept: "application/json" } }
+        );
+        const data = await response.json();
+        const results = data.map((item) => ({
+          name: item.display_name,
+          lat: parseFloat(item.lat),
+          lng: parseFloat(item.lon),
+        }));
+        setLocationResults(results);
+      } catch (err) {
+        console.error("Error searching location:", err);
+        showToast("Failed to search location", "error");
+      } finally {
+        setIsSearchingLocation(false);
+      }
+    },
+    [showToast]
+  );
 
   // Sync selected location with profile
   React.useEffect(() => {
     if (userProfile?.preferences?.defaultLocation) {
-      setSelectedLocation(userProfile.preferences.defaultLocation)
+      setSelectedLocation(userProfile.preferences.defaultLocation);
     } else {
-      setSelectedLocation(null)
+      setSelectedLocation(null);
     }
-  }, [userProfile?.preferences?.defaultLocation])
+  }, [userProfile?.preferences?.defaultLocation]);
 
   // Debounced location search
   React.useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (locationSearch.length >= 3) {
-        searchLocation(locationSearch)
+        searchLocation(locationSearch);
       } else {
-        setLocationResults([])
+        setLocationResults([]);
       }
-    }, 500)
+    }, 500);
 
-    return () => clearTimeout(timeoutId)
-  }, [locationSearch, searchLocation])
+    return () => clearTimeout(timeoutId);
+  }, [locationSearch, searchLocation]);
 
   // Handle PIN digit changes
   const handlePinDigitChange = (index, value) => {
-    if (!/^\d*$/.test(value)) return
-    const digit = value.slice(-1)
-    const next = [...alarmPin]
-    next[index] = digit
-    setAlarmPin(next)
-    setPinError('')
+    if (!/^\d*$/.test(value)) return;
+    const digit = value.slice(-1);
+    const next = [...alarmPin];
+    next[index] = digit;
+    setAlarmPin(next);
+    setPinError("");
     if (digit && index < 3) {
-      pinRefs[index + 1]?.current?.focus()
+      pinRefs[index + 1]?.current?.focus();
     }
-  }
+  };
 
   const handlePinKeyPress = (index, e) => {
-    if (e.nativeEvent?.key === 'Backspace' && !alarmPin[index] && index > 0) {
-      pinRefs[index - 1]?.current?.focus()
+    if (e.nativeEvent?.key === "Backspace" && !alarmPin[index] && index > 0) {
+      pinRefs[index - 1]?.current?.focus();
     }
-  }
+  };
 
   // Save alarm PIN
   const handleSavePin = async () => {
-    if (!currentUser) return
-    const pinStr = alarmPin.join('')
-    if (pinStr.length < 4 || alarmPin.some(d => d === '')) {
-      setPinError('Please enter all 4 digits of your PIN.')
-      return
+    if (!currentUser) return;
+    const pinStr = alarmPin.join("");
+    if (pinStr.length < 4 || alarmPin.some((d) => d === "")) {
+      setPinError("Please enter all 4 digits of your PIN.");
+      return;
     }
 
-    setIsSavingPin(true)
+    setIsSavingPin(true);
     try {
       // Save to Firestore
-      const userRef = doc(db, COLLECTIONS.profiles, currentUser.uid)
-      await updateDoc(userRef, { pin: pinStr })
+      const userRef = doc(db, COLLECTIONS.profiles, currentUser.uid);
+      await updateDoc(userRef, { pin: pinStr });
 
       // Save to AsyncStorage for alarm overlay
-      await AsyncStorage.setItem('suhoor_alarm_pin', pinStr)
+      await AsyncStorage.setItem("suhoor_alarm_pin", pinStr);
 
-      showToast('Alarm PIN updated successfully!', 'success')
-      setPinError('')
+      showToast("Alarm PIN updated successfully!", "success");
+      setPinError("");
     } catch (err) {
-      console.error('Error saving PIN:', err)
-      showToast('Failed to update PIN. Please try again.', 'error')
+      console.error("Error saving PIN:", err);
+      showToast("Failed to update PIN. Please try again.", "error");
     } finally {
-      setIsSavingPin(false)
+      setIsSavingPin(false);
     }
-  }
+  };
 
   const handleUpdateProfile = async () => {
-    if (!currentUser) return
+    if (!currentUser) return;
     if (displayName.trim().length < 3 || displayName.trim().length > 15) {
-      showToast(t('profile.displayNameLengthError'), 'error')
-      return
+      showToast(t("profile.displayNameLengthError"), "error");
+      return;
     }
 
-    setIsSavingProfile(true)
+    setIsSavingProfile(true);
     try {
-      const userRef = doc(db, COLLECTIONS.profiles, currentUser.uid)
-      await updateDoc(userRef, { display_name: displayName.trim() })
-      await updateProfile(currentUser, { displayName: displayName.trim() })
-      showToast(t('profile.updateSuccess'), 'success')
+      const userRef = doc(db, COLLECTIONS.profiles, currentUser.uid);
+      await updateDoc(userRef, { display_name: displayName.trim() });
+      await updateProfile(currentUser, { displayName: displayName.trim() });
+      showToast(t("profile.updateSuccess"), "success");
     } catch (err) {
-      console.error(err)
-      showToast(t('profile.updateError'), 'error')
+      console.error(err);
+      showToast(t("profile.updateError"), "error");
     } finally {
-      setIsSavingProfile(false)
+      setIsSavingProfile(false);
     }
-  }
+  };
 
   const handlePasswordChange = async () => {
-    if (!currentUser) return
+    if (!currentUser) return;
     if (!currentPassword || !newPassword || !confirmPassword) {
-      showToast(t('profile.fillAllPasswordFields'), 'error')
-      return
+      showToast(t("profile.fillAllPasswordFields"), "error");
+      return;
     }
 
     if (newPassword !== confirmPassword) {
-      showToast(t('profile.newPasswordMismatch'), 'error')
-      return
+      showToast(t("profile.newPasswordMismatch"), "error");
+      return;
     }
 
     if (newPassword.length < 6) {
-      showToast(t('profile.newPasswordTooShort'), 'error')
-      return
+      showToast(t("profile.newPasswordTooShort"), "error");
+      return;
     }
 
-    setIsChangingPassword(true)
+    setIsChangingPassword(true);
     try {
       const credential = EmailAuthProvider.credential(
         currentUser.email,
         currentPassword
-      )
-      await reauthenticateWithCredential(currentUser, credential)
-      await updatePassword(currentUser, newPassword)
-      showToast(t('profile.passwordChanged'), 'success')
-      setCurrentPassword('')
-      setNewPassword('')
-      setConfirmPassword('')
+      );
+      await reauthenticateWithCredential(currentUser, credential);
+      await updatePassword(currentUser, newPassword);
+      showToast(t("profile.passwordChanged"), "success");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
     } catch (err) {
-      console.error(err)
-      if (err.code === 'auth/wrong-password') {
-        showToast(t('profile.wrongCurrentPassword'), 'error')
+      console.error(err);
+      if (err.code === "auth/wrong-password") {
+        showToast(t("profile.wrongCurrentPassword"), "error");
       } else {
-        showToast(t('profile.passwordChangeError'), 'error')
+        showToast(t("profile.passwordChangeError"), "error");
       }
     } finally {
-      setIsChangingPassword(false)
+      setIsChangingPassword(false);
     }
-  }
+  };
 
   const handleSelectLocation = async (location) => {
-    if (!currentUser) return
-    setIsUpdatingSettings(true)
+    if (!currentUser) return;
+    setIsUpdatingSettings(true);
     try {
-      const userRef = doc(db, COLLECTIONS.profiles, currentUser.uid)
+      const userRef = doc(db, COLLECTIONS.profiles, currentUser.uid);
+      const savedLocation = {
+        lat: location.lat,
+        lng: location.lng,
+        name: location.name,
+      };
       await updateDoc(userRef, {
-        'preferences.defaultLocation': {
-          lat: location.lat,
-          lng: location.lng,
-          name: location.name,
-        },
-      })
-      setSelectedLocation(location)
-      setShowLocationModal(false)
-      setLocationSearch('')
-      setLocationResults([])
-      showToast('Default location updated', 'success')
+        "preferences.defaultLocation": savedLocation,
+      });
+      await saveUserLocation(savedLocation);
+      setSelectedLocation(location);
+      setShowLocationModal(false);
+      setLocationSearch("");
+      setLocationResults([]);
+      showToast("Default location updated", "success");
     } catch (err) {
-      console.error('Error updating location:', err)
-      showToast('Failed to update location', 'error')
+      console.error("Error updating location:", err);
+      showToast("Failed to update location", "error");
     } finally {
-      setIsUpdatingSettings(false)
+      setIsUpdatingSettings(false);
     }
-  }
+  };
+
+  const handleUseCurrentLocation = async () => {
+    setIsUpdatingSettings(true);
+    try {
+      await clearUserLocation();
+      const result = await getCurrentCoordinates(currentUser?.uid);
+      if (!result.coordinates || result.source !== "gps") {
+        showToast(
+          "Could not detect your current location. Enable location services and try again.",
+          "error"
+        );
+        return;
+      }
+      const current = {
+        ...result.coordinates,
+        name: "Current device location",
+      };
+      await updateDoc(doc(db, "profiles", currentUser.uid), {
+        "preferences.defaultLocation": current,
+      });
+      await saveUserLocation(current);
+      setSelectedLocation(current);
+      setShowLocationModal(false);
+      showToast("Current location saved", "success");
+    } catch (err) {
+      console.error("Error detecting current location:", err);
+      showToast("Could not detect your current location", "error");
+    } finally {
+      setIsUpdatingSettings(false);
+    }
+  };
 
   const handleClearLocation = async () => {
-    if (!currentUser) return
-    setIsUpdatingSettings(true)
+    if (!currentUser) return;
+    setIsUpdatingSettings(true);
     try {
-      const userRef = doc(db, COLLECTIONS.profiles, currentUser.uid)
+      const userRef = doc(db, COLLECTIONS.profiles, currentUser.uid);
       await updateDoc(userRef, {
-        'preferences.defaultLocation': null,
-      })
-      setSelectedLocation(null)
-      showToast('Default location cleared', 'success')
+        "preferences.defaultLocation": null,
+      });
+      setSelectedLocation(null);
+      showToast("Default location cleared", "success");
     } catch (err) {
-      console.error('Error clearing location:', err)
-      showToast('Failed to clear location', 'error')
+      console.error("Error clearing location:", err);
+      showToast("Failed to clear location", "error");
     } finally {
-      setIsUpdatingSettings(false)
+      setIsUpdatingSettings(false);
     }
-  }
+  };
 
   const handleLogout = () => {
     const confirmLogout = async () => {
       try {
-        await logout()
+        await logout();
       } catch (error) {
-        console.error('Logout failed:', error)
-        showToast(t('auth.logoutError'), 'error')
+        console.error("Logout failed:", error);
+        showToast(t("auth.logoutError"), "error");
       }
+    };
+
+    if (Platform.OS === "web") {
+      confirmLogout();
+      return;
     }
 
-    if (Platform.OS === 'web') {
-      confirmLogout()
-      return
-    }
-
-    Alert.alert(t('settings.logout'), t('profile.logoutConfirmMessage'), [
-      { text: t('common.cancel'), style: 'cancel' },
+    Alert.alert(t("settings.logout"), t("profile.logoutConfirmMessage"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: t('settings.logout'),
-        style: 'destructive',
+        text: t("settings.logout"),
+        style: "destructive",
         onPress: confirmLogout,
       },
-    ])
-  }
+    ]);
+  };
 
-  const runDeleteAccount = async typedEmail => {
+  const runDeleteAccount = async (typedEmail) => {
     if (typedEmail?.trim() !== currentUser?.email) {
-      showToast(t('profile.emailMismatch'), 'error')
-      return
+      showToast(t("profile.emailMismatch"), "error");
+      return;
     }
 
-    setIsDeletingAccount(true)
+    setIsDeletingAccount(true);
     try {
-      await deleteAccount()
-      setDeleteModalVisible(false)
-      setDeleteEmailInput('')
-      showToast(t('profile.accountDeleted'), 'success')
+      await deleteAccount();
+      setDeleteModalVisible(false);
+      setDeleteEmailInput("");
+      showToast(t("profile.accountDeleted"), "success");
     } catch (error) {
-      console.error(error)
-      if (error.code === 'auth/requires-recent-login') {
-        showToast(t('profile.requiresRecentLogin'), 'error')
+      console.error(error);
+      if (error.code === "auth/requires-recent-login") {
+        showToast(t("profile.requiresRecentLogin"), "error");
       } else {
-        showToast(t('profile.deleteAccountError'), 'error')
+        showToast(t("profile.deleteAccountError"), "error");
       }
     } finally {
-      setIsDeletingAccount(false)
+      setIsDeletingAccount(false);
     }
-  }
+  };
 
   const handleDeleteAccount = () => {
-    setDeleteModalVisible(true)
-  }
+    setDeleteModalVisible(true);
+  };
 
   const confirmDeleteAccount = () => {
-    runDeleteAccount(deleteEmailInput)
-  }
+    runDeleteAccount(deleteEmailInput);
+  };
 
   const handleResendVerification = async () => {
-    if (!currentUser || currentUser.emailVerified) return
-    setIsResendingVerification(true)
+    if (!currentUser || currentUser.emailVerified) return;
+    setIsResendingVerification(true);
     try {
       await sendEmailVerification(currentUser, {
-        url: 'https://suhoor-group.web.app/login',
+        url: "https://suhoor-group.web.app/login",
         handleCodeInApp: true,
-      })
-      showToast('Verification email sent! Check your inbox.', 'success')
+      });
+      showToast("Verification email sent! Check your inbox.", "success");
     } catch (err) {
-      console.error('Error sending verification email:', err)
-      showToast('Unable to send email right now. Please try again.', 'error')
+      console.error("Error sending verification email:", err);
+      showToast("Unable to send email right now. Please try again.", "error");
     } finally {
-      setIsResendingVerification(false)
+      setIsResendingVerification(false);
     }
-  }
+  };
 
-  const isVerified = userProfile?.isVerified || currentUser?.emailVerified
-  const initial = (displayName || currentUser?.email || 'U')
+  const isVerified = userProfile?.isVerified || currentUser?.emailVerified;
+  const initial = (displayName || currentUser?.email || "U")
     .charAt(0)
-    .toUpperCase()
+    .toUpperCase();
 
   const createdDate = currentUser?.metadata?.creationTime
-    ? new Date(currentUser.metadata.creationTime).toLocaleDateString('en-US', {
-        month: 'short',
-        year: 'numeric',
+    ? new Date(currentUser.metadata.creationTime).toLocaleDateString("en-US", {
+        month: "short",
+        year: "numeric",
       })
     : userProfile?.created_at
-      ? new Date(userProfile.created_at).toLocaleDateString('en-US', {
-          month: 'short',
-          year: 'numeric',
-        })
-      : 'Recent Member'
+    ? new Date(userProfile.created_at).toLocaleDateString("en-US", {
+        month: "short",
+        year: "numeric",
+      })
+    : "Recent Member";
 
   // Themed styles
   const themedStyles = {
@@ -414,7 +463,7 @@ const ProfileScreen = () => {
     },
     input: {
       color: colors.text,
-      textAlign: isRTL ? 'right' : 'left',
+      textAlign: isRTL ? "right" : "left",
     },
     sectionInfo: {
       color: colors.textSecondary,
@@ -447,7 +496,7 @@ const ProfileScreen = () => {
     settingButton: {
       backgroundColor: colors.surfaceVariant,
     },
-  }
+  };
 
   return (
     <View style={[styles.screen, themedStyles.screen]}>
@@ -469,11 +518,15 @@ const ProfileScreen = () => {
           </View>
           <View style={styles.headerInfo}>
             <View style={styles.nameRow}>
-              <Text style={styles.headerName}>{displayName || t('common.member', 'Member')}</Text>
+              <Text style={styles.headerName}>
+                {displayName || t("common.member", "Member")}
+              </Text>
               {isVerified ? (
                 <View style={styles.verifiedBadge}>
                   <Ionicons name="checkmark-circle" size={12} color="#10B981" />
-                  <Text style={styles.verifiedText}>{t('profile.verified', 'Verified')}</Text>
+                  <Text style={styles.verifiedText}>
+                    {t("profile.verified", "Verified")}
+                  </Text>
                 </View>
               ) : (
                 <TouchableOpacity
@@ -484,137 +537,208 @@ const ProfileScreen = () => {
                 >
                   <Ionicons name="alert-circle" size={12} color="#F59E0B" />
                   <Text style={[styles.verifiedText, styles.unverifiedText]}>
-                    {isResendingVerification ? t('profile.resending', 'Sending...') : t('profile.unverified', 'Unverified • Resend')}
+                    {isResendingVerification
+                      ? t("profile.resending", "Sending...")
+                      : t("profile.unverified", "Unverified • Resend")}
                   </Text>
                 </TouchableOpacity>
               )}
             </View>
             <Text style={styles.headerEmail}>{currentUser?.email}</Text>
             <View style={styles.memberSinceBadge}>
-              <Ionicons name="calendar-outline" size={13} color={Colors.secondary} />
+              <Ionicons
+                name="calendar-outline"
+                size={13}
+                color={Colors.secondary}
+              />
               <Text style={styles.memberSinceText}>
-                {t('profile.memberSince', { date: createdDate }, `Member since ${createdDate}`)}
+                {t(
+                  "profile.memberSince",
+                  { date: createdDate },
+                  `Member since ${createdDate}`
+                )}
               </Text>
             </View>
           </View>
         </View>
 
         {/* Segmented Tab Navigation */}
-        <View style={[styles.segmentContainer, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(61, 31, 148, 0.08)' }]}>
+        <View
+          style={[
+            styles.segmentContainer,
+            {
+              backgroundColor: isDark
+                ? "rgba(255, 255, 255, 0.08)"
+                : "rgba(61, 31, 148, 0.08)",
+            },
+          ]}
+        >
           <TouchableOpacity
             style={[
               styles.segmentBtn,
-              activeTab === 'profile' 
-                ? [styles.segmentBtnActive, { backgroundColor: colors.primary }] 
+              activeTab === "profile"
+                ? [styles.segmentBtnActive, { backgroundColor: colors.primary }]
                 : styles.segmentBtnInactive,
             ]}
-            onPress={() => setActiveTab('profile')}
+            onPress={() => setActiveTab("profile")}
             activeOpacity={0.8}
           >
             <Ionicons
               name="person-outline"
               size={15}
-              color={activeTab === 'profile' ? colors.white : isDark ? colors.text : colors.text}
+              color={
+                activeTab === "profile"
+                  ? colors.white
+                  : isDark
+                  ? colors.text
+                  : colors.text
+              }
             />
             <Text
               style={[
                 styles.segmentText,
-                { color: activeTab === 'profile' ? colors.white : isDark ? colors.text : colors.text },
+                {
+                  color:
+                    activeTab === "profile"
+                      ? colors.white
+                      : isDark
+                      ? colors.text
+                      : colors.text,
+                },
               ]}
             >
-              {t('settings.profile', 'Profile')}
+              {t("settings.profile", "Profile")}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[
               styles.segmentBtn,
-              activeTab === 'security' 
-                ? [styles.segmentBtnActive, { backgroundColor: colors.primary }] 
+              activeTab === "security"
+                ? [styles.segmentBtnActive, { backgroundColor: colors.primary }]
                 : styles.segmentBtnInactive,
             ]}
-            onPress={() => setActiveTab('security')}
+            onPress={() => setActiveTab("security")}
             activeOpacity={0.8}
           >
             <Ionicons
               name="shield-checkmark-outline"
               size={15}
-              color={activeTab === 'security' ? colors.white : isDark ? colors.text : colors.text}
+              color={
+                activeTab === "security"
+                  ? colors.white
+                  : isDark
+                  ? colors.text
+                  : colors.text
+              }
             />
             <Text
               style={[
                 styles.segmentText,
-                { color: activeTab === 'security' ? colors.white : isDark ? colors.text : colors.text },
+                {
+                  color:
+                    activeTab === "security"
+                      ? colors.white
+                      : isDark
+                      ? colors.text
+                      : colors.text,
+                },
               ]}
             >
-              {t('settings.security', 'Security')}
+              {t("settings.security", "Security")}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[
               styles.segmentBtn,
-              activeTab === 'preferences' 
-                ? [styles.segmentBtnActive, { backgroundColor: colors.primary }] 
+              activeTab === "preferences"
+                ? [styles.segmentBtnActive, { backgroundColor: colors.primary }]
                 : styles.segmentBtnInactive,
             ]}
-            onPress={() => setActiveTab('preferences')}
+            onPress={() => setActiveTab("preferences")}
             activeOpacity={0.8}
           >
             <Ionicons
               name="options-outline"
               size={15}
-              color={activeTab === 'preferences' ? colors.white : isDark ? colors.text : colors.text}
+              color={
+                activeTab === "preferences"
+                  ? colors.white
+                  : isDark
+                  ? colors.text
+                  : colors.text
+              }
             />
             <Text
               style={[
                 styles.segmentText,
-                { color: activeTab === 'preferences' ? colors.white : isDark ? colors.text : colors.text },
+                {
+                  color:
+                    activeTab === "preferences"
+                      ? colors.white
+                      : isDark
+                      ? colors.text
+                      : colors.text,
+                },
               ]}
             >
-              {t('settings.preferences', 'Preferences')}
+              {t("settings.preferences", "Preferences")}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[
               styles.segmentBtn,
-              activeTab === 'about' 
-                ? [styles.segmentBtnActive, { backgroundColor: colors.primary }] 
+              activeTab === "about"
+                ? [styles.segmentBtnActive, { backgroundColor: colors.primary }]
                 : styles.segmentBtnInactive,
             ]}
-            onPress={() => setActiveTab('about')}
+            onPress={() => setActiveTab("about")}
             activeOpacity={0.8}
           >
             <Ionicons
               name="information-circle-outline"
               size={15}
-              color={activeTab === 'about' ? colors.white : isDark ? colors.text : colors.text}
+              color={
+                activeTab === "about"
+                  ? colors.white
+                  : isDark
+                  ? colors.text
+                  : colors.text
+              }
             />
             <Text
               style={[
                 styles.segmentText,
-                { color: activeTab === 'about' ? colors.white : isDark ? colors.text : colors.text },
+                {
+                  color:
+                    activeTab === "about"
+                      ? colors.white
+                      : isDark
+                      ? colors.text
+                      : colors.text,
+                },
               ]}
             >
-              {t('settings.help', 'Help')}
+              {t("settings.help", "Help")}
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* Tab 1: Profile */}
-        {activeTab === 'profile' && (
+        {activeTab === "profile" && (
           <View>
             <View style={[styles.card, themedStyles.card]}>
               <View style={styles.cardHeader}>
                 <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
-                  {t('profile.accountInformation')}
+                  {t("profile.accountInformation")}
                 </Text>
               </View>
 
               <View style={styles.inputGroup}>
                 <Text style={[styles.label, themedStyles.label]}>
-                  {t('settings.emailAddress')}
+                  {t("settings.emailAddress")}
                 </Text>
                 <View
                   style={[
@@ -631,7 +755,7 @@ const ProfileScreen = () => {
                   />
                   <TextInput
                     style={[styles.input, themedStyles.input]}
-                    value={currentUser?.email || ''}
+                    value={currentUser?.email || ""}
                     editable={false}
                   />
                 </View>
@@ -639,7 +763,7 @@ const ProfileScreen = () => {
 
               <View style={styles.inputGroup}>
                 <Text style={[styles.label, themedStyles.label]}>
-                  {t('auth.displayName')}
+                  {t("auth.displayName")}
                 </Text>
                 <View
                   style={[styles.inputContainer, themedStyles.inputContainer]}
@@ -654,7 +778,7 @@ const ProfileScreen = () => {
                     style={[styles.input, themedStyles.input]}
                     value={displayName}
                     onChangeText={setDisplayName}
-                    placeholder={t('profile.enterDisplayName')}
+                    placeholder={t("profile.enterDisplayName")}
                     placeholderTextColor={colors.textSecondary}
                     maxLength={15}
                   />
@@ -679,7 +803,7 @@ const ProfileScreen = () => {
                       color={Colors.white}
                     />
                     <Text style={styles.primaryButtonText}>
-                      {t('profile.updateProfile')}
+                      {t("profile.updateProfile")}
                     </Text>
                   </>
                 )}
@@ -690,8 +814,10 @@ const ProfileScreen = () => {
               style={[
                 styles.logoutBannerBtn,
                 {
-                  borderColor: isDark ? 'rgba(239, 68, 68, 0.4)' : '#FCA5A5',
-                  backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.05)',
+                  borderColor: isDark ? "rgba(239, 68, 68, 0.4)" : "#FCA5A5",
+                  backgroundColor: isDark
+                    ? "rgba(239, 68, 68, 0.12)"
+                    : "rgba(239, 68, 68, 0.05)",
                 },
               ]}
               onPress={handleLogout}
@@ -699,44 +825,64 @@ const ProfileScreen = () => {
               <Ionicons
                 name="log-out-outline"
                 size={18}
-                color={isDark ? '#F87171' : '#DC2626'}
+                color={isDark ? "#F87171" : "#DC2626"}
               />
               <Text
                 style={[
                   styles.logoutBannerText,
-                  { color: isDark ? '#F87171' : '#DC2626' },
+                  { color: isDark ? "#F87171" : "#DC2626" },
                 ]}
               >
-                {t('settings.logout')}
+                {t("settings.logout")}
               </Text>
             </TouchableOpacity>
           </View>
         )}
 
         {/* Tab 2: Security */}
-        {activeTab === 'security' && (
+        {activeTab === "security" && (
           <View>
             <View style={[styles.card, themedStyles.card]}>
               <View style={styles.cardHeader}>
                 <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
-                  {t('settings.security')}
+                  {t("settings.security")}
                 </Text>
               </View>
 
               {/* Alarm PIN Section */}
               <View style={{ marginBottom: 32 }}>
-                <Text style={[styles.label, themedStyles.label, { marginBottom: 8 }]}>
-                  {t('profile.alarmPin', 'Alarm PIN')}
+                <Text
+                  style={[
+                    styles.label,
+                    themedStyles.label,
+                    { marginBottom: 8 },
+                  ]}
+                >
+                  {t("profile.alarmPin", "Alarm PIN")}
                 </Text>
-                <Text style={[styles.dangerSubtext, { color: colors.textSecondary, marginBottom: 16 }]}>
+                <Text
+                  style={[
+                    styles.dangerSubtext,
+                    { color: colors.textSecondary, marginBottom: 16 },
+                  ]}
+                >
                   {t(
-                    'profile.alarmPinDescription',
-                    { pin: alarmPin.join('') },
-                    `Set a 4-digit PIN to dismiss your Suhoor alarm. This ensures you're truly awake when stopping the alarm. Your current pin is: ${alarmPin.join('')}`
+                    "profile.alarmPinDescription",
+                    { pin: alarmPin.join("") },
+                    `Set a 4-digit PIN to dismiss your Suhoor alarm. This ensures you're truly awake when stopping the alarm. Your current pin is: ${alarmPin.join(
+                      ""
+                    )}`
                   )}
                 </Text>
 
-                <View style={{ flexDirection: 'row', justifyContent: 'center', columnGap: 12, marginBottom: 16 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "center",
+                    columnGap: 12,
+                    marginBottom: 16,
+                  }}
+                >
                   {alarmPin.map((digit, i) => (
                     <TextInput
                       key={i}
@@ -750,13 +896,21 @@ const ProfileScreen = () => {
                       style={{
                         width: 56,
                         height: 64,
-                        textAlign: 'center',
+                        textAlign: "center",
                         fontSize: 28,
-                        fontWeight: '900',
+                        fontWeight: "900",
                         borderWidth: 2,
-                        borderColor: digit ? (isDark ? colors.secondary : Colors.primary) : colors.border,
+                        borderColor: digit
+                          ? isDark
+                            ? colors.secondary
+                            : Colors.primary
+                          : colors.border,
                         borderRadius: 12,
-                        backgroundColor: digit ? (isDark ? 'rgba(249, 168, 38, 0.12)' : 'rgba(21,12,51,0.04)') : colors.surfaceVariant,
+                        backgroundColor: digit
+                          ? isDark
+                            ? "rgba(249, 168, 38, 0.12)"
+                            : "rgba(21,12,51,0.04)"
+                          : colors.surfaceVariant,
                         color: isDark ? colors.secondary : Colors.primary,
                       }}
                     />
@@ -764,7 +918,18 @@ const ProfileScreen = () => {
                 </View>
 
                 {pinError ? (
-                  <Text style={[styles.dangerSubtext, { color: Colors.red, marginBottom: 12, textAlign: 'center' }]}>{pinError}</Text>
+                  <Text
+                    style={[
+                      styles.dangerSubtext,
+                      {
+                        color: Colors.red,
+                        marginBottom: 12,
+                        textAlign: "center",
+                      },
+                    ]}
+                  >
+                    {pinError}
+                  </Text>
                 ) : null}
 
                 <TouchableOpacity
@@ -785,7 +950,7 @@ const ProfileScreen = () => {
                         color={Colors.white}
                       />
                       <Text style={styles.primaryButtonText}>
-                        {t('profile.saveAlarmPin', 'Save Alarm PIN')}
+                        {t("profile.saveAlarmPin", "Save Alarm PIN")}
                       </Text>
                     </>
                   )}
@@ -796,7 +961,7 @@ const ProfileScreen = () => {
 
               <View style={styles.inputGroup}>
                 <Text style={[styles.label, themedStyles.label]}>
-                  {t('profile.currentPassword')}
+                  {t("profile.currentPassword")}
                 </Text>
                 <View
                   style={[styles.inputContainer, themedStyles.inputContainer]}
@@ -812,7 +977,7 @@ const ProfileScreen = () => {
                     secureTextEntry={!showCurrentPassword}
                     value={currentPassword}
                     onChangeText={setCurrentPassword}
-                    placeholder={t('profile.enterCurrentPassword')}
+                    placeholder={t("profile.enterCurrentPassword")}
                     placeholderTextColor={colors.textSecondary}
                     autoCapitalize="none"
                   />
@@ -821,7 +986,7 @@ const ProfileScreen = () => {
                   >
                     <Ionicons
                       name={
-                        showCurrentPassword ? 'eye-off-outline' : 'eye-outline'
+                        showCurrentPassword ? "eye-off-outline" : "eye-outline"
                       }
                       size={20}
                       color={colors.textSecondary}
@@ -832,7 +997,7 @@ const ProfileScreen = () => {
 
               <View style={styles.inputGroup}>
                 <Text style={[styles.label, themedStyles.label]}>
-                  {t('profile.newPassword')}
+                  {t("profile.newPassword")}
                 </Text>
                 <View
                   style={[styles.inputContainer, themedStyles.inputContainer]}
@@ -848,7 +1013,7 @@ const ProfileScreen = () => {
                     secureTextEntry={!showNewPassword}
                     value={newPassword}
                     onChangeText={setNewPassword}
-                    placeholder={t('profile.enterNewPassword')}
+                    placeholder={t("profile.enterNewPassword")}
                     placeholderTextColor={colors.textSecondary}
                     autoCapitalize="none"
                   />
@@ -856,7 +1021,7 @@ const ProfileScreen = () => {
                     onPress={() => setShowNewPassword(!showNewPassword)}
                   >
                     <Ionicons
-                      name={showNewPassword ? 'eye-off-outline' : 'eye-outline'}
+                      name={showNewPassword ? "eye-off-outline" : "eye-outline"}
                       size={20}
                       color={colors.textSecondary}
                     />
@@ -866,7 +1031,7 @@ const ProfileScreen = () => {
 
               <View style={styles.inputGroup}>
                 <Text style={[styles.label, themedStyles.label]}>
-                  {t('profile.confirmNewPassword')}
+                  {t("profile.confirmNewPassword")}
                 </Text>
                 <View
                   style={[styles.inputContainer, themedStyles.inputContainer]}
@@ -882,7 +1047,7 @@ const ProfileScreen = () => {
                     secureTextEntry={!showConfirmPassword}
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
-                    placeholder={t('profile.confirmNewPasswordPlaceholder')}
+                    placeholder={t("profile.confirmNewPasswordPlaceholder")}
                     placeholderTextColor={colors.textSecondary}
                     autoCapitalize="none"
                   />
@@ -891,7 +1056,7 @@ const ProfileScreen = () => {
                   >
                     <Ionicons
                       name={
-                        showConfirmPassword ? 'eye-off-outline' : 'eye-outline'
+                        showConfirmPassword ? "eye-off-outline" : "eye-outline"
                       }
                       size={20}
                       color={colors.textSecondary}
@@ -918,7 +1083,7 @@ const ProfileScreen = () => {
                       color={Colors.white}
                     />
                     <Text style={styles.primaryButtonText}>
-                      {t('settings.changePassword')}
+                      {t("settings.changePassword")}
                     </Text>
                   </>
                 )}
@@ -929,11 +1094,11 @@ const ProfileScreen = () => {
             <View style={[styles.card, styles.dangerCard]}>
               <View style={styles.cardHeader}>
                 <Text style={[styles.cardTitle, { color: Colors.red }]}>
-                  {t('settings.deleteAccount')}
+                  {t("settings.deleteAccount")}
                 </Text>
               </View>
               <Text style={styles.dangerSubtext}>
-                {t('profile.deleteAccountWarning')}
+                {t("profile.deleteAccountWarning")}
               </Text>
 
               <TouchableOpacity
@@ -942,7 +1107,7 @@ const ProfileScreen = () => {
               >
                 <Ionicons name="trash-outline" size={18} color={Colors.white} />
                 <Text style={styles.dangerButtonText}>
-                  {t('settings.deleteAccount')}
+                  {t("settings.deleteAccount")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -950,42 +1115,55 @@ const ProfileScreen = () => {
         )}
 
         {/* Tab 3: Preferences */}
-        {activeTab === 'preferences' && (
+        {activeTab === "preferences" && (
           <View>
             <View style={[styles.card, themedStyles.card]}>
               <View style={styles.cardHeader}>
                 <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
-                  {t('settings.appearance')}
+                  {t("settings.appearance")}
                 </Text>
               </View>
 
               <View style={styles.settingRow}>
                 <View style={styles.settingInfo}>
-                  <Text style={[styles.settingLabel, themedStyles.settingLabel]}>
-                    {t('profile.themeMode', 'Theme Mode')}
+                  <Text
+                    style={[styles.settingLabel, themedStyles.settingLabel]}
+                  >
+                    {t("profile.themeMode", "Theme Mode")}
                   </Text>
                   <Text style={[styles.settingSub, themedStyles.settingSub]}>
-                    {t('profile.themeModeSub', 'Choose light, dark, or system default')}
+                    {t(
+                      "profile.themeModeSub",
+                      "Choose light, dark, or system default"
+                    )}
                   </Text>
                 </View>
                 <View style={styles.themeSelector}>
-                  {['system', 'light', 'dark'].map(mode => (
+                  {["system", "light", "dark"].map((mode) => (
                     <TouchableOpacity
                       key={mode}
                       style={[
                         styles.themeOptionBtn,
                         themedStyles.settingButton,
-                        themeMode === mode && { backgroundColor: Colors.primary },
+                        themeMode === mode && {
+                          backgroundColor: Colors.primary,
+                        },
                       ]}
                       onPress={() => setThemeMode(mode)}
                     >
                       <Text
                         style={[
                           styles.themeOptionText,
-                          { color: themeMode === mode ? Colors.white : colors.text },
+                          {
+                            color:
+                              themeMode === mode ? Colors.white : colors.text,
+                          },
                         ]}
                       >
-                        {t(`theme.${mode}`, mode.charAt(0).toUpperCase() + mode.slice(1))}
+                        {t(
+                          `theme.${mode}`,
+                          mode.charAt(0).toUpperCase() + mode.slice(1)
+                        )}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -996,7 +1174,7 @@ const ProfileScreen = () => {
 
               <View style={styles.cardHeader}>
                 <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
-                  {t('settings.language', 'Language')}
+                  {t("settings.language", "Language")}
                 </Text>
               </View>
               <LanguageSelector />
@@ -1005,67 +1183,85 @@ const ProfileScreen = () => {
 
               <View style={styles.cardHeader}>
                 <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
-                  {t('profile.locationPreferences', 'Location Preferences')}
+                  {t("profile.locationPreferences", "Location Preferences")}
                 </Text>
               </View>
 
               <View style={styles.settingRow}>
                 <View style={styles.settingInfo}>
-                  <Text style={[styles.settingLabel, themedStyles.settingLabel]}>
-                    {t('profile.defaultLocation', 'Default Location')}
+                  <Text
+                    style={[styles.settingLabel, themedStyles.settingLabel]}
+                  >
+                    {t("profile.defaultLocation", "Default Location")}
                   </Text>
                   <Text style={[styles.settingSub, themedStyles.settingSub]}>
                     {selectedLocation
                       ? selectedLocation.name
-                      : t('profile.locationNotSet', 'Not set (using device GPS)')}
+                      : t(
+                          "profile.locationNotSet",
+                          "Not set (using device GPS)"
+                        )}
                   </Text>
                 </View>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
+                <View style={{ flexDirection: "row", gap: 8 }}>
                   {selectedLocation && (
                     <TouchableOpacity
-                      style={[styles.actionBtn, { backgroundColor: colors.surfaceVariant }]}
+                      style={[
+                        styles.actionBtn,
+                        { backgroundColor: colors.surfaceVariant },
+                      ]}
                       onPress={handleClearLocation}
                       disabled={isUpdatingSettings}
                     >
-                      <Ionicons name="close-outline" size={18} color={colors.text} />
+                      <Ionicons
+                        name="close-outline"
+                        size={18}
+                        color={colors.text}
+                      />
                     </TouchableOpacity>
                   )}
                   <TouchableOpacity
-                    style={[styles.actionBtn, { backgroundColor: Colors.primary }]}
+                    style={[
+                      styles.actionBtn,
+                      { backgroundColor: Colors.primary },
+                    ]}
                     onPress={() => setShowLocationModal(true)}
                     disabled={isUpdatingSettings}
                   >
-                    <Ionicons name="location-outline" size={18} color={Colors.white} />
+                    <Ionicons
+                      name="location-outline"
+                      size={18}
+                      color={Colors.white}
+                    />
                   </TouchableOpacity>
                 </View>
               </View>
-
             </View>
           </View>
         )}
 
         {/* Tab 4: About & Support */}
-        {activeTab === 'about' && (
+        {activeTab === "about" && (
           <View>
             <View style={[styles.card, themedStyles.card]}>
               <View style={styles.cardHeader}>
                 <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
-                  {t('profile.aboutApp', 'About App')}
+                  {t("profile.aboutApp", "About App")}
                 </Text>
               </View>
 
               <View style={styles.supportRow}>
                 <Text style={[styles.supportLabel, themedStyles.supportLabel]}>
-                  {t('profile.appName', 'App Name')}
+                  {t("profile.appName", "App Name")}
                 </Text>
                 <Text style={[styles.supportValue, themedStyles.supportValue]}>
-                  {t('profile.appValue', 'Suhoor: Alarm & Group Wake-Ups')}
+                  {t("profile.appValue", "Suhoor: Alarm & Group Wake-Ups")}
                 </Text>
               </View>
 
               <View style={styles.supportRow}>
                 <Text style={[styles.supportLabel, themedStyles.supportLabel]}>
-                  {t('profile.version', 'Version')}
+                  {t("profile.version", "Version")}
                 </Text>
                 <Text style={[styles.supportValue, themedStyles.supportValue]}>
                   {APP_VERSION}
@@ -1076,47 +1272,83 @@ const ProfileScreen = () => {
 
               <View style={styles.cardHeader}>
                 <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
-                  {t('profile.supportResources', 'Support & Resources')}
+                  {t("profile.supportResources", "Support & Resources")}
                 </Text>
               </View>
 
               <TouchableOpacity
                 style={styles.supportLinkRow}
-                onPress={() => Linking.openURL('https://suhoor-group.web.app/privacy')}
+                onPress={() =>
+                  Linking.openURL("https://suhoor-group.web.app/privacy")
+                }
               >
                 <View style={styles.supportLinkInfo}>
-                  <Ionicons name="shield-outline" size={20} color={colors.textSecondary} />
-                  <Text style={[styles.supportLabel, themedStyles.supportLabel]}>
-                    {t('profile.privacyPolicy', 'Privacy Policy')}
+                  <Ionicons
+                    name="shield-outline"
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                  <Text
+                    style={[styles.supportLabel, themedStyles.supportLabel]}
+                  >
+                    {t("profile.privacyPolicy", "Privacy Policy")}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward-outline" size={18} color={colors.textSecondary} />
+                <Ionicons
+                  name="chevron-forward-outline"
+                  size={18}
+                  color={colors.textSecondary}
+                />
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.supportLinkRow}
-                onPress={() => Linking.openURL('https://suhoor-group.web.app/terms')}
+                onPress={() =>
+                  Linking.openURL("https://suhoor-group.web.app/terms")
+                }
               >
                 <View style={styles.supportLinkInfo}>
-                  <Ionicons name="document-text-outline" size={20} color={colors.textSecondary} />
-                  <Text style={[styles.supportLabel, themedStyles.supportLabel]}>
-                    {t('profile.termsOfService', 'Terms of Service')}
+                  <Ionicons
+                    name="document-text-outline"
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                  <Text
+                    style={[styles.supportLabel, themedStyles.supportLabel]}
+                  >
+                    {t("profile.termsOfService", "Terms of Service")}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward-outline" size={18} color={colors.textSecondary} />
+                <Ionicons
+                  name="chevron-forward-outline"
+                  size={18}
+                  color={colors.textSecondary}
+                />
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.supportLinkRow}
-                onPress={() => Linking.openURL('mailto:support@suhoor-group.com')}
+                onPress={() =>
+                  Linking.openURL("mailto:support@suhoor-group.com")
+                }
               >
                 <View style={styles.supportLinkInfo}>
-                  <Ionicons name="mail-outline" size={20} color={colors.textSecondary} />
-                  <Text style={[styles.supportLabel, themedStyles.supportLabel]}>
-                    {t('profile.contactSupport', 'Contact Support')}
+                  <Ionicons
+                    name="mail-outline"
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                  <Text
+                    style={[styles.supportLabel, themedStyles.supportLabel]}
+                  >
+                    {t("profile.contactSupport", "Contact Support")}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward-outline" size={18} color={colors.textSecondary} />
+                <Ionicons
+                  name="chevron-forward-outline"
+                  size={18}
+                  color={colors.textSecondary}
+                />
               </TouchableOpacity>
             </View>
           </View>
@@ -1136,20 +1368,26 @@ const ProfileScreen = () => {
         >
           <Pressable style={[styles.modalContent, themedStyles.card]}>
             <Text style={[styles.modalTitle, { color: Colors.red }]}>
-              {t('settings.deleteAccount')}
+              {t("settings.deleteAccount")}
             </Text>
             <Text style={[styles.modalSub, themedStyles.sectionInfo]}>
-              {t('profile.deleteAccountWarning')}
+              {t("profile.deleteAccountWarning")}
             </Text>
 
             <Text style={[styles.label, themedStyles.label, { marginTop: 16 }]}>
               {t(
-                'profile.typeEmailToConfirm',
+                "profile.typeEmailToConfirm",
                 { email: currentUser?.email },
                 `Type your email (${currentUser?.email}) to confirm:`
               )}
             </Text>
-            <View style={[styles.inputContainer, themedStyles.inputContainer, { marginTop: 8 }]}>
+            <View
+              style={[
+                styles.inputContainer,
+                themedStyles.inputContainer,
+                { marginTop: 8 },
+              ]}
+            >
               <TextInput
                 style={[styles.input, themedStyles.input]}
                 value={deleteEmailInput}
@@ -1162,12 +1400,13 @@ const ProfileScreen = () => {
 
             <View style={styles.modalActions}>
               <TouchableOpacity
-                style={[styles.modalBtn, { backgroundColor: colors.surfaceVariant }]}
+                style={[
+                  styles.modalBtn,
+                  { backgroundColor: colors.surfaceVariant },
+                ]}
                 onPress={() => setDeleteModalVisible(false)}
               >
-                <Text style={{ color: colors.text }}>
-                  {t('common.cancel')}
-                </Text>
+                <Text style={{ color: colors.text }}>{t("common.cancel")}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1178,8 +1417,8 @@ const ProfileScreen = () => {
                 {isDeletingAccount ? (
                   <ActivityIndicator color={Colors.white} size="small" />
                 ) : (
-                  <Text style={{ color: Colors.white, fontWeight: 'bold' }}>
-                    {t('settings.deleteAccount')}
+                  <Text style={{ color: Colors.white, fontWeight: "bold" }}>
+                    {t("settings.deleteAccount")}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -1196,23 +1435,56 @@ const ProfileScreen = () => {
         onRequestClose={() => setShowLocationModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, themedStyles.card, { maxHeight: '80%' }]}>
+          <View
+            style={[
+              styles.modalContent,
+              themedStyles.card,
+              { maxHeight: "80%" },
+            ]}
+          >
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, themedStyles.cardTitle]}>
-                {t('profile.selectDefaultLocation', 'Select Default Location')}
+                {t("profile.selectDefaultLocation", "Select Default Location")}
               </Text>
               <TouchableOpacity onPress={() => setShowLocationModal(false)}>
                 <Ionicons name="close-outline" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
 
-            <View style={[styles.inputContainer, themedStyles.inputContainer, { marginBottom: 16 }]}>
-              <Ionicons name="search-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+            <TouchableOpacity
+              style={[styles.primaryButton, { marginBottom: 12 }]}
+              onPress={handleUseCurrentLocation}
+              disabled={isUpdatingSettings}
+            >
+              <Ionicons name="locate-outline" size={18} color={Colors.white} />
+              <Text style={styles.primaryButtonText}>
+                {isUpdatingSettings
+                  ? "Detecting location..."
+                  : "Use current location"}
+              </Text>
+            </TouchableOpacity>
+
+            <View
+              style={[
+                styles.inputContainer,
+                themedStyles.inputContainer,
+                { marginBottom: 16 },
+              ]}
+            >
+              <Ionicons
+                name="search-outline"
+                size={20}
+                color={colors.textSecondary}
+                style={styles.inputIcon}
+              />
               <TextInput
                 style={[styles.input, themedStyles.input]}
                 value={locationSearch}
                 onChangeText={setLocationSearch}
-                placeholder={t('profile.searchCityPlaceholder', 'Search city, region...')}
+                placeholder={t(
+                  "profile.searchCityPlaceholder",
+                  "Search city, region..."
+                )}
                 placeholderTextColor={colors.textSecondary}
               />
               {isSearchingLocation && (
@@ -1227,24 +1499,35 @@ const ProfileScreen = () => {
                   style={styles.locationItem}
                   onPress={() => handleSelectLocation(item)}
                 >
-                  <Ionicons name="location-outline" size={18} color={Colors.primary} />
-                  <Text style={[styles.locationItemText, themedStyles.locationResultText]}>
+                  <Ionicons
+                    name="location-outline"
+                    size={18}
+                    color={Colors.primary}
+                  />
+                  <Text
+                    style={[
+                      styles.locationItemText,
+                      themedStyles.locationResultText,
+                    ]}
+                  >
                     {item.name}
                   </Text>
                 </TouchableOpacity>
               ))}
-              {!isSearchingLocation && locationSearch.length >= 3 && locationResults.length === 0 && (
-                <Text style={[styles.noResults, themedStyles.noResultsText]}>
-                  {t('profile.noLocationsFound', 'No locations found')}
-                </Text>
-              )}
+              {!isSearchingLocation &&
+                locationSearch.length >= 3 &&
+                locationResults.length === 0 && (
+                  <Text style={[styles.noResults, themedStyles.noResultsText]}>
+                    {t("profile.noLocationsFound", "No locations found")}
+                  </Text>
+                )}
             </ScrollView>
           </View>
         </View>
       </Modal>
     </View>
-  )
-}
+  );
+};
 
 const styles = StyleSheet.create({
   screen: {
@@ -1254,59 +1537,59 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   headerBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 20,
     padding: 16,
     borderRadius: 16,
-    backgroundColor: 'rgba(61, 31, 148, 0.05)',
+    backgroundColor: "rgba(61, 31, 148, 0.05)",
   },
   avatarCircle: {
     width: 60,
     height: 60,
     borderRadius: 30,
     backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 16,
   },
   avatarInitial: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.white,
   },
   headerInfo: {
     flex: 1,
   },
   nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
     gap: 8,
   },
   headerName: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   verifiedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 12,
     gap: 4,
   },
   unverifiedBadge: {
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    backgroundColor: "rgba(245, 158, 11, 0.1)",
   },
   verifiedText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#10B981',
+    fontWeight: "600",
+    color: "#10B981",
   },
   unverifiedText: {
-    color: '#F59E0B',
+    color: "#F59E0B",
   },
   headerEmail: {
     fontSize: 13,
@@ -1314,8 +1597,8 @@ const styles = StyleSheet.create({
     marginVertical: 2,
   },
   memberSinceBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
     marginTop: 2,
   },
@@ -1324,33 +1607,33 @@ const styles = StyleSheet.create({
     color: Colors.secondary,
   },
   segmentContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderRadius: 12,
     padding: 4,
     marginBottom: 20,
   },
   segmentBtn: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 8,
     borderRadius: 8,
     gap: 6,
   },
   segmentBtnActive: {
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
   },
   segmentBtnInactive: {
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
   },
   segmentText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   card: {
     borderRadius: 16,
@@ -1363,19 +1646,19 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   inputGroup: {
     marginBottom: 16,
   },
   label: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 6,
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderWidth: 1,
     borderRadius: 10,
     paddingHorizontal: 12,
@@ -1389,13 +1672,13 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    height: '100%',
+    height: "100%",
     fontSize: 14,
   },
   primaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     height: 48,
     borderRadius: 10,
     gap: 8,
@@ -1403,13 +1686,13 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: Colors.white,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     fontSize: 14,
   },
   logoutBannerBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     padding: 14,
     borderRadius: 12,
     borderWidth: 1,
@@ -1419,12 +1702,12 @@ const styles = StyleSheet.create({
   },
   logoutBannerText: {
     color: Colors.primary,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     fontSize: 14,
   },
   dangerCard: {
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-    backgroundColor: 'rgba(239, 68, 68, 0.02)',
+    borderColor: "rgba(239, 68, 68, 0.3)",
+    backgroundColor: "rgba(239, 68, 68, 0.02)",
   },
   dangerSubtext: {
     fontSize: 12,
@@ -1433,9 +1716,9 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   dangerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: Colors.red,
     height: 44,
     borderRadius: 10,
@@ -1443,18 +1726,18 @@ const styles = StyleSheet.create({
   },
   dangerButtonText: {
     color: Colors.white,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     fontSize: 14,
   },
   sectionDivider: {
     height: 1,
-    backgroundColor: 'rgba(150, 150, 150, 0.15)',
+    backgroundColor: "rgba(150, 150, 150, 0.15)",
     marginVertical: 16,
   },
   settingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
   },
   settingInfo: {
@@ -1463,14 +1746,14 @@ const styles = StyleSheet.create({
   },
   settingLabel: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   settingSub: {
     fontSize: 12,
     marginTop: 2,
   },
   themeSelector: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 6,
   },
   themeOptionBtn: {
@@ -1480,18 +1763,18 @@ const styles = StyleSheet.create({
   },
   themeOptionText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   actionBtn: {
     width: 36,
     height: 36,
     borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   supportRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingVertical: 8,
   },
   supportLabel: {
@@ -1499,48 +1782,48 @@ const styles = StyleSheet.create({
   },
   supportValue: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   supportLinkRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 12,
   },
   supportLinkInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   modalContent: {
-    width: '100%',
+    width: "100%",
     borderRadius: 16,
     padding: 20,
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   modalSub: {
     fontSize: 13,
     marginTop: 4,
   },
   modalActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
+    flexDirection: "row",
+    justifyContent: "flex-end",
     gap: 12,
     marginTop: 20,
   },
@@ -1550,11 +1833,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   locationItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(150, 150, 150, 0.1)',
+    borderBottomColor: "rgba(150, 150, 150, 0.1)",
     gap: 8,
   },
   locationItemText: {
@@ -1562,10 +1845,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   noResults: {
-    textAlign: 'center',
+    textAlign: "center",
     paddingVertical: 16,
     fontSize: 13,
   },
-})
+});
 
-export default ProfileScreen
+export default ProfileScreen;

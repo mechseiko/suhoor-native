@@ -221,7 +221,7 @@ export const HomeScreen = ({ navigation }) => {
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
       }
-      contentStyle={{ paddingTop: 24 }}
+      contentStyle={{ paddingTop: 16 }}
     >
       <View style={styles.greeting}>
         <View style={styles.greetingText}>

@@ -1,45 +1,84 @@
-/**
- * Location utilities for the Suhoor mobile app.
- *
- * Always resolves — it never rejects or leaves the caller waiting on a
- * permission the user declined. The priority order is:
- *
- *   1. User-set city/coordinates saved in AsyncStorage (fastest, offline-safe)
- *   2. Device GPS (when permission is granted)
- *   3. User's default location from database (if set)
- *   4. No location available (error state)
- *
- * The resolved `source` field tells the caller which path was taken so it can
- * show an appropriate notice when no location is available.
- */
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { PermissionsAndroid, Platform } from "react-native";
+import { db } from "../config/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { db } from '../config/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+const USER_LOCATION_KEY = "suhoor_user_location";
 
-const USER_LOCATION_KEY = 'suhoor_user_location';
+// Use community geolocation on native, fall back to browser API on web
+let Geolocation;
+try {
+  Geolocation = require("@react-native-community/geolocation").default;
+  console.log("Using @react-native-community/geolocation");
+} catch (e) {
+  console.log("Failed to load @react-native-community/geolocation:", e);
+  Geolocation = typeof navigator !== "undefined" ? navigator.geolocation : null;
+}
 
 /**
- * Attempt to get the device's current GPS coordinates via the browser/native
- * Geolocation API.  Returns null on any failure (denied, unavailable, timeout).
+ * Attempt to get the device's current GPS coordinates.
+ * Uses @react-native-community/geolocation on native, navigator.geolocation on web.
+ * Returns null on any failure (denied, unavailable, timeout).
  */
-const getDeviceCoordinates = () =>
-  new Promise((resolve) => {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+const getDeviceCoordinates = async () => {
+  if (Platform.OS === "android") {
+    try {
+      const result = await PermissionsAndroid.requestMultiple([
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+      ]);
+      console.log("Location permission request result:", result);
+      
+      const fineGranted = result[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED;
+      
+      if (!fineGranted) {
+        console.log("Fine location permission not granted:", result);
+        return null;
+      }
+    } catch (error) {
+      console.log("Error requesting location permission:", error);
+      return null;
+    }
+  }
+
+  return new Promise((resolve) => {
+    if (!Geolocation) {
+      console.log("Geolocation not available");
       resolve(null);
       return;
     }
-    navigator.geolocation.getCurrentPosition(
+    
+    console.log("Attempting to get current position with high accuracy...");
+    // First try with high accuracy
+    Geolocation.getCurrentPosition(
       (position) => {
+        console.log("High accuracy position obtained successfully:", position);
         resolve({
           lat: position.coords.latitude,
           lng: position.coords.longitude,
         });
       },
-      () => resolve(null),
-      { timeout: 8000, maximumAge: 60000, enableHighAccuracy: false }
+      (error) => {
+        console.log("High accuracy geolocation error, trying low accuracy:", error);
+        // Fallback to low accuracy
+        Geolocation.getCurrentPosition(
+          (position) => {
+            console.log("Low accuracy position obtained successfully:", position);
+            resolve({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            });
+          },
+          (error2) => {
+            console.log("Low accuracy geolocation also failed:", error2);
+            resolve(null);
+          },
+          { timeout: 30000, maximumAge: 300000, enableHighAccuracy: false }
+        );
+      },
+      { timeout: 15000, maximumAge: 300000, enableHighAccuracy: true }
     );
   });
+};
 
 /**
  * Get user's default location from their profile in Firestore.
@@ -49,7 +88,7 @@ const getDeviceCoordinates = () =>
 const getProfileDefaultLocation = async (userId) => {
   if (!userId) return null;
   try {
-    const profileRef = doc(db, 'profiles', userId);
+    const profileRef = doc(db, "profiles", userId);
     const profileSnap = await getDoc(profileRef);
     if (profileSnap.exists()) {
       const profileData = profileSnap.data();
@@ -59,7 +98,7 @@ const getProfileDefaultLocation = async (userId) => {
       }
     }
   } catch (err) {
-    console.error('Error fetching profile default location:', err);
+    console.error("Error fetching profile default location:", err);
   }
   return null;
 };
@@ -79,7 +118,7 @@ export const getCurrentCoordinates = async (userId) => {
       if (parsed?.lat && parsed?.lng) {
         return {
           coordinates: { lat: parsed.lat, lng: parsed.lng },
-          source: 'saved',
+          source: "saved",
           error: null,
         };
       }
@@ -94,7 +133,7 @@ export const getCurrentCoordinates = async (userId) => {
     if (coords) {
       return {
         coordinates: { lat: coords.lat, lng: coords.lng },
-        source: 'gps',
+        source: "gps",
         error: null,
       };
     }
@@ -109,7 +148,7 @@ export const getCurrentCoordinates = async (userId) => {
       if (profileLocation) {
         return {
           coordinates: { lat: profileLocation.lat, lng: profileLocation.lng },
-          source: 'profile',
+          source: "profile",
           error: null,
         };
       }
@@ -121,8 +160,8 @@ export const getCurrentCoordinates = async (userId) => {
   // 4. No location available
   return {
     coordinates: null,
-    source: 'none',
-    error: 'No location available. Please set your location in settings.',
+    source: "none",
+    error: "No location available. Please set your location in settings.",
   };
 };
 
@@ -134,7 +173,7 @@ export const saveUserLocation = async (coordinates) => {
   try {
     await AsyncStorage.setItem(USER_LOCATION_KEY, JSON.stringify(coordinates));
   } catch (err) {
-    console.error('Failed to save user location:', err);
+    console.error("Failed to save user location:", err);
   }
 };
 
@@ -145,6 +184,6 @@ export const clearUserLocation = async () => {
   try {
     await AsyncStorage.removeItem(USER_LOCATION_KEY);
   } catch (err) {
-    console.error('Failed to clear user location:', err);
+    console.error("Failed to clear user location:", err);
   }
 };
