@@ -38,7 +38,7 @@ import { COLLECTIONS } from "../../config/firestoreSchema";
 import Toast from "../../components/Toast";
 import LanguageSelector from "../../components/LanguageSelector";
 
-const APP_VERSION = "1.0.5";
+const APP_VERSION = "1.0.8";
 
 const ProfileScreen = () => {
   const { currentUser, userProfile, logout, deleteAccount } = useAuth();
@@ -118,9 +118,9 @@ const ProfileScreen = () => {
       setIsSearchingLocation(true);
       try {
         const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
             query
-          )}&limit=5&addressdetails=1&accept-language=en`,
+          )}&limit=10&addressdetails=1&accept-language=en`,
           { headers: { Accept: "application/json" } }
         );
         const data = await response.json();
@@ -132,7 +132,7 @@ const ProfileScreen = () => {
         setLocationResults(results);
       } catch (err) {
         console.error("Error searching location:", err);
-        showToast("Failed to search location", "error");
+        showToast(t("profile.locationSearchError", "Failed to search location"), "error");
       } finally {
         setIsSearchingLocation(false);
       }
@@ -203,7 +203,7 @@ const ProfileScreen = () => {
       setPinError("");
     } catch (err) {
       console.error("Error saving PIN:", err);
-      showToast("Failed to update PIN. Please try again.", "error");
+      showToast(t("profile.pinUpdateError", "Failed to update PIN. Please try again."), "error");
     } finally {
       setIsSavingPin(false);
     }
@@ -289,10 +289,10 @@ const ProfileScreen = () => {
       setShowLocationModal(false);
       setLocationSearch("");
       setLocationResults([]);
-      showToast("Default location updated", "success");
+      showToast(t("profile.defaultLocationUpdated", "Default location updated"), "success");
     } catch (err) {
       console.error("Error updating location:", err);
-      showToast("Failed to update location", "error");
+      showToast(t("profile.locationUpdateError", "Failed to update location"), "error");
     } finally {
       setIsUpdatingSettings(false);
     }
@@ -312,7 +312,7 @@ const ProfileScreen = () => {
       }
       const current = {
         ...result.coordinates,
-        name: "Current device location",
+        name: t("profile.currentDeviceLocation", "Current device location"),
       };
       await updateDoc(doc(db, "profiles", currentUser.uid), {
         "preferences.defaultLocation": current,
@@ -320,7 +320,7 @@ const ProfileScreen = () => {
       await saveUserLocation(current);
       setSelectedLocation(current);
       setShowLocationModal(false);
-      showToast("Current location saved", "success");
+      showToast(t("profile.currentLocationSaved", "Current location saved"), "success");
     } catch (err) {
       console.error("Error detecting current location:", err);
       showToast("Could not detect your current location", "error");
@@ -338,10 +338,10 @@ const ProfileScreen = () => {
         "preferences.defaultLocation": null,
       });
       setSelectedLocation(null);
-      showToast("Default location cleared", "success");
+      showToast(t("profile.defaultLocationCleared", "Default location cleared"), "success");
     } catch (err) {
       console.error("Error clearing location:", err);
-      showToast("Failed to clear location", "error");
+      showToast(t("profile.locationClearError", "Failed to clear location"), "error");
     } finally {
       setIsUpdatingSettings(false);
     }

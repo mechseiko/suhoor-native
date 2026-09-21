@@ -22,6 +22,7 @@ import { useAlarmState } from '../context/AlarmContext';
 import { useFastingTimes } from '../hooks/useFastingTimes';
 import { Badge, Button, Card, Text } from './ui';
 import { alpha, radius, spacing } from '../theme';
+import { scheduleNotification, CHANNELS } from '../services/notifications';
 
 export const FastingPrompt = () => {
   const { currentUser, userProfile } = useAuth();
@@ -143,6 +144,15 @@ export const FastingPrompt = () => {
 
       setStatus('confirmed_fasting');
       triggerToast(t('fasting.intentionSetToast'), 'success');
+      
+      // Schedule fasting intention notification
+      await scheduleNotification({
+        semanticId: `fasting_intention_${targetDate}`,
+        date: new Date(),
+        title: t('fasting.intentionSet'),
+        message: t('fasting.alarmActiveNotice'),
+        channel: CHANNELS.fastingPrompt,
+      });
     } catch (error) {
       console.error('Error saving fasting status (Yes):', error);
       triggerToast(t('fasting.saveError'), 'error');

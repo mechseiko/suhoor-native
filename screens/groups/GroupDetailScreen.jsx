@@ -465,10 +465,10 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       await updateDoc(groupRef, { name: newGroupName.trim() });
       setGroup((prev) => ({ ...prev, name: newGroupName.trim() }));
       setIsEditingName(false);
-      triggerToast("Group name updated successfully!", "success");
+      triggerToast(t('groups.groupNameUpdated'), "success");
     } catch (err) {
       console.error(err);
-      triggerToast("Failed to update group name.", "error");
+      triggerToast(t('groups.groupNameUpdateError'), "error");
     } finally {
       setSavingName(false);
     }
@@ -487,7 +487,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       );
     } catch (err) {
       console.error(err);
-      triggerToast("Failed to update leaderboard visibility.", "error");
+      triggerToast(t('groups.leaderboardUpdateError'), "error");
     }
   };
 
@@ -505,39 +505,22 @@ export const GroupDetailScreen = ({ route, navigation }) => {
   const handleCopyKey = async () => {
     if (!group) return;
     await copyToClipboard(group.group_key);
-    triggerToast("Group key copied!", "success");
+    triggerToast(t('groups.groupKeyCopied'), "success");
   };
 
   const handleCopyInviteLink = async () => {
     if (!group) return;
     const link = `https://suhoorapp.cv/groups?groupKey=${group.group_key}`;
     await copyToClipboard(link);
-    triggerToast("Group invite link copied!", "success");
-  };
-
-  const handleRegenerateInviteLink = async () => {
-    if (!group || !isCurrentUserAdmin) return;
-    try {
-      const newKey = Math.random().toString(36).substring(2, 10).toUpperCase();
-      const groupRef = doc(db, "groups", groupId);
-      await updateDoc(groupRef, {
-        group_key: newKey,
-        key_generated_at: serverTimestamp(),
-      });
-      setGroup((prev) => ({ ...prev, group_key: newKey }));
-      triggerToast("Invite link regenerated! New key is valid for 7 days.", "success");
-    } catch (err) {
-      console.error("Error regenerating invite link:", err);
-      triggerToast("Failed to regenerate invite link.", "error");
-    }
+    triggerToast(t('groups.inviteLinkCopied'), "success");
   };
 
   const handleLeaveGroup = () => {
     if (!currentUser) return;
     if (isCurrentUserAdmin) {
       Alert.alert(
-        "Cannot Leave",
-        "As the group admin, you cannot leave this group."
+        t('common.cannotLeave'),
+        t('groups.cannotLeaveAsAdmin')
       );
       return;
     }
@@ -575,11 +558,11 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                 }
               );
 
-              triggerToast("You left this group.", "success");
+              triggerToast(t('groups.leftGroup'), "success");
               navigation.navigate("GroupsList");
             } catch (err) {
               console.error(err);
-              triggerToast("Failed to leave group.", "error");
+              triggerToast(t('groups.leaveGroupError'), "error");
             } finally {
               setLoading(false);
             }
@@ -592,7 +575,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
   const handleBuzzMember = async (member) => {
     if (!currentUser || !member?.profiles) return;
     if (member.profiles.id === currentUser.uid) {
-      triggerToast("You cannot buzz yourself.", "info");
+      triggerToast(t('groups.cannotBuzzSelf'), "info");
       return;
     }
     const targetMemberIntent = memberIntentions[member.profiles.id] !== false;
@@ -712,7 +695,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       );
     } catch (err) {
       console.error("Error buzzing member:", err);
-      triggerToast("Failed to buzz member. Try again.", "error");
+      triggerToast(t('groups.buzzMemberError'), "error");
     }
   };
 
@@ -748,13 +731,13 @@ export const GroupDetailScreen = ({ route, navigation }) => {
               }
 
               triggerToast(
-                "Member removed and barred from rejoining.",
+                t('groups.memberRemoved'),
                 "success"
               );
               fetchGroupAndMembers();
             } catch (err) {
               console.error(err);
-              triggerToast("Failed to remove member.", "error");
+              triggerToast(t('groups.removeMemberError'), "error");
             } finally {
               setLoading(false);
             }
@@ -796,7 +779,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     if (!currentUser) return;
     const entered = overridePin ?? pinDigits.join("");
     if (entered.length < 4) {
-      setPinError("Enter your 4-digit alarm PIN.");
+      setPinError(t('groups.enterPin'));
       return;
     }
     let savedPin = "";
@@ -836,11 +819,11 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         "User";
       emitWakeUp(groupId, name, wakeUpTime);
       setHasWokenUp(true);
-      triggerToast("Intention recorded! You're awake.", "success");
+      triggerToast(t('groups.intentionRecorded'), "success");
       fetchTodayLogsAndIntentions();
     } catch (err) {
       console.error(err);
-      triggerToast("Failed to log wake up. Try again.", "error");
+      triggerToast(t('groups.wakeUpLogError'), "error");
     } finally {
       setLoading(false);
     }
@@ -1089,19 +1072,6 @@ export const GroupDetailScreen = ({ route, navigation }) => {
           {isCurrentUserAdmin && (
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-              onPress={handleRegenerateInviteLink}
-            >
-              <Ionicons
-                name="refresh-outline"
-                size={16}
-                color={colors.primary}
-              />
-              <Text style={[styles.shareBtnText, { color: colors.primary }]}>Regenerate Link</Text>
-            </TouchableOpacity>
-          )}
-          {isCurrentUserAdmin && (
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
               onPress={handleToggleLeaderboard}
             >
               <Ionicons
@@ -1187,7 +1157,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         <View style={[styles.trackerCard, { backgroundColor: colors.surface }]}>
           <View style={[styles.trackerHeader, { borderBottomColor: colors.border }]}>
             <View style={styles.trackerTitleLeft}>
-              <Text style={[styles.trackerTitle, { color: colors.text }]}>Wake Up Tracker</Text>
+              <Text style={[styles.trackerTitle, { color: colors.text }]}>{t('groups.wakeUpTracker')}</Text>
             </View>
 
             {hasWokenUp || currentUser ? (
@@ -1218,7 +1188,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         /* Group Info Card */
         <View style={[styles.trackerCard, { backgroundColor: colors.surface }]}>
           <View style={[styles.trackerHeader, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.trackerTitle, { color: colors.text }]}>Group Members</Text>
+            <Text style={[styles.trackerTitle, { color: colors.text }]}>{t('groups.groupMembers')}</Text>
           </View>
 
           <FlatList
@@ -1484,7 +1454,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                     "";
                   if (name) {
                     await copyToClipboard(name);
-                    triggerToast("Copied name to clipboard", "info");
+                    triggerToast(t('groups.nameCopied'), "info");
                   }
                   setShowMemberActionModal(false);
                 }}

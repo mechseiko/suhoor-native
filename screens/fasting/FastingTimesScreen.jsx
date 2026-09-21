@@ -44,6 +44,7 @@ const CLOCK_RADIUS = CLOCK_SIZE / 2;
 const TimePickerDial = ({ value, onChange, colors }) => {
   const [angle, setAngle] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const clockRef = useRef(null);
 
   useEffect(() => {
     // Convert value (0-120) to angle (0-360 degrees)
@@ -52,42 +53,58 @@ const TimePickerDial = ({ value, onChange, colors }) => {
     setAngle(newAngle);
   }, [value]);
 
+  const calculateAngleFromTouch = (touchX, touchY, layoutX, layoutY) => {
+    const centerX = layoutX + CLOCK_RADIUS;
+    const centerY = layoutY + CLOCK_RADIUS;
+    
+    const dx = touchX - centerX;
+    const dy = touchY - centerY;
+    
+    // Calculate distance from center
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const minDistance = CLOCK_RADIUS * 0.3; // Minimum distance from center
+    
+    if (distance < minDistance) {
+      return null; // Ignore touches too close to center
+    }
+    
+    // Calculate angle in degrees
+    let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+    
+    // Adjust angle to start from top (90 degrees in standard math)
+    angle = angle + 90;
+    if (angle < 0) angle += 360;
+    
+    return angle;
+  };
+
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
     onPanResponderGrant: (event) => {
       setIsDragging(true);
+      clockRef.current?.measure((x, y, width, height, pageX, pageY) => {
+        const { pageX: touchX, pageY: touchY } = event.nativeEvent;
+        const calculatedAngle = calculateAngleFromTouch(touchX, touchY, pageX, pageY);
+        if (calculatedAngle !== null) {
+          const normalizedValue = calculatedAngle / 360;
+          const newValue = Math.round(normalizedValue * MAX_WAKE_MINUTES);
+          setAngle(calculatedAngle);
+          onChange(Math.min(Math.max(newValue, MIN_WAKE_MINUTES), MAX_WAKE_MINUTES));
+        }
+      });
     },
     onPanResponderMove: (event) => {
-      const { locationX, locationY } = event.nativeEvent;
-      const centerX = CLOCK_RADIUS;
-      const centerY = CLOCK_RADIUS;
-      
-      const dx = locationX - centerX;
-      const dy = locationY - centerY;
-      
-      // Calculate distance from center to ensure user is dragging from the edge
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      const minDistance = CLOCK_RADIUS * 0.5; // Minimum distance from center
-      
-      if (distance < minDistance) {
-        return; // Ignore movements too close to center
-      }
-      
-      // Calculate angle in degrees
-      let angle = Math.atan2(dy, dx) * (180 / Math.PI);
-      
-      // Adjust angle to start from top (90 degrees in standard math)
-      angle = angle + 90;
-      if (angle < 0) angle += 360;
-      
-      // Convert angle to value (0-120)
-      const normalizedValue = angle / 360;
-      const newValue = Math.round(normalizedValue * MAX_WAKE_MINUTES);
-      
-      setAngle(angle);
-      // Enforce minimum of 15 minutes
-      onChange(Math.min(Math.max(newValue, MIN_WAKE_MINUTES), MAX_WAKE_MINUTES));
+      clockRef.current?.measure((x, y, width, height, pageX, pageY) => {
+        const { pageX: touchX, pageY: touchY } = event.nativeEvent;
+        const calculatedAngle = calculateAngleFromTouch(touchX, touchY, pageX, pageY);
+        if (calculatedAngle !== null) {
+          const normalizedValue = calculatedAngle / 360;
+          const newValue = Math.round(normalizedValue * MAX_WAKE_MINUTES);
+          setAngle(calculatedAngle);
+          onChange(Math.min(Math.max(newValue, MIN_WAKE_MINUTES), MAX_WAKE_MINUTES));
+        }
+      });
     },
     onPanResponderRelease: () => {
       setIsDragging(false);
@@ -106,6 +123,7 @@ const TimePickerDial = ({ value, onChange, colors }) => {
   return (
     <View style={{ alignItems: 'center', marginVertical: 20 }}>
       <View
+        ref={clockRef}
         style={{
           width: CLOCK_SIZE,
           height: CLOCK_SIZE,

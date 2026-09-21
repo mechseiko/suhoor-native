@@ -234,7 +234,7 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
 
             {/* Version */}
             <View style={styles.versionSection}>
-              <Text style={styles.versionText}>v1.0.5</Text>
+              <Text style={styles.versionText}>v1.0.8</Text>
             </View>
           </ScrollView>
         </Animated.View>
