@@ -295,7 +295,7 @@ export const FastingPrompt = () => {
               variant="caption"
               style={[styles.footNote, { color: isDark ? '#FBBF24' : '#D97706' }]}
             >
-              {t('fasting.defaultYesNote', 'This defaults to Yes based on your settings, your alarm will be active during your wake-up window.')}
+              {t('fasting.defaultYesNote')}
             </Text>
           )}
 
@@ -397,10 +397,10 @@ export const FastingPrompt = () => {
             />
             <View style={{ flex: 1, gap: 2 }}>
               <Text variant="h3" style={{ color: isDark ? '#34D399' : '#065F46' }}>
-                {t('fasting.intentionSet', 'Fasting intention set')}
+                {t('fasting.intentionSet')}
               </Text>
               <Text variant="caption" style={{ color: isDark ? '#A7F3D0' : '#047857' }}>
-                {t('fasting.alarmActiveNotice', 'Your alarm is active. Check in during your wake-up window to dismiss it completely.')}
+                {t('fasting.alarmActiveNotice')}
               </Text>
             </View>
           </View>
@@ -417,10 +417,10 @@ export const FastingPrompt = () => {
             />
             <View style={{ flex: 1, gap: 2 }}>
               <Text variant="h3" tone="secondary">
-                {t('fasting.notFasting', 'Not fasting')}
+                {t('fasting.notFasting')}
               </Text>
               <Text variant="caption" tone="secondary">
-                {t('fasting.notFastingSub', "Your alarms won't ring and Your group won't be able to buzz you.")}
+                {t('fasting.notFastingSub')}
               </Text>
             </View>
           </View>

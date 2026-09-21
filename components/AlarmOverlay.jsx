@@ -226,7 +226,7 @@ export const AlarmOverlay = () => {
   const handlePinVerify = async (override) => {
     const entered = override ?? pinDigits.join('')
     if (entered.length < 4) {
-      setPinError('Enter your 4-digit wake-up PIN.')
+      setPinError(t('alarm.enterPin'))
       return
     }
 
@@ -239,7 +239,7 @@ export const AlarmOverlay = () => {
     } catch { }
 
     if (savedPin && entered !== savedPin) {
-      setPinError('Incorrect PIN. Try again.')
+      setPinError(t('alarm.incorrectPin'))
       setPinDigits(['', '', '', ''])
       setTimeout(() => pinRefs[0]?.current?.focus(), 100)
       return

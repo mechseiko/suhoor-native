@@ -300,7 +300,7 @@ export const MilestonesScreen = () => {
                         Level {tier.level} • {tier.name}
                       </Text>
                       {isCurrent && (
-                        <Badge label="Current" tone="primary" size="sm" />
+                        <Badge label={t('milestones.current')} tone="primary" size="sm" />
                       )}
                     </View>
                     <Text variant="caption" tone="secondary">

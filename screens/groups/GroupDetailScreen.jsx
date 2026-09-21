@@ -18,6 +18,8 @@ import {
 import { copyToClipboard } from "../../utils/clipboard";
 import { Text } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { useSocket } from "../../context/SocketContext";
 import { useNetwork } from "../../context/NetworkContext";
 import { useFastingTimes } from "../../hooks/useFastingTimes";
@@ -45,6 +47,8 @@ import GamificationCelebration from "../../components/GamificationCelebration";
 export const GroupDetailScreen = ({ route, navigation }) => {
   const { groupId, groupName } = route.params;
   const { currentUser, userProfile } = useAuth();
+  const { colors, isDark } = useTheme();
+  const { t } = useLanguage();
   const { isConnected: isSocketConnected } = useSocket();
   const { isConnected: isNetworkConnected } = useNetwork();
   const {
@@ -521,12 +525,12 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       return;
     }
     Alert.alert(
-      "Leave Group",
-      "Are you sure you want to leave this group? You will be permanently removed.",
+      t('groups.leave'),
+      t('groups.leaveGroupConfirm'),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t('common.cancel'), style: "cancel" },
         {
-          text: "Leave",
+          text: t('groups.leave'),
           style: "destructive",
           onPress: async () => {
             setLoading(true);
@@ -578,7 +582,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     if (!targetMemberIntent) {
       triggerToast(
         `${
-          member.profiles.display_name || "Member"
+          member.profiles.display_name || t('groups.member')
         } is not fasting today and cannot be buzzed.`,
         "info"
       );
@@ -589,7 +593,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     if (!isMemberInWakeUpWindow(member)) {
       triggerToast(
         `${
-          member.profiles.display_name || "Member"
+          member.profiles.display_name || t('groups.member')
         } is not in their wake-up window yet.`,
         "info"
       );
@@ -619,7 +623,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
               : `${remainingSecs}s`;
           triggerToast(
             `${
-              member.profiles.display_name || "Member"
+              member.profiles.display_name || t('groups.member')
             } has a 5-minute wake-up grace period (${timeText} remaining).`,
             "info"
           );
@@ -654,7 +658,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
               : `${remainingSecs}s`;
           triggerToast(
             `${
-              member.profiles.display_name || "Member"
+              member.profiles.display_name || t('groups.member')
             } is already being buzzed. Cooldown active (${timeText} remaining).`,
             "info"
           );
@@ -704,9 +708,9 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         member.profiles.display_name || member.profiles.email
       } from the group? They will be permanently barred from re-entering.`,
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t('common.cancel'), style: "cancel" },
         {
-          text: "Remove",
+          text: t('groups.remove'),
           style: "destructive",
           onPress: async () => {
             setLoading(true);
@@ -862,46 +866,49 @@ export const GroupDetailScreen = ({ route, navigation }) => {
             <View
               style={[
                 styles.memberAvatar,
+                { backgroundColor: isDark ? 'rgba(251, 191, 36, 0.15)' : 'rgba(61, 31, 148, 0.1)' },
                 item.role === "admin" && styles.adminAvatar,
               ]}
             >
-              <Text style={styles.memberAvatarText}>
+              <Text style={[styles.memberAvatarText, { color: isDark ? colors.secondary : colors.primary }]}>
                 {item.profiles.display_name?.charAt(0).toUpperCase() ||
                   item.profiles.email?.charAt(0).toUpperCase()}
               </Text>
             </View>
-            {isOnline(item.profiles.id) && <View style={styles.onlineDot} />}
+            {isOnline(item.profiles.id) && (
+              <View style={[styles.onlineDot, { backgroundColor: colors.success, borderColor: colors.surface }]} />
+            )}
           </View>
           <View style={styles.memberInfo}>
             <View style={styles.memberNameRow}>
-              <Text style={styles.memberName} numberOfLines={1}>
+              <Text style={[styles.memberName, { color: colors.text }]} numberOfLines={1}>
                 {item.profiles.display_name ||
                   item.profiles.email.split("@")[0]}
               </Text>
               {item.role === "admin" ? (
-                <View style={styles.adminRoleBadge}>
-                  <Text style={styles.adminRoleBadgeText}>Admin</Text>
+                <View style={[styles.adminRoleBadge, { backgroundColor: isDark ? 'rgba(251, 191, 36, 0.15)' : 'rgba(249, 168, 38, 0.15)' }]}>
+                  <Text style={[styles.adminRoleBadgeText, { color: colors.secondary }]}>Admin</Text>
                 </View>
               ) : null}
               {isSelf ? (
-                <View style={styles.selfBadge}>
-                  <Text style={styles.selfBadgeText}>You</Text>
+                <View style={[styles.selfBadge, { backgroundColor: isDark ? 'rgba(251, 191, 36, 0.1)' : 'rgba(61, 31, 148, 0.1)' }]}>
+                  <Text style={[styles.selfBadgeText, { color: isDark ? colors.secondary : colors.primary }]}>You</Text>
                 </View>
               ) : null}
             </View>
             <View style={styles.memberDetailsRow}>
-              <View style={styles.timeTag}>
+              <View style={[styles.timeTag, { backgroundColor: isDark ? 'rgba(251, 191, 36, 0.1)' : 'rgba(21, 12, 51, 0.05)' }]}>
                 <Ionicons
                   name="alarm-outline"
                   size={12}
-                  color={Colors.primary}
+                  color={isDark ? colors.secondary : colors.primary}
                 />
-                <Text style={styles.timeTagText}>{wakeUpTime}</Text>
+                <Text style={[styles.timeTagText, { color: isDark ? colors.secondary : colors.primary }]}>{wakeUpTime}</Text>
               </View>
               {showStatus ? (
                 memberStatus === "awake" ? (
-                  <View style={styles.awakeBadge}>
-                    <Text style={styles.awakeBadgeText}>
+                  <View style={[styles.awakeBadge, { backgroundColor: isDark ? 'rgba(0, 194, 168, 0.15)' : 'rgba(0, 194, 168, 0.1)' }]}>
+                    <Text style={[styles.awakeBadgeText, { color: colors.success }]}>
                       Awake
                       {wakeUpLog
                         ? ` (${new Date(
@@ -914,12 +921,12 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                     </Text>
                   </View>
                 ) : memberStatus === "sleeping" && intendsToFast ? (
-                  <View style={styles.sleepingBadge}>
-                    <Text style={styles.sleepingBadgeText}>Asleep</Text>
+                  <View style={[styles.sleepingBadge, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}>
+                    <Text style={[styles.sleepingBadgeText, { color: '#3B82F6' }]}>Asleep</Text>
                   </View>
                 ) : memberStatus === "not_fasting" || !intendsToFast ? (
-                  <View style={styles.notFastingBadge}>
-                    <Text style={styles.notFastingBadgeText}>Not Fasting</Text>
+                  <View style={[styles.notFastingBadge, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)' }]}>
+                    <Text style={[styles.notFastingBadgeText, { color: colors.error }]}>Not Fasting</Text>
                   </View>
                 ) : null
               ) : null}
@@ -933,16 +940,16 @@ export const GroupDetailScreen = ({ route, navigation }) => {
             !isSelf &&
             isMemberInWakeUpWindow(item) && (
               <TouchableOpacity
-                style={styles.buzzYellowBtn}
+                style={[styles.buzzYellowBtn, { backgroundColor: colors.secondary }]}
                 onPress={() => handleBuzzMember(item)}
                 activeOpacity={0.8}
               >
                 <Ionicons
                   name="notifications"
                   size={15}
-                  color={Colors.secondary}
+                  color={colors.primary}
                 />
-                <Text style={styles.buzzYellowBtnText}>Buzz</Text>
+                <Text style={[styles.buzzYellowBtnText, { color: colors.primary }]}>Buzz</Text>
               </TouchableOpacity>
             )}
 
@@ -953,7 +960,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             activeOpacity={0.7}
           >
-            <Ionicons name="ellipsis-vertical" size={18} color={Colors.dark} />
+            <Ionicons name="ellipsis-vertical" size={18} color={colors.text} />
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -963,13 +970,13 @@ export const GroupDetailScreen = ({ route, navigation }) => {
   if (loading && !group) {
     return (
       <View style={styles.loaderContainer}>
-        <ActivityIndicator color={Colors.primary} size="large" />
+        <ActivityIndicator color={colors.primary} size="large" />
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>
       <GamificationCelebration
         celebration={celebration}
         onDismiss={dismissCelebration}
@@ -982,100 +989,100 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       />
 
       {/* Group Info Card */}
-      <View style={styles.groupHeaderCard}>
+      <View style={[styles.groupHeaderCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.groupTitleRow}>
           {isEditingName ? (
             <View style={styles.editRow}>
               <TextInput
-                style={styles.editInput}
+                style={[styles.editInput, { borderColor: colors.primary, color: colors.text }]}
                 value={newGroupName}
                 onChangeText={setNewGroupName}
                 autoFocus
               />
               <TouchableOpacity
-                style={styles.editSaveBtn}
+                style={[styles.editSaveBtn, { backgroundColor: colors.primary }]}
                 onPress={handleSaveGroupName}
                 disabled={savingName}
               >
                 {savingName ? (
-                  <ActivityIndicator color={Colors.white} size="small" />
+                  <ActivityIndicator color={colors.onPrimaryFill} size="small" />
                 ) : (
-                  <Text style={styles.editSaveText}>Save</Text>
+                  <Text style={[styles.editSaveText, { color: colors.onPrimaryFill }]}>Save</Text>
                 )}
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.editCancelBtn}
+                style={[styles.editCancelBtn, { backgroundColor: colors.surfaceVariant }]}
                 onPress={() => setIsEditingName(false)}
               >
-                <Text style={styles.editCancelText}>Cancel</Text>
+                <Text style={[styles.editCancelText, { color: colors.text }]}>Cancel</Text>
               </TouchableOpacity>
             </View>
           ) : (
             <View style={styles.titleDisplayRow}>
-              <Text style={styles.groupTitleText}>{group?.name}</Text>
+              <Text style={[styles.groupTitleText, { color: colors.text }]}>{group?.name}</Text>
               {isCurrentUserAdmin && (
                 <TouchableOpacity
                   onPress={() => setIsEditingName(true)}
                   style={styles.editIconBtn}
                 >
-                  <Ionicons name="pencil" size={16} color={Colors.primary} />
+                  <Ionicons name="pencil" size={16} color={colors.primary} />
                 </TouchableOpacity>
               )}
             </View>
           )}
 
           {isNetworkConnected && (
-            <View style={styles.liveBadge}>
-              <View style={styles.liveDot} />
-              <Text style={styles.liveText}>Live</Text>
+            <View style={[styles.liveBadge, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.12)' }]}>
+              <View style={[styles.liveDot, { backgroundColor: colors.success }]} />
+              <Text style={[styles.liveText, { color: colors.success }]}>Live</Text>
             </View>
           )}
         </View>
 
         <View style={styles.groupDetailsRow}>
-          <View style={styles.keyBadge}>
+          <View style={[styles.keyBadge, { backgroundColor: colors.surfaceVariant }]}>
             <Ionicons
               name="key"
               size={12}
-              color={Colors.primary}
+              color={colors.primary}
               style={styles.keyIcon}
             />
-            <Text style={styles.keyText}>{group?.group_key}</Text>
+            <Text style={[styles.keyText, { color: colors.text }]}>{group?.group_key}</Text>
             <TouchableOpacity onPress={handleCopyKey} style={styles.copyBtn}>
-              <Ionicons name="copy-outline" size={12} color={Colors.gray} />
+              <Ionicons name="copy-outline" size={12} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
-          <Text style={styles.membersCountText}>
+          <Text style={[styles.membersCountText, { color: colors.textSecondary }]}>
             {members.length} {members.length === 1 ? "member" : "members"}
           </Text>
         </View>
 
         <View style={styles.actionButtonsRow}>
           <TouchableOpacity
-            style={[styles.actionBtn, styles.shareBtn]}
+            style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={handleShareKey}
           >
             <Ionicons
               name="share-social-outline"
               size={16}
-              color={Colors.primary}
+              color={colors.primary}
             />
-            <Text style={styles.shareBtnText}>Invite Link</Text>
+            <Text style={[styles.shareBtnText, { color: colors.primary }]}>Invite Link</Text>
           </TouchableOpacity>
           {isCurrentUserAdmin && (
             <TouchableOpacity
-              style={[styles.actionBtn, styles.leaderboardBtn]}
+              style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
               onPress={handleToggleLeaderboard}
             >
               <Ionicons
                 name={showLeaderboard ? "trophy" : "trophy-outline"}
                 size={16}
-                color={showLeaderboard ? Colors.accent : Colors.gray}
+                color={showLeaderboard ? colors.secondary : colors.textSecondary}
               />
               <Text
                 style={[
                   styles.leaderboardBtnText,
-                  { color: showLeaderboard ? Colors.accent : Colors.gray },
+                  { color: showLeaderboard ? colors.secondary : colors.textSecondary },
                 ]}
               >
                 {showLeaderboard ? "On Leaderboard" : "Off Leaderboard"}
@@ -1084,18 +1091,18 @@ export const GroupDetailScreen = ({ route, navigation }) => {
           )}
           {!isCurrentUserAdmin && (
             <TouchableOpacity
-              style={[styles.actionBtn, styles.leaveBtn]}
+              style={[styles.actionBtn, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.05)' : 'rgba(239, 68, 68, 0.05)', borderColor: isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.2)' }]}
               onPress={handleLeaveGroup}
             >
-              <Ionicons name="log-out-outline" size={16} color={Colors.red} />
-              <Text style={styles.leaveBtnText}>Leave Group</Text>
+              <Ionicons name="log-out-outline" size={16} color={colors.error} />
+              <Text style={[styles.leaveBtnText, { color: colors.error }]}>Leave Group</Text>
             </TouchableOpacity>
           )}
         </View>
       </View>
 
       {/* Segmented Tab Bar */}
-      <View style={styles.segmentContainer}>
+      <View style={[styles.segmentContainer, { backgroundColor: isDark ? 'rgba(251, 191, 36, 0.08)' : 'rgba(61, 31, 148, 0.08)' }]}>
         <TouchableOpacity
           style={[
             styles.segmentBtn,
@@ -1107,12 +1114,13 @@ export const GroupDetailScreen = ({ route, navigation }) => {
           <Ionicons
             name="alarm-outline"
             size={16}
-            color={activeTab === "tracker" ? Colors.white : Colors.primary}
+            color={activeTab === "tracker" ? colors.onPrimaryFill : colors.primary}
           />
           <Text
             style={[
               styles.segmentText,
-              activeTab === "tracker" && styles.segmentTextActive,
+              { color: colors.primary },
+              activeTab === "tracker" && [styles.segmentTextActive, { color: colors.onPrimaryFill }],
             ]}
           >
             Wake Tracker
@@ -1122,7 +1130,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         <TouchableOpacity
           style={[
             styles.segmentBtn,
-            activeTab === "members" && styles.segmentBtnActive,
+            activeTab === "members" && [styles.segmentBtnActive, { backgroundColor: colors.primary }],
           ]}
           onPress={() => setActiveTab("members")}
           activeOpacity={0.8}
@@ -1130,12 +1138,13 @@ export const GroupDetailScreen = ({ route, navigation }) => {
           <Ionicons
             name="people-outline"
             size={16}
-            color={activeTab === "members" ? Colors.white : Colors.primary}
+            color={activeTab === "members" ? colors.onPrimaryFill : colors.primary}
           />
           <Text
             style={[
               styles.segmentText,
-              activeTab === "members" && styles.segmentTextActive,
+              { color: colors.primary },
+              activeTab === "members" && [styles.segmentTextActive, { color: colors.onPrimaryFill }],
             ]}
           >
             Group Info
@@ -1145,10 +1154,10 @@ export const GroupDetailScreen = ({ route, navigation }) => {
 
       {activeTab === "tracker" ? (
         /* Tracker Card */
-        <View style={styles.trackerCard}>
-          <View style={styles.trackerHeader}>
+        <View style={[styles.trackerCard, { backgroundColor: colors.surface }]}>
+          <View style={[styles.trackerHeader, { borderBottomColor: colors.border }]}>
             <View style={styles.trackerTitleLeft}>
-              <Text style={styles.trackerTitle}>Wake Up Tracker</Text>
+              <Text style={[styles.trackerTitle, { color: colors.text }]}>Wake Up Tracker</Text>
             </View>
 
             {hasWokenUp || currentUser ? (
@@ -1156,13 +1165,13 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                 <Ionicons
                   name="checkmark-circle"
                   size={16}
-                  color={Colors.accent}
+                  color={colors.secondary}
                 />
-                <Text style={styles.awakeSuccessText}>Awake</Text>
+                <Text style={[styles.awakeSuccessText, { color: colors.secondary }]}>Awake</Text>
               </View>
             ) : wantsToFast ? (
-              <View style={styles.sleepingBadge}>
-                <Text style={styles.sleepingBadgeText}>Asleep</Text>
+              <View style={[styles.sleepingBadge, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}>
+                <Text style={[styles.sleepingBadgeText, { color: '#3B82F6' }]}>Asleep</Text>
               </View>
             ) : null}
           </View>
@@ -1177,9 +1186,9 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         </View>
       ) : (
         /* Group Info Card */
-        <View style={styles.trackerCard}>
-          <View style={styles.trackerHeader}>
-            <Text style={styles.trackerTitle}>Group Members</Text>
+        <View style={[styles.trackerCard, { backgroundColor: colors.surface }]}>
+          <View style={[styles.trackerHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.trackerTitle, { color: colors.text }]}>Group Members</Text>
           </View>
 
           <FlatList
@@ -1194,7 +1203,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
 
       {/* Buzz Alarm Overlay Modal - Similar to main AlarmOverlay */}
       <Modal visible={isBuzzing} animationType="fade" transparent={false}>
-        <View style={styles.buzzOverlay}>
+        <View style={[styles.buzzOverlay, { backgroundColor: colors.background }]}>
           {/* Logo at top */}
           <View
             style={{
@@ -1214,7 +1223,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
               style={{
                 fontFamily: "Quicksand-Regular",
                 fontWeight: "700",
-                color: "#FBBF24",
+                color: colors.secondary,
                 fontSize: 28,
               }}
             >
@@ -1224,7 +1233,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
 
           {/* Animated notification icon */}
           <View style={{ alignItems: "center", marginVertical: 30 }}>
-            <Ionicons name="notifications" size={100} color="#FBBF24" />
+            <Ionicons name="notifications" size={100} color={colors.secondary} />
           </View>
 
           {/* Titles */}
@@ -1233,7 +1242,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
               style={{
                 fontSize: 32,
                 fontWeight: "800",
-                color: "#FFFFFF",
+                color: colors.text,
                 textAlign: "center",
                 marginBottom: 12,
               }}
@@ -1243,17 +1252,17 @@ export const GroupDetailScreen = ({ route, navigation }) => {
             <Text
               style={{
                 fontSize: 18,
-                color: "rgba(255,255,255,0.9)",
+                color: colors.text,
                 textAlign: "center",
                 lineHeight: 24,
               }}
             >
-              {buzzData?.fromUserName || "Your group member"} from{" "}
-              {buzzData?.groupName || "your group"} is waking you for Suhoor!
+              {buzzData?.fromUserName || t('groups.member')} from{" "}
+              {buzzData?.groupName || t('groups.groupName')} is waking you for Suhoor!
             </Text>
             <Text
               style={{
-                color: "rgba(255,255,255,0.7)",
+                color: colors.textSecondary,
                 fontSize: 14,
                 textAlign: "center",
                 marginTop: 16,
@@ -1267,29 +1276,29 @@ export const GroupDetailScreen = ({ route, navigation }) => {
 
           {/* Dismiss Button */}
           <TouchableOpacity
-            style={styles.buzzDismissBtn}
+            style={[styles.buzzDismissBtn, { backgroundColor: colors.secondary }]}
             onPress={() => setIsBuzzing(false)}
           >
-            <Text style={styles.buzzDismissText}>Dismiss</Text>
+            <Text style={[styles.buzzDismissText, { color: colors.primary }]}>{t('common.dismiss')}</Text>
           </TouchableOpacity>
         </View>
       </Modal>
 
       {/* PIN Verification Modal */}
       <Modal visible={showPinModal} animationType="slide" transparent={true}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Enter Alarm PIN</Text>
+        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+          <View style={[styles.modalCard, { backgroundColor: colors.surface }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{t('alarm.enterPin')}</Text>
               <TouchableOpacity onPress={() => setShowPinModal(false)}>
-                <Ionicons name="close" size={24} color={Colors.dark} />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
             <View style={styles.modalContent}>
               <Text
                 style={[
                   styles.verificationPrompt,
-                  { textAlign: "center", marginBottom: 20 },
+                  { textAlign: "center", marginBottom: 20, color: colors.textSecondary },
                 ]}
               >
                 Enter your personal 4-digit PIN to confirm you are awake.
@@ -1319,27 +1328,27 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                       fontSize: 26,
                       fontWeight: "900",
                       borderWidth: 2,
-                      borderColor: digit ? Colors.primary : "#E5E7EB",
+                      borderColor: digit ? colors.primary : colors.border,
                       borderRadius: 10,
                       backgroundColor: digit
-                        ? "rgba(61,31,148,0.06)"
-                        : "#F9FAFB",
-                      color: Colors.dark,
+                        ? isDark ? 'rgba(251, 191, 36, 0.06)' : 'rgba(61,31,148,0.06)'
+                        : colors.surfaceVariant,
+                      color: colors.text,
                     }}
                   />
                 ))}
               </View>
               {pinError ? (
-                <Text style={[styles.dateErrorText, { textAlign: "center" }]}>
+                <Text style={[styles.dateErrorText, { textAlign: "center", color: colors.error }]}>
                   {pinError}
                 </Text>
               ) : null}
             </View>
             <TouchableOpacity
-              style={styles.modalConfirmBtn}
+              style={[styles.modalConfirmBtn, { backgroundColor: colors.primary }]}
               onPress={() => validateAndWakeUp()}
             >
-              <Text style={styles.modalConfirmText}>Confirm, I'm Awake</Text>
+              <Text style={[styles.modalConfirmText, { color: colors.onPrimaryFill }]}>Confirm, I'm Awake</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1353,19 +1362,19 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         onRequestClose={() => setShowMemberActionModal(false)}
       >
         <TouchableOpacity
-          style={styles.actionModalOverlay}
+          style={[styles.actionModalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}
           activeOpacity={1}
           onPress={() => setShowMemberActionModal(false)}
         >
           <TouchableOpacity
             activeOpacity={1}
-            style={styles.actionModalSheet}
+            style={[styles.actionModalSheet, { backgroundColor: colors.surface }]}
             onPress={(e) => e.stopPropagation?.()}
           >
-            <View style={styles.actionModalHandle} />
-            <View style={styles.actionModalHeader}>
-              <View style={styles.actionModalAvatar}>
-                <Text style={styles.actionModalAvatarText}>
+            <View style={[styles.actionModalHandle, { backgroundColor: colors.border }]} />
+            <View style={[styles.actionModalHeader, { borderBottomColor: colors.border }]}>
+              <View style={[styles.actionModalAvatar, { backgroundColor: colors.primary }]}>
+                <Text style={[styles.actionModalAvatarText, { color: colors.onPrimaryFill }]}>
                   {selectedMemberForAction?.profiles?.display_name
                     ?.charAt(0)
                     .toUpperCase() ||
@@ -1376,12 +1385,12 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                 </Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.actionModalName} numberOfLines={1}>
+                <Text style={[styles.actionModalName, { color: colors.text }]} numberOfLines={1}>
                   {selectedMemberForAction?.profiles?.display_name ||
                     selectedMemberForAction?.profiles?.email?.split("@")[0] ||
-                    "Member"}
+                    t('groups.member')}
                 </Text>
-                <Text style={styles.actionModalRole}>
+                <Text style={[styles.actionModalRole, { color: colors.textSecondary }]}>
                   {selectedMemberForAction?.role === "admin"
                     ? "Group Admin"
                     : "Member"}{" "}
@@ -1392,7 +1401,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                 onPress={() => setShowMemberActionModal(false)}
                 style={styles.actionModalCloseBtn}
               >
-                <Ionicons name="close" size={20} color={Colors.gray} />
+                <Ionicons name="close" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
@@ -1405,7 +1414,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                 isMemberInWakeUpWindow(selectedMemberForAction) &&
                 !currentUser && (
                   <TouchableOpacity
-                    style={styles.actionModalItem}
+                    style={[styles.actionModalItem, { backgroundColor: colors.surfaceVariant }]}
                     onPress={() => {
                       const m = selectedMemberForAction;
                       setShowMemberActionModal(false);
@@ -1415,19 +1424,19 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                     <View
                       style={[
                         styles.actionModalItemIcon,
-                        { backgroundColor: "rgba(249, 168, 38, 0.14)" },
+                        { backgroundColor: isDark ? 'rgba(251, 191, 36, 0.14)' : 'rgba(249, 168, 38, 0.14)' },
                       ]}
                     >
                       <Ionicons
                         name="notifications"
                         size={18}
-                        color={Colors.secondary}
+                        color={colors.secondary}
                       />
                     </View>
                     <Text
                       style={[
                         styles.actionModalItemText,
-                        { color: Colors.secondary },
+                        { color: colors.secondary },
                       ]}
                     >
                       Buzz Member (Wake Up)
@@ -1437,7 +1446,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
 
               {/* Copy Name */}
               <TouchableOpacity
-                style={styles.actionModalItem}
+                style={[styles.actionModalItem, { backgroundColor: colors.surfaceVariant }]}
                 onPress={async () => {
                   const name =
                     selectedMemberForAction?.profiles?.display_name ||
@@ -1453,16 +1462,16 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                 <View
                   style={[
                     styles.actionModalItemIcon,
-                    { backgroundColor: "rgba(21, 12, 51, 0.06)" },
+                    { backgroundColor: isDark ? 'rgba(251, 191, 36, 0.06)' : 'rgba(21, 12, 51, 0.06)' },
                   ]}
                 >
                   <Ionicons
                     name="copy-outline"
                     size={18}
-                    color={Colors.primary}
+                    color={colors.primary}
                   />
                 </View>
-                <Text style={styles.actionModalItemText}>Copy Member Name</Text>
+                <Text style={[styles.actionModalItemText, { color: colors.text }]}>Copy Member Name</Text>
               </TouchableOpacity>
 
               {/* Remove Member option for Admins */}
@@ -1471,7 +1480,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                   <TouchableOpacity
                     style={[
                       styles.actionModalItem,
-                      styles.actionModalItemDanger,
+                      { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)' },
                     ]}
                     onPress={() => {
                       const memberToRemove = selectedMemberForAction;
@@ -1482,19 +1491,19 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                     <View
                       style={[
                         styles.actionModalItemIcon,
-                        { backgroundColor: "rgba(239, 68, 68, 0.1)" },
+                        { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)' },
                       ]}
                     >
                       <Ionicons
                         name="trash-outline"
                         size={18}
-                        color={Colors.red}
+                        color={colors.error}
                       />
                     </View>
                     <Text
                       style={[
                         styles.actionModalItemText,
-                        { color: Colors.red, fontWeight: "700" },
+                        { color: colors.error, fontWeight: "700" },
                       ]}
                     >
                       Remove Member from Group
@@ -1512,7 +1521,6 @@ export const GroupDetailScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   loaderContainer: {
     flex: 1,
@@ -1520,7 +1528,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   groupHeaderCard: {
-    backgroundColor: Colors.white,
     borderRadius: 20,
     padding: 16,
     margin: 16,
@@ -1531,7 +1538,6 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 3,
     borderWidth: 1,
-    borderColor: "rgba(61, 31, 148, 0.05)",
   },
   groupTitleRow: {
     flexDirection: "row",
@@ -1547,7 +1553,6 @@ const styles = StyleSheet.create({
   groupTitleText: {
     fontSize: 20,
     fontWeight: "800",
-    color: Colors.dark,
   },
   editIconBtn: {
     marginLeft: 8,
@@ -1562,38 +1567,32 @@ const styles = StyleSheet.create({
   editInput: {
     flex: 1,
     borderWidth: 1.5,
-    borderColor: Colors.primary,
     borderRadius: 8,
     paddingHorizontal: 10,
     height: 38,
     fontSize: 15,
   },
   editSaveBtn: {
-    backgroundColor: Colors.primary,
     borderRadius: 8,
     paddingHorizontal: 12,
     height: 38,
     justifyContent: "center",
   },
   editSaveText: {
-    color: Colors.white,
     fontWeight: "700",
   },
   editCancelBtn: {
-    backgroundColor: Colors.lightGray,
     borderRadius: 8,
     paddingHorizontal: 12,
     height: 38,
     justifyContent: "center",
   },
   editCancelText: {
-    color: Colors.dark,
     fontWeight: "600",
   },
   liveBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(16, 185, 129, 0.12)",
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 8,
@@ -1603,11 +1602,9 @@ const styles = StyleSheet.create({
     height: 6,
     width: 6,
     borderRadius: 3,
-    backgroundColor: Colors.green,
   },
   liveText: {
     fontSize: 10,
-    color: Colors.green,
     fontWeight: "700",
     textTransform: "uppercase",
   },
@@ -1620,7 +1617,6 @@ const styles = StyleSheet.create({
   keyBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.lightGray,
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 8,
@@ -1632,7 +1628,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Quicksand-SemiBold",
     fontWeight: "600",
-    color: Colors.dark,
   },
   copyBtn: {
     padding: 2,
@@ -1640,7 +1635,6 @@ const styles = StyleSheet.create({
   },
   membersCountText: {
     fontSize: 12,
-    color: Colors.gray,
     fontWeight: "500",
   },
   actionButtonsRow: {
@@ -1657,36 +1651,21 @@ const styles = StyleSheet.create({
     columnGap: 6,
     borderWidth: 1,
   },
-  shareBtn: {
-    backgroundColor: Colors.white,
-    borderColor: Colors.muted,
-  },
   shareBtnText: {
-    color: Colors.primary,
     fontSize: 12,
     fontWeight: "700",
-  },
-  leaderboardBtn: {
-    backgroundColor: Colors.white,
-    borderColor: Colors.muted,
   },
   leaderboardBtnText: {
     fontSize: 12,
     fontWeight: "700",
   },
-  leaveBtn: {
-    backgroundColor: "rgba(239, 68, 68, 0.05)",
-    borderColor: "rgba(239, 68, 68, 0.2)",
-  },
   leaveBtnText: {
-    color: Colors.red,
     fontSize: 12,
     fontWeight: "700",
   },
   // Tracker Card
   trackerCard: {
     flex: 1,
-    backgroundColor: Colors.white,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 16,
@@ -1696,7 +1675,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     borderBottomWidth: 1,
-    borderBottomColor: Colors.muted,
     paddingBottom: 14,
     marginBottom: 10,
   },
@@ -1707,14 +1685,11 @@ const styles = StyleSheet.create({
   trackerTitle: {
     fontSize: 16,
     fontWeight: "800",
-    color: Colors.dark,
   },
   locationBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(239, 68, 68, 0.1)",
     borderWidth: 1,
-    borderColor: "rgba(239, 68, 68, 0.2)",
     paddingVertical: 2,
     paddingHorizontal: 6,
     borderRadius: 6,
@@ -1723,20 +1698,17 @@ const styles = StyleSheet.create({
   },
   locationBadgeText: {
     fontSize: 9,
-    color: Colors.red,
     fontWeight: "700",
   },
   wakeUpBtn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.accent,
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 10,
     columnGap: 6,
   },
   wakeUpBtnText: {
-    color: Colors.white,
     fontSize: 13,
     fontWeight: "800",
   },
@@ -1746,7 +1718,6 @@ const styles = StyleSheet.create({
     columnGap: 4,
   },
   awakeSuccessText: {
-    color: Colors.accent,
     fontSize: 13,
     fontWeight: "700",
   },
@@ -1759,10 +1730,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
   },
   memberRowAwake: {
-    backgroundColor: "rgba(0, 194, 168, 0.03)",
   },
   memberRowNotFasting: {
     opacity: 0.5,
@@ -1781,15 +1750,12 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: "rgba(61, 31, 148, 0.1)",
     justifyContent: "center",
     alignItems: "center",
   },
   adminAvatar: {
-    backgroundColor: "#FEF3C7",
   },
   memberAvatarText: {
-    color: Colors.primary,
     fontSize: 15,
     fontWeight: "700",
   },
@@ -1800,9 +1766,7 @@ const styles = StyleSheet.create({
     height: 10,
     width: 10,
     borderRadius: 5,
-    backgroundColor: Colors.green,
     borderWidth: 1.5,
-    borderColor: Colors.white,
   },
   memberInfo: {
     flex: 1,
@@ -1817,21 +1781,17 @@ const styles = StyleSheet.create({
   memberName: {
     fontSize: 14,
     fontWeight: "700",
-    color: Colors.dark,
   },
   awakeBadge: {
-    backgroundColor: "rgba(0, 194, 168, 0.1)",
     paddingVertical: 2,
     paddingHorizontal: 6,
     borderRadius: 4,
   },
   awakeBadgeText: {
     fontSize: 9,
-    color: Colors.accent,
     fontWeight: "700",
   },
   notFastingBadge: {
-    backgroundColor: "rgba(239, 68, 68, 0.1)",
     paddingVertical: 2,
     paddingHorizontal: 6,
     borderRadius: 6,
@@ -1839,10 +1799,8 @@ const styles = StyleSheet.create({
   notFastingBadgeText: {
     fontSize: 10,
     fontWeight: "700",
-    color: Colors.red,
   },
   sleepingBadge: {
-    backgroundColor: "rgba(59, 130, 246, 0.1)",
     paddingVertical: 2,
     paddingHorizontal: 6,
     borderRadius: 6,
@@ -1850,7 +1808,6 @@ const styles = StyleSheet.create({
   sleepingBadgeText: {
     fontSize: 10,
     fontWeight: "700",
-    color: Colors.blue,
   },
   memberDetailsRow: {
     flexDirection: "row",
@@ -1860,13 +1817,11 @@ const styles = StyleSheet.create({
   },
   memberDetailText: {
     fontSize: 11,
-    color: Colors.gray,
     flexDirection: "row",
     alignItems: "center",
   },
   memberEmail: {
     fontSize: 11,
-    color: Colors.gray,
     marginTop: 2,
   },
   memberActions: {
@@ -1875,7 +1830,6 @@ const styles = StyleSheet.create({
     columnGap: 8,
   },
   buzzYellowBtn: {
-    backgroundColor: "#F59E0B",
     paddingVertical: 5,
     paddingHorizontal: 12,
     borderRadius: 8,
@@ -1886,13 +1840,11 @@ const styles = StyleSheet.create({
   },
   buzzYellowBtnText: {
     fontSize: 12,
-    color: "#1D1145",
     fontWeight: "700",
   },
   findBtn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.primary,
     paddingVertical: 6,
     paddingHorizontal: 8,
     borderRadius: 8,
@@ -1900,27 +1852,22 @@ const styles = StyleSheet.create({
   },
   findText: {
     fontSize: 10,
-    color: Colors.white,
     fontWeight: "700",
   },
   removeBtn: {
     padding: 6,
     borderRadius: 8,
-    backgroundColor: "rgba(239, 68, 68, 0.05)",
   },
   // Buzz Alarm Overlay
   buzzOverlay: {
     flex: 1,
-    backgroundColor: Colors.primary,
     justifyContent: "center",
     alignItems: "center",
     padding: 32,
     paddingTop: 80,
   },
   buzzDismissBtn: {
-    backgroundColor: Colors.secondary,
     borderWidth: 2,
-    borderColor: "rgba(255, 255, 255, 0.3)",
     paddingVertical: 18,
     paddingHorizontal: 56,
     borderRadius: 16,
@@ -1939,19 +1886,16 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   buzzDismissText: {
-    color: Colors.primary,
     fontSize: 20,
     fontWeight: "800",
   },
   // Date Modals
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     padding: 24,
   },
   modalCard: {
-    backgroundColor: Colors.white,
     borderRadius: 16,
     padding: 20,
     shadowColor: "#000",
@@ -1965,51 +1909,43 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     borderBottomWidth: 1,
-    borderBottomColor: Colors.muted,
     paddingBottom: 10,
     marginBottom: 16,
   },
   modalTitle: {
     fontSize: 16,
     fontWeight: "800",
-    color: Colors.dark,
   },
   modalContent: {
     marginBottom: 20,
   },
   verificationPrompt: {
     fontSize: 13,
-    color: Colors.gray,
     lineHeight: 18,
     marginBottom: 16,
   },
   dateInput: {
     borderWidth: 2,
-    borderColor: Colors.muted,
     borderRadius: 10,
     height: 48,
     textAlign: "center",
     fontSize: 20,
     fontWeight: "700",
-    color: Colors.dark,
     letterSpacing: 2,
   },
   dateErrorText: {
-    color: Colors.red,
     fontSize: 11,
     fontWeight: "500",
     marginTop: 6,
     textAlign: "center",
   },
   modalConfirmBtn: {
-    backgroundColor: Colors.primary,
     height: 46,
     borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
   },
   modalConfirmText: {
-    color: Colors.white,
     fontWeight: "700",
     fontSize: 14,
   },
@@ -2017,7 +1953,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     marginHorizontal: 16,
     marginBottom: 12,
-    backgroundColor: "rgba(61, 31, 148, 0.08)",
     borderRadius: 14,
     padding: 4,
     columnGap: 4,
@@ -2032,8 +1967,6 @@ const styles = StyleSheet.create({
     columnGap: 6,
   },
   segmentBtnActive: {
-    backgroundColor: Colors.primary,
-    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -2042,14 +1975,11 @@ const styles = StyleSheet.create({
   segmentText: {
     fontSize: 13,
     fontWeight: "600",
-    color: Colors.primary,
   },
   segmentTextActive: {
-    color: Colors.white,
     fontWeight: "700",
   },
   adminRoleBadge: {
-    backgroundColor: "rgba(249, 168, 38, 0.15)",
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
@@ -2058,11 +1988,9 @@ const styles = StyleSheet.create({
   adminRoleBadgeText: {
     fontSize: 10,
     fontWeight: "700",
-    color: Colors.secondary,
     textTransform: "uppercase",
   },
   selfBadge: {
-    backgroundColor: "rgba(61, 31, 148, 0.1)",
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
@@ -2071,13 +1999,11 @@ const styles = StyleSheet.create({
   selfBadgeText: {
     fontSize: 10,
     fontWeight: "700",
-    color: Colors.primary,
   },
   timeTag: {
     flexDirection: "row",
     alignItems: "center",
     columnGap: 4,
-    backgroundColor: "rgba(21, 12, 51, 0.05)",
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
@@ -2085,7 +2011,6 @@ const styles = StyleSheet.create({
   timeTagText: {
     fontSize: 11,
     fontWeight: "600",
-    color: Colors.primary,
   },
   memberDotsBtn: {
     padding: 8,
@@ -2095,11 +2020,9 @@ const styles = StyleSheet.create({
   },
   actionModalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "flex-end",
   },
   actionModalSheet: {
-    backgroundColor: Colors.white,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 20,
@@ -2114,7 +2037,6 @@ const styles = StyleSheet.create({
   actionModalHandle: {
     width: 40,
     height: 4,
-    backgroundColor: "#E5E7EB",
     borderRadius: 2,
     alignSelf: "center",
     marginBottom: 16,
@@ -2125,31 +2047,26 @@ const styles = StyleSheet.create({
     columnGap: 12,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
     marginBottom: 16,
   },
   actionModalAvatar: {
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: Colors.primary,
     alignItems: "center",
     justifyContent: "center",
   },
   actionModalAvatarText: {
-    color: Colors.white,
     fontSize: 18,
     fontWeight: "700",
   },
   actionModalName: {
     fontSize: 16,
     fontWeight: "700",
-    color: Colors.dark,
     marginBottom: 2,
   },
   actionModalRole: {
     fontSize: 12,
-    color: Colors.gray,
   },
   actionModalCloseBtn: {
     padding: 6,
@@ -2164,10 +2081,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 12,
     borderRadius: 12,
-    backgroundColor: "#F9FAFB",
   },
   actionModalItemDanger: {
-    backgroundColor: "rgba(239, 68, 68, 0.05)",
   },
   actionModalItemIcon: {
     width: 36,
@@ -2179,7 +2094,6 @@ const styles = StyleSheet.create({
   actionModalItemText: {
     fontSize: 14,
     fontWeight: "600",
-    color: Colors.dark,
   },
 });
 

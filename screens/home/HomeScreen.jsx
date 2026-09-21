@@ -477,7 +477,7 @@ export const HomeScreen = ({ navigation }) => {
 
             <View style={{ flexDirection: 'row', columnGap: 12 }}>
               <Button
-                title="Cancel"
+                title={t('common.cancel')}
                 onPress={() => {
                   setShowPinModal(false);
                   setPinDigits(['', '', '', '']);

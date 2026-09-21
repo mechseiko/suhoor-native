@@ -89,8 +89,8 @@ class AlarmActivity : AppCompatActivity() {
 
         // Dismiss keyguard
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-            keyguardManager.requestDismissKeyguard(this, null)
+            val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+            keyguardManager?.requestDismissKeyguard(this, null)
         } else {
             @Suppress("DEPRECATION")
             window.addFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD)
@@ -116,20 +116,20 @@ class AlarmActivity : AppCompatActivity() {
         val dismissButton = findViewById<Button>(R.id.dismiss_button)
         val snoozeButton = findViewById<Button>(R.id.snooze_button)
 
-        titleTextView.text = when (alarmData?.type) {
+        titleTextView?.text = when (alarmData?.type) {
             "wake_up" -> "Wake Up, It's time for suhoor"
             "recheck" -> "You haven't checked in, check in now to stop being buzzed"
             "remote_buzz" -> "A member of your group is buzzing you"
             else -> "Alarm"
         }
 
-        timeTextView.text = alarmData?.let { Date(it.triggerTime).toString() } ?: "Now"
+        timeTextView?.text = alarmData?.let { Date(it.triggerTime).toString() } ?: "Now"
 
-        dismissButton.setOnClickListener {
+        dismissButton?.setOnClickListener {
             dismissAlarm()
         }
 
-        snoozeButton.setOnClickListener {
+        snoozeButton?.setOnClickListener {
             snoozeAlarm()
         }
     }
