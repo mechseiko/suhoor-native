@@ -51,15 +51,15 @@ android {
     defaultConfig {
         applicationId 'com.mechseiko.suhoor'
         minSdkVersion 23
-        targetSdkVersion 34
-        versionCode 11
+        targetSdkVersion 36
+        versionCode 12
         versionName "1.0.8"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
 
         // Enable 16KB page size alignment for Android 15+ devices
         ndk {
-            abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
+            abiFilters 'armeabi-v7a', 'arm64-v8a'
         }
     }
     signingConfigs {
