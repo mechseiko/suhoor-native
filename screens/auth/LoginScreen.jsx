@@ -16,7 +16,7 @@ export const LoginScreen = ({ navigation }) => {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { login } = useAuth()
+  const { login, logout } = useAuth()
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -30,6 +30,12 @@ export const LoginScreen = ({ navigation }) => {
     try {
       const userCredential = await login(email.trim(), password)
       const user = userCredential.user
+
+      if (!user.emailVerified) {
+        await logout()
+        setError(t('auth.emailNotVerified'))
+        return
+      }
 
       // Sync alarm PIN from AsyncStorage to profile if it exists
       try {
@@ -46,18 +52,23 @@ export const LoginScreen = ({ navigation }) => {
       const errorCode = err.code
       let errorMessage = t('auth.loginError')
       
-      if (errorCode === 'auth/user-not-found') {
-        errorMessage = t('auth.userNotFound') || 'No account found with this email'
+      if (
+        errorCode === 'auth/invalid-credential' ||
+        errorCode === 'auth/invalid-login-credentials'
+      ) {
+        errorMessage = t('auth.invalidCredentials')
+      } else if (errorCode === 'auth/user-not-found') {
+        errorMessage = t('auth.userNotFound')
       } else if (errorCode === 'auth/wrong-password') {
-        errorMessage = t('auth.wrongPassword') || 'Incorrect password'
+        errorMessage = t('auth.wrongPassword')
       } else if (errorCode === 'auth/invalid-email') {
-        errorMessage = t('auth.invalidEmail') || 'Invalid email address'
+        errorMessage = t('auth.invalidEmail')
       } else if (errorCode === 'auth/user-disabled') {
-        errorMessage = t('auth.userDisabled') || 'This account has been disabled'
+        errorMessage = t('auth.userDisabled')
       } else if (errorCode === 'auth/too-many-requests') {
-        errorMessage = t('auth.tooManyRequests') || 'Too many attempts. Please try again later'
-      } else if (err.message) {
-        errorMessage = err.message
+        errorMessage = t('auth.tooManyRequests')
+      } else if (errorCode === 'auth/network-request-failed') {
+        errorMessage = t('auth.networkError')
       }
       
       setError(errorMessage)

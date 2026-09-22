@@ -26,6 +26,7 @@ export const SignupScreen = ({ navigation }) => {
   const [userEmail, setUserEmail] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
   const [verificationChecking, setVerificationChecking] = useState(false);
+  const [notice, setNotice] = useState("");
   const { signup } = useAuth();
 
   useEffect(() => {
@@ -39,17 +40,19 @@ export const SignupScreen = ({ navigation }) => {
   const resendVerification = async () => {
     if (resendCooldown > 0 || !auth.currentUser) return;
     setError("");
+    setNotice("");
     try {
       await sendEmailVerification(auth.currentUser, {
         url: "https://suhoor-group.web.app/login",
         handleCodeInApp: true,
       });
       setResendCooldown(30);
+      setNotice(t("auth.verificationResent"));
     } catch (emailErr) {
       setError(
         emailErr?.code === "auth/too-many-requests"
-          ? "Please wait before requesting another email."
-          : "Could not send the verification email. Please try again."
+          ? t("auth.verificationTooMany")
+          : t("auth.verificationSendError")
       );
     }
   };
@@ -58,17 +61,16 @@ export const SignupScreen = ({ navigation }) => {
     if (!auth.currentUser) return;
     setVerificationChecking(true);
     setError("");
+    setNotice("");
     try {
       await reload(auth.currentUser);
       if (auth.currentUser.emailVerified) {
-        setError("Email verified. You can now sign in.");
+        setNotice(t("auth.verifiedSuccess"));
       } else {
-        setError(
-          "Your email is not verified yet. Open the email link, then try again."
-        );
+        setError(t("auth.notVerifiedYet"));
       }
     } catch (checkErr) {
-      setError("Could not check verification status. Please try again.");
+      setError(t("auth.verificationCheckError"));
     } finally {
       setVerificationChecking(false);
     }
@@ -94,7 +96,7 @@ export const SignupScreen = ({ navigation }) => {
 
     const passCheck = validatePassword(password);
     if (!passCheck.isValid) {
-      setError(passCheck.error);
+      setError(t(passCheck.errorKey));
       return;
     }
 
@@ -149,6 +151,13 @@ export const SignupScreen = ({ navigation }) => {
         },
       });
 
+      // Triggers the one-time tab tour when the new user first enters the app
+      try {
+        await AsyncStorage.setItem("suhoor-tab-tour-pending", "true");
+      } catch (tourFlagErr) {
+        console.log("Error setting tab tour flag:", tourFlagErr);
+      }
+
       // 3. Send Firebase email verification (built-in Firebase syntax)
       try {
         await sendEmailVerification(user, {
@@ -158,9 +167,7 @@ export const SignupScreen = ({ navigation }) => {
         setResendCooldown(30);
       } catch (emailErr) {
         console.log("Firebase verification email error:", emailErr);
-        setError(
-          "Account created, but Firebase could not send the verification email. Use Resend below."
-        );
+        setError(t("auth.verificationSignupFail"));
       }
 
       // Show verification screen instead of auto-navigating to home
@@ -206,6 +213,7 @@ export const SignupScreen = ({ navigation }) => {
       }
     >
       {showVerificationScreen ? (
+        <>
         <View
           style={{
             backgroundColor: "#ECFDF5",
@@ -245,6 +253,40 @@ export const SignupScreen = ({ navigation }) => {
             {userEmail}
           </Text>
         </View>
+
+        {notice ? (
+          <Text
+            style={{
+              color: "#059669",
+              fontSize: 14,
+              fontWeight: "600",
+              textAlign: "center",
+              marginBottom: 16,
+            }}
+          >
+            {notice}
+          </Text>
+        ) : null}
+
+        <Button
+          title={
+            resendCooldown > 0
+              ? t("auth.resendIn", { seconds: resendCooldown })
+              : t("auth.resendVerification")
+          }
+          onPress={resendVerification}
+          disabled={resendCooldown > 0}
+          variant="outline"
+        />
+
+        <Button
+          title={t("auth.checkVerification")}
+          onPress={checkVerification}
+          loading={verificationChecking}
+          variant="primary"
+          style={{ marginTop: 12, borderRadius: 8 }}
+        />
+        </>
       ) : (
         <>
           <Input
@@ -264,10 +306,7 @@ export const SignupScreen = ({ navigation }) => {
             placeholder="••••••••"
             value={password}
             onChangeText={setPassword}
-            hint={t(
-              "auth.passwordHint",
-              "Minimum of 6 characters with uppercase, lowercase & special characters"
-            )}
+            hint={t("auth.passwordHint")}
             secure
             autoCapitalize="none"
             autoCorrect={false}
@@ -321,7 +360,7 @@ export const SignupScreen = ({ navigation }) => {
                 color: "#6B7280",
               }}
             >
-              By continuing, you agree to Suhoor's{" "}
+              {t("auth.agreeTermsText")}{" "}
               <Text
                 style={{
                   color: colors.primary,
@@ -331,9 +370,9 @@ export const SignupScreen = ({ navigation }) => {
                   Linking.openURL("https://suhoor-group.web.app/terms")
                 }
               >
-                Terms of Use
+                {t("nav.terms")}
               </Text>{" "}
-              and{" "}
+              {t("common.and")}{" "}
               <Text
                 style={{
                   color: colors.primary,
@@ -343,7 +382,7 @@ export const SignupScreen = ({ navigation }) => {
                   Linking.openURL("https://suhoor-group.web.app/privacy")
                 }
               >
-                Privacy Policy
+                {t("nav.privacy")}
               </Text>
               .
             </Text>

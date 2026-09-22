@@ -53,7 +53,7 @@ android {
         minSdkVersion 23
         targetSdkVersion 36
         versionCode 13
-        versionName "1.0.8"
+        versionName "1.0.9"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
 

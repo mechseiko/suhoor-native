@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { doc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
+import { COLLECTIONS } from '../../config/firestoreSchema';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -43,7 +44,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
     if (!groupId) return;
     setLoading(true);
     try {
-      const groupRef = doc(db, "groups", groupId);
+      const groupRef = doc(db, COLLECTIONS.groups, groupId);
       const groupSnap = await getDoc(groupRef);
       if (groupSnap.exists()) {
         setGroup({ id: groupSnap.id, ...groupSnap.data() });
@@ -69,7 +70,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
             setRegenerating(true);
             try {
               const newKey = Math.random().toString(36).substring(2, 10).toUpperCase();
-              const groupRef = doc(db, "groups", groupId);
+              const groupRef = doc(db, COLLECTIONS.groups, groupId);
               await updateDoc(groupRef, {
                 group_key: newKey,
                 key_generated_at: serverTimestamp(),
@@ -140,12 +141,12 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('groups.groupInfo', 'Group Information')}</Text>
           </View>
           
-          <View style={styles.infoRow}>
+          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
             <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('groups.groupName', 'Group Name')}</Text>
             <Text style={[styles.infoValue, { color: colors.text }]}>{group?.name || groupName}</Text>
           </View>
-          
-          <View style={styles.infoRow}>
+
+          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
             <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('groups.groupKey', 'Group Key')}</Text>
             <View style={styles.keyRow}>
               <Text style={[styles.infoValue, { color: colors.text }]}>{group?.group_key || groupKey}</Text>

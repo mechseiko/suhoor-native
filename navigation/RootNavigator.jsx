@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { View, Platform, StyleSheet } from 'react-native'
 import { NavigationContainer } from '@react-navigation/native'
@@ -6,12 +6,14 @@ import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import AuthStack from './AuthStack'
 import TabNavigator from './TabNavigator'
+import { AppTour } from '../components/AppTour'
 import LogoLoader from '../components/LogoLoader'
 
 export const RootNavigator = () => {
   const { currentUser, loading } = useAuth()
   const { colors } = useTheme()
   const [onboardingComplete, setOnboardingComplete] = useState(null)
+  const tabBarRef = useRef(null)
 
   useEffect(() => {
     AsyncStorage.getItem('suhoor-onboarding-complete').then(value => {
@@ -32,8 +34,10 @@ export const RootNavigator = () => {
   return (
     <NavigationContainer style={navContainerStyle}>
       <View style={styles.container}>
-        {currentUser ? (
-          <TabNavigator />
+        {currentUser?.emailVerified ? (
+          <AppTour tabBarRef={tabBarRef}>
+            <TabNavigator tabBarRef={tabBarRef} />
+          </AppTour>
         ) : (
           <AuthStack
             showOnboarding={!onboardingComplete}

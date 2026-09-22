@@ -1,6 +1,6 @@
 import React from 'react'
 import { Platform, TouchableOpacity, View } from 'react-native'
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
+import { createBottomTabNavigator, BottomTabBar } from '@react-navigation/bottom-tabs'
 import HomeScreen from '../screens/home/HomeScreen'
 import GroupsStack from './GroupsStack'
 import ProfileScreen from '../screens/profile/ProfileScreen'
@@ -25,7 +25,7 @@ if (Platform.OS !== 'web') {
 
 const Tab = createBottomTabNavigator()
 
-export const TabNavigator = () => {
+export const TabNavigator = ({ tabBarRef }) => {
   const { colors } = useTheme()
   const { t } = useLanguage()
   // Only use safe area insets on mobile (not web) to avoid SafeAreaProvider requirement
@@ -33,6 +33,15 @@ export const TabNavigator = () => {
 
   return (
     <Tab.Navigator
+      tabBar={
+        tabBarRef
+          ? (props) => (
+              <View collapsable={false} ref={tabBarRef}>
+                <BottomTabBar {...props} />
+              </View>
+            )
+          : undefined
+      }
       screenOptions={({ route, navigation }) => ({
         // Show back button if there is a back stack available
         headerLeft: () =>

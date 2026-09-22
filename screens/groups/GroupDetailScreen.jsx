@@ -25,6 +25,7 @@ import { useNetwork } from "../../context/NetworkContext";
 import { useFastingTimes } from "../../hooks/useFastingTimes";
 import { useGamification } from "../../hooks/useGamification";
 import { db } from "../../config/firebase";
+import { COLLECTIONS } from "../../config/firestoreSchema";
 import {
   collection,
   query,
@@ -107,12 +108,19 @@ export const GroupDetailScreen = ({ route, navigation }) => {
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
   const [toastType, setToastType] = useState("info");
+  const [toastDuration, setToastDuration] = useState(3000);
 
   const triggerToast = (msg, type) => {
     setToastMsg(msg);
     setToastType(type);
     setToastVisible(true);
   };
+
+  // Bulk buzz selection state
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selectedBulkIds, setSelectedBulkIds] = useState([]);
+  const [isBulkBuzzing, setIsBulkBuzzing] = useState(false);
+  const bulkRunIdRef = useRef(0);
 
   const openMemberActionMenu = (member) => {
     setSelectedMemberForAction(member);
@@ -123,7 +131,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
   const fetchGroupAndMembers = async () => {
     if (!currentUser || !groupId) return;
     try {
-      const groupRef = doc(db, "groups", groupId);
+      const groupRef = doc(db, COLLECTIONS.groups, groupId);
       const groupSnap = await getDoc(groupRef);
       if (groupSnap.exists()) {
         const groupData = { id: groupSnap.id, ...groupSnap.data() };
@@ -135,18 +143,24 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       // Set members loading state
       setMembersLoading(true);
 
-      const membersRef = collection(db, "group_members");
+      const membersRef = collection(db, COLLECTIONS.groupMembers);
       const q = query(membersRef, where("group_id", "==", groupId));
       const querySnapshot = await getDocs(q);
 
-      const membersData = [];
+      // Collapse duplicate membership rows (legacy data): one entry per user,
+      // keeping the admin row when both admin and member rows exist.
+      const seen = new Map();
       for (const docSnap of querySnapshot.docs) {
         const member = docSnap.data();
-        const profileRef = doc(db, "profiles", member.user_id);
+        if (!member.user_id) continue;
+        const existing = seen.get(member.user_id);
+        if (existing && existing.role === "admin") continue;
+
+        const profileRef = doc(db, COLLECTIONS.profiles, member.user_id);
         const profileSnap = await getDoc(profileRef);
 
         if (profileSnap.exists()) {
-          membersData.push({
+          seen.set(member.user_id, {
             id: docSnap.id,
             ...member,
             profiles: {
@@ -156,7 +170,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
           });
         }
       }
-      setMembers(membersData);
+      setMembers([...seen.values()]);
       setMembersLoading(false);
     } catch (err) {
       console.error("Error fetching group and members:", err);
@@ -283,7 +297,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       const today = new Date().toLocaleDateString("en-CA");
 
       // Fetch wake up logs
-      const logsRef = collection(db, "wake_up_logs");
+      const logsRef = collection(db, COLLECTIONS.wakeUpLogs);
       const q = query(logsRef, where("date", "==", today));
       const querySnapshot = await getDocs(q);
 
@@ -303,7 +317,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
           try {
             const docRef = doc(
               db,
-              "daily_fasting_status",
+              COLLECTIONS.dailyFastingStatus,
               `${member.profiles.id}_${today}`
             );
             const docSnap = await getDoc(docRef);
@@ -384,7 +398,10 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       if (data.userId === currentUser?.uid) {
         setHasWokenUp(true);
       } else {
-        triggerToast(`${data.userName} has woken up!`, "info");
+        triggerToast(
+          t('groups.memberWokeUpToast', { name: data.userName }),
+          "info"
+        );
       }
     };
 
@@ -467,7 +484,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     if (!groupId || !newGroupName.trim()) return;
     setSavingName(true);
     try {
-      const groupRef = doc(db, "groups", groupId);
+      const groupRef = doc(db, COLLECTIONS.groups, groupId);
       await updateDoc(groupRef, { name: newGroupName.trim() });
       setGroup((prev) => ({ ...prev, name: newGroupName.trim() }));
       setIsEditingName(false);
@@ -483,7 +500,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
   const handleToggleLeaderboard = async () => {
     if (!groupId) return;
     try {
-      const groupRef = doc(db, "groups", groupId);
+      const groupRef = doc(db, COLLECTIONS.groups, groupId);
       await updateDoc(groupRef, { show_on_leaderboard: !showLeaderboard });
       setShowLeaderboard(!showLeaderboard);
       setGroup((prev) => ({ ...prev, show_on_leaderboard: !showLeaderboard }));
@@ -549,7 +566,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
           onPress: async () => {
             setLoading(true);
             try {
-              const membersRef = collection(db, "group_members");
+              const membersRef = collection(db, COLLECTIONS.groupMembers);
               const q = query(
                 membersRef,
                 where("group_id", "==", groupId),
@@ -558,12 +575,12 @@ export const GroupDetailScreen = ({ route, navigation }) => {
               const snap = await getDocs(q);
 
               if (!snap.empty) {
-                await deleteDoc(doc(db, "group_members", snap.docs[0].id));
+                await deleteDoc(doc(db, COLLECTIONS.groupMembers, snap.docs[0].id));
               }
 
               // Permanently exclude user from rejoining
               await setDoc(
-                doc(db, "group_exclusions", `${groupId}_${currentUser.uid}`),
+                doc(db, COLLECTIONS.groupExclusions, `${groupId}_${currentUser.uid}`),
                 {
                   group_id: groupId,
                   user_id: currentUser.uid,
@@ -586,131 +603,229 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     );
   };
 
-  const handleBuzzMember = async (member) => {
-    if (!currentUser || !member?.profiles) return;
-    if (member.profiles.id === currentUser.uid) {
-      triggerToast(t('groups.cannotBuzzSelf'), "info");
-      return;
-    }
-    const targetMemberIntent = memberIntentions[member.profiles.id] !== false;
-    if (!targetMemberIntent) {
-      triggerToast(
-        `${
-          member.profiles.display_name || t('groups.member')
-        } is not fasting today and cannot be buzzed.`,
-        "info"
-      );
-      return;
-    }
+  const formatRemainingTime = (ms) => {
+    const remainingSecs = Math.ceil(ms / 1000);
+    const remainingMins = Math.floor(remainingSecs / 60);
+    const remainingSecPart = remainingSecs % 60;
+    return remainingMins > 0
+      ? `${remainingMins}m ${remainingSecPart}s`
+      : `${remainingSecs}s`;
+  };
 
-    // Must be in their own wake up window
+  // Shared eligibility checks: self, fasting intention, wake window,
+  // 5-minute grace after wake time, and the 3-minute group cooldown.
+  const checkBuzzEligibility = async (member) => {
+    if (!currentUser || !member?.profiles) return { ok: false, reason: "invalid" };
+    if (member.profiles.id === currentUser.uid) return { ok: false, reason: "self" };
+    if (memberIntentions[member.profiles.id] === false) {
+      return { ok: false, reason: "not_fasting" };
+    }
     if (!isMemberInWakeUpWindow(member)) {
-      triggerToast(
-        `${
-          member.profiles.display_name || t('groups.member')
-        } is not in their wake-up window yet.`,
-        "info"
-      );
-      return;
+      return { ok: false, reason: "not_in_window" };
     }
 
-    // Check 5-minute grace period after wake-up time to prevent immediate buzzing
+    // 5-minute grace period after wake-up time to prevent immediate buzzing
     const wakeUpStr = getMemberWakeUpTime(member);
     if (wakeUpStr && wakeUpStr !== "--:--") {
       const [wH, wM] = wakeUpStr.split(":").map(Number);
       if (!isNaN(wH) && !isNaN(wM)) {
         const wakeTime = new Date();
         wakeTime.setHours(wH, wM, 0, 0);
-        const now = new Date();
         const gracePeriodMs = 5 * 60 * 1000; // 5 minutes
-        const elapsedSinceWakeUp = now.getTime() - wakeTime.getTime();
+        const elapsedSinceWakeUp = Date.now() - wakeTime.getTime();
 
         if (elapsedSinceWakeUp < gracePeriodMs) {
-          const remainingSecs = Math.ceil(
-            (gracePeriodMs - elapsedSinceWakeUp) / 1000
-          );
-          const remainingMins = Math.floor(remainingSecs / 60);
-          const remainingSecPart = remainingSecs % 60;
-          const timeText =
-            remainingMins > 0
-              ? `${remainingMins}m ${remainingSecPart}s`
-              : `${remainingSecs}s`;
-          triggerToast(
-            `${
-              member.profiles.display_name || t('groups.member')
-            } has a 5-minute wake-up grace period (${timeText} remaining).`,
-            "info"
-          );
-          return;
+          return {
+            ok: false,
+            reason: "grace",
+            timeText: formatRemainingTime(gracePeriodMs - elapsedSinceWakeUp),
+          };
         }
       }
     }
 
-    // Check 3-minute cooldown across the group for this member
-    try {
-      const buzzDocRef = doc(
-        db,
-        "group_buzzes",
-        `${groupId}_${member.profiles.id}`
-      );
-      const buzzSnap = await getDoc(buzzDocRef);
-      const COOLDOWN_MS = 3 * 60 * 1000; // 3 minutes cooldown
+    // 3-minute cooldown across the group for this member
+    const buzzDocRef = doc(
+      db,
+      COLLECTIONS.groupBuzzes,
+      `${groupId}_${member.profiles.id}`
+    );
+    const buzzSnap = await getDoc(buzzDocRef);
+    const COOLDOWN_MS = 3 * 60 * 1000; // 3 minutes cooldown
 
-      if (buzzSnap.exists()) {
-        const data = buzzSnap.data();
-        const lastBuzzed =
-          data.timestamp ||
-          (data.buzzed_at?.toMillis ? data.buzzed_at.toMillis() : 0);
-        const elapsed = Date.now() - lastBuzzed;
-        if (elapsed < COOLDOWN_MS) {
-          const remainingSecs = Math.ceil((COOLDOWN_MS - elapsed) / 1000);
-          const remainingMins = Math.floor(remainingSecs / 60);
-          const remainingSecPart = remainingSecs % 60;
-          const timeText =
-            remainingMins > 0
-              ? `${remainingMins}m ${remainingSecPart}s`
-              : `${remainingSecs}s`;
-          triggerToast(
-            `${
-              member.profiles.display_name || t('groups.member')
-            } is already being buzzed. Cooldown active (${timeText} remaining).`,
-            "info"
-          );
-          return;
-        }
+    if (buzzSnap.exists()) {
+      const data = buzzSnap.data();
+      const lastBuzzed =
+        data.timestamp ||
+        (data.buzzed_at?.toMillis ? data.buzzed_at.toMillis() : 0);
+      const elapsed = Date.now() - lastBuzzed;
+      if (elapsed < COOLDOWN_MS) {
+        return {
+          ok: false,
+          reason: "cooldown",
+          timeText: formatRemainingTime(COOLDOWN_MS - elapsed),
+        };
+      }
+    }
+
+    return { ok: true, buzzDocRef };
+  };
+
+  const getBuzzRejectionMessage = (member, check) => {
+    const name = member?.profiles?.display_name || t('groups.member');
+    switch (check.reason) {
+      case "self":
+        return t('groups.cannotBuzzSelf');
+      case "not_fasting":
+        return t('groups.buzzTargetNotFasting', { name });
+      case "not_in_window":
+        return t('groups.buzzTargetNotInWindow', { name });
+      case "grace":
+        return t('groups.buzzGracePeriod', { name, time: check.timeText });
+      case "cooldown":
+        return t('groups.buzzCooldownActive', { name, time: check.timeText });
+      default:
+        return t('groups.buzzMemberError');
+    }
+  };
+
+  // Record the buzz and notify the target
+  const performBuzz = async (member, buzzDocRef) => {
+    const fromName =
+      userProfile?.display_name ||
+      currentUser.displayName ||
+      currentUser.email ||
+      t('groups.member');
+
+    // Record buzz in Firestore so all group members respect the 3-minute cooldown between buzzes
+    await setDoc(buzzDocRef, {
+      group_id: groupId,
+      target_user_id: member.profiles.id,
+      buzzed_by_user_id: currentUser.uid,
+      buzzed_by_name: fromName,
+      group_name: group?.name || "",
+      timestamp: Date.now(),
+      buzzed_at: serverTimestamp(),
+    });
+
+    // Pass group name to the buzzed user via socket
+    buzzUser(member.profiles.id, groupId, fromName, group?.name);
+
+    // Award points for successful buzz
+    await recordActivity("buzz_member");
+  };
+
+  const handleBuzzMember = async (member) => {
+    if (!currentUser || !member?.profiles) return;
+    try {
+      const check = await checkBuzzEligibility(member);
+      if (!check.ok) {
+        triggerToast(getBuzzRejectionMessage(member, check), "info");
+        return;
       }
 
-      const fromName =
-        userProfile?.display_name ||
-        currentUser.displayName ||
-        currentUser.email ||
-        "Group Member";
-
-      // Record buzz in Firestore so all group members respect the 3-minute cooldown between buzzes
-      await setDoc(buzzDocRef, {
-        group_id: groupId,
-        target_user_id: member.profiles.id,
-        buzzed_by_user_id: currentUser.uid,
-        buzzed_by_name: fromName,
-        group_name: group?.name || "",
-        timestamp: Date.now(),
-        buzzed_at: serverTimestamp(),
-      });
-
-      // Pass group name to the buzzed user via socket
-      buzzUser(member.profiles.id, groupId, fromName, group?.name);
-
-      // Award points for successful buzz
-      await recordActivity("buzz_member");
+      await performBuzz(member, check.buzzDocRef);
 
       triggerToast(
-        `Buzzed ${member.profiles.display_name || member.profiles.email}!`,
+        t('groups.buzzSentTo', {
+          name: member.profiles.display_name || member.profiles.email,
+        }),
         "success"
       );
     } catch (err) {
       console.error("Error buzzing member:", err);
       triggerToast(t('groups.buzzMemberError'), "error");
     }
+  };
+
+  // Bulk buzz: every selected member goes through the same eligibility rules,
+  // then each per-user result is narrated as its own toast.
+  const handleBulkBuzz = async () => {
+    if (!currentUser || isBulkBuzzing) return;
+    const targets = members.filter(
+      (m) => m?.profiles && selectedBulkIds.includes(m.profiles.id)
+    );
+    if (targets.length === 0) return;
+
+    const runId = ++bulkRunIdRef.current;
+    setIsBulkBuzzing(true);
+
+    const logEntries = [];
+    let buzzedCount = 0;
+
+    for (const member of targets) {
+      if (bulkRunIdRef.current !== runId) break;
+      try {
+        const check = await checkBuzzEligibility(member);
+        if (!check.ok) {
+          logEntries.push({
+            msg: getBuzzRejectionMessage(member, check),
+            type: "info",
+          });
+          continue;
+        }
+        await performBuzz(member, check.buzzDocRef);
+        buzzedCount += 1;
+        logEntries.push({
+          msg: t('groups.buzzSentTo', {
+            name: member.profiles.display_name || member.profiles.email,
+          }),
+          type: "success",
+        });
+      } catch (err) {
+        console.error("Error buzzing member in bulk:", err);
+        logEntries.push({ msg: t('groups.buzzMemberError'), type: "error" });
+      }
+    }
+
+    // Toast is single-instance: play the per-user log one entry at a time
+    for (const entry of logEntries) {
+      if (bulkRunIdRef.current !== runId) break;
+      setToastDuration(2200);
+      triggerToast(entry.msg, entry.type);
+      await new Promise((resolve) => setTimeout(resolve, 2600));
+    }
+    if (bulkRunIdRef.current !== runId) return;
+
+    setToastDuration(3000);
+    triggerToast(t('groups.bulkBuzzDone', { number: buzzedCount }), "success");
+
+    setIsBulkBuzzing(false);
+    setBulkMode(false);
+    setSelectedBulkIds([]);
+  };
+
+  const enterBulkMode = () => {
+    setBulkMode(true);
+    setSelectedBulkIds([]);
+  };
+
+  const exitBulkMode = () => {
+    setBulkMode(false);
+    setSelectedBulkIds([]);
+  };
+
+  const toggleBulkSelection = (member) => {
+    if (!member?.profiles || member.profiles.id === currentUser?.uid) return;
+    setSelectedBulkIds((prev) =>
+      prev.includes(member.profiles.id)
+        ? prev.filter((id) => id !== member.profiles.id)
+        : [...prev, member.profiles.id]
+    );
+  };
+
+  const selectableMembers = members.filter(
+    (m) => m?.profiles && m.profiles.id !== currentUser?.uid
+  );
+
+  const allSelected =
+    selectableMembers.length > 0 &&
+    selectableMembers.every((m) => selectedBulkIds.includes(m.profiles.id));
+
+  const toggleSelectAll = () => {
+    setSelectedBulkIds(
+      allSelected ? [] : selectableMembers.map((m) => m.profiles.id)
+    );
   };
 
   const handleRemoveMember = (member) => {
@@ -729,11 +844,11 @@ export const GroupDetailScreen = ({ route, navigation }) => {
           onPress: async () => {
             setLoading(true);
             try {
-              await deleteDoc(doc(db, "group_members", member.id));
+              await deleteDoc(doc(db, COLLECTIONS.groupMembers, member.id));
 
               if (targetUserId) {
                 await setDoc(
-                  doc(db, "group_exclusions", `${groupId}_${targetUserId}`),
+                  doc(db, COLLECTIONS.groupExclusions, `${groupId}_${targetUserId}`),
                   {
                     group_id: groupId,
                     user_id: targetUserId,
@@ -815,7 +930,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       const todayStr = new Date().toLocaleDateString("en-CA");
       const wakeUpTime = new Date().toISOString();
 
-      await addDoc(collection(db, "wake_up_logs"), {
+      await addDoc(collection(db, COLLECTIONS.wakeUpLogs), {
         user_id: currentUser.uid,
         date: todayStr,
         woke_up_at: wakeUpTime,
@@ -864,11 +979,15 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     const showStatus = isStatusVisibleNow();
     const isSelf = item.profiles.id === currentUser?.uid;
 
+    const isSelected = selectedBulkIds.includes(item.profiles.id);
+
     return (
       <TouchableOpacity
         activeOpacity={0.7}
-        onLongPress={() => openMemberActionMenu(item)}
+        onPress={bulkMode ? () => toggleBulkSelection(item) : undefined}
+        onLongPress={bulkMode ? undefined : () => openMemberActionMenu(item)}
         delayLongPress={350}
+        disabled={bulkMode && isSelf}
         style={[
           styles.memberRow,
           memberStatus === "awake" && styles.memberRowAwake,
@@ -876,6 +995,21 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         ]}
       >
         <View style={styles.memberLeft}>
+          {bulkMode && !isSelf && (
+            <View
+              style={[
+                styles.bulkCheckbox,
+                {
+                  borderColor: isSelected ? colors.primary : colors.border,
+                  backgroundColor: isSelected ? colors.primary : "transparent",
+                },
+              ]}
+            >
+              {isSelected && (
+                <Ionicons name="checkmark" size={14} color={colors.onPrimaryFill} />
+              )}
+            </View>
+          )}
           <View style={styles.memberAvatarContainer}>
             <View
               style={[
@@ -949,7 +1083,8 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         </View>
 
         <View style={styles.memberActions}>
-          {memberStatus === "sleeping" &&
+          {!bulkMode &&
+            memberStatus === "sleeping" &&
             intendsToFast &&
             !isSelf &&
             isMemberInWakeUpWindow(item) && (
@@ -968,16 +1103,109 @@ export const GroupDetailScreen = ({ route, navigation }) => {
             )}
 
           {/* 3 vertical dots action button in front of member */}
-          <TouchableOpacity
-            style={styles.memberDotsBtn}
-            onPress={() => openMemberActionMenu(item)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="ellipsis-vertical" size={18} color={colors.text} />
-          </TouchableOpacity>
+          {!bulkMode && (
+            <TouchableOpacity
+              style={styles.memberDotsBtn}
+              onPress={() => openMemberActionMenu(item)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="ellipsis-vertical" size={18} color={colors.text} />
+            </TouchableOpacity>
+          )}
         </View>
       </TouchableOpacity>
+    );
+  };
+
+  const renderBulkBar = () => {
+    if (members.length === 0) return null;
+
+    if (!bulkMode) {
+      return (
+        <View style={styles.bulkBar}>
+          <TouchableOpacity
+            style={[styles.bulkStartBtn, { backgroundColor: isDark ? 'rgba(251, 191, 36, 0.12)' : 'rgba(249, 168, 38, 0.12)' }]}
+            onPress={enterBulkMode}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="notifications" size={15} color={colors.secondary} />
+            <Text style={[styles.bulkStartText, { color: colors.secondary }]}>
+              {t('groups.bulkBuzz')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.bulkBar}>
+        <View style={styles.bulkBarTop}>
+          <TouchableOpacity
+            style={styles.bulkSelectAllBtn}
+            onPress={toggleSelectAll}
+            disabled={isBulkBuzzing}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={allSelected ? "checkbox" : "square-outline"}
+              size={18}
+              color={colors.primary}
+            />
+            <Text style={[styles.bulkSelectAllText, { color: colors.primary }]}>
+              {t('groups.selectAll')}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={exitBulkMode}
+            disabled={isBulkBuzzing}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={[styles.bulkCancelText, { color: colors.textSecondary }]}>
+              {t('common.cancel')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <TouchableOpacity
+          style={[
+            styles.bulkBuzzBtn,
+            {
+              backgroundColor:
+                selectedBulkIds.length > 0
+                  ? colors.secondary
+                  : colors.surfaceVariant,
+            },
+          ]}
+          onPress={handleBulkBuzz}
+          disabled={selectedBulkIds.length === 0 || isBulkBuzzing}
+          activeOpacity={0.8}
+        >
+          {isBulkBuzzing ? (
+            <ActivityIndicator size="small" color={colors.primary} />
+          ) : (
+            <>
+              <Ionicons
+                name="notifications"
+                size={16}
+                color={selectedBulkIds.length > 0 ? colors.primary : colors.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.bulkBuzzBtnText,
+                  {
+                    color:
+                      selectedBulkIds.length > 0
+                        ? colors.primary
+                        : colors.textSecondary,
+                  },
+                ]}
+              >
+                {t('groups.buzzSelected', { number: selectedBulkIds.length })}
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
     );
   };
 
@@ -999,6 +1227,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         message={toastMsg}
         type={toastType}
         visible={toastVisible}
+        duration={toastDuration}
         onDismiss={() => setToastVisible(false)}
       />
 
@@ -1183,6 +1412,8 @@ export const GroupDetailScreen = ({ route, navigation }) => {
             ) : null}
           </View>
 
+          {renderBulkBar()}
+
           {membersLoading ? (
             <View style={{ alignItems: 'center', paddingVertical: 32 }}>
               <ActivityIndicator color={colors.primary} size="large" />
@@ -1206,6 +1437,8 @@ export const GroupDetailScreen = ({ route, navigation }) => {
           <View style={[styles.trackerHeader, { borderBottomColor: colors.border }]}>
             <Text style={[styles.trackerTitle, { color: colors.text }]}>{t('groups.groupMembers')}</Text>
           </View>
+
+          {renderBulkBar()}
 
           {membersLoading ? (
             <View style={{ alignItems: 'center', paddingVertical: 32 }}>
@@ -1417,9 +1650,9 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                 </Text>
                 <Text style={[styles.actionModalRole, { color: colors.textSecondary }]}>
                   {selectedMemberForAction?.role === "admin"
-                    ? "Group Admin"
-                    : "Member"}{" "}
-                  • Wake-up at {getMemberWakeUpTime(selectedMemberForAction)}
+                    ? t('groups.groupAdmin')
+                    : t('groups.member')}{" "}
+                  • {t('groups.wakeUpAt', { time: getMemberWakeUpTime(selectedMemberForAction) })}
                 </Text>
               </View>
               <TouchableOpacity
@@ -1436,8 +1669,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                 memberIntentions[selectedMemberForAction?.profiles?.id] !==
                   false &&
                 selectedMemberForAction?.profiles?.id !== currentUser?.uid &&
-                isMemberInWakeUpWindow(selectedMemberForAction) &&
-                !currentUser && (
+                isMemberInWakeUpWindow(selectedMemberForAction) && (
                   <TouchableOpacity
                     style={[styles.actionModalItem, { backgroundColor: colors.surfaceVariant }]}
                     onPress={() => {
@@ -1464,7 +1696,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                         { color: colors.secondary },
                       ]}
                     >
-                      Buzz Member (Wake Up)
+                      {t('groups.buzzMemberWakeUp')}
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -2119,6 +2351,63 @@ const styles = StyleSheet.create({
   actionModalItemText: {
     fontSize: 14,
     fontWeight: "600",
+  },
+  // Bulk buzz bar
+  bulkBar: {
+    marginBottom: 10,
+    rowGap: 10,
+  },
+  bulkStartBtn: {
+    alignSelf: "flex-end",
+    flexDirection: "row",
+    alignItems: "center",
+    columnGap: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+  bulkStartText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  bulkBarTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  bulkSelectAllBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    columnGap: 6,
+  },
+  bulkSelectAllText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  bulkCancelText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  bulkBuzzBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    height: 44,
+    borderRadius: 12,
+    columnGap: 8,
+  },
+  bulkBuzzBtnText: {
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  bulkCheckbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 7,
+    borderWidth: 2,
+    marginRight: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
 

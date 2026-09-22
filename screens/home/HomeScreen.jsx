@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../config/firebase';
+import { COLLECTIONS } from '../../config/firestoreSchema';
 import { collection, query, where, getDocs, orderBy, limit, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import FastingPrompt from '../../components/FastingPrompt';
 import AudioModeWarning from '../../components/AudioModeWarning';
@@ -108,7 +109,7 @@ export const HomeScreen = ({ navigation }) => {
       console.log('[HomeScreen] Total unique members:', uniqueMemberIds.size);
 
       // 3. Fetch total fasting days this year (based on actual wake-up logs, not just intentions)
-      const wakeUpLogsRef = collection(db, 'wake_up_logs');
+      const wakeUpLogsRef = collection(db, COLLECTIONS.wakeUpLogs);
       const wakeUpQuery = query(
         wakeUpLogsRef,
         where('user_id', '==', currentUser.uid)

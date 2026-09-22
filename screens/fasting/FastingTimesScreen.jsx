@@ -41,7 +41,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CLOCK_SIZE = Math.min(SCREEN_WIDTH - 80, 280);
 const CLOCK_RADIUS = CLOCK_SIZE / 2;
 
-const TimePickerDial = ({ value, onChange, colors }) => {
+const TimePickerDial = ({ value, onChange, colors, timeText, captionText, dragText }) => {
   const [angle, setAngle] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const clockRef = useRef(null);
@@ -196,29 +196,30 @@ const TimePickerDial = ({ value, onChange, colors }) => {
           }}
         />
 
-        {/* Center display */}
+        {/* Center display — the actual alarm time this dial position produces */}
         <View
           style={{
             position: 'absolute',
-            top: CLOCK_RADIUS - 30,
-            left: CLOCK_RADIUS - 40,
-            width: 80,
-            height: 60,
+            top: CLOCK_RADIUS - 32,
+            left: CLOCK_RADIUS - 50,
+            width: 100,
+            height: 64,
             alignItems: 'center',
             justifyContent: 'center',
+            rowGap: 2,
           }}
         >
-          <Text style={{ fontSize: 28, fontWeight: '800', color: colors.text }}>
-            {value}
+          <Text style={{ fontSize: 24, fontWeight: '800', color: colors.text }}>
+            {timeText}
           </Text>
-          <Text style={{ fontSize: 12, color: colors.textSecondary }}>
-            minutes
+          <Text style={{ fontSize: 11, color: colors.textSecondary, textAlign: 'center' }}>
+            {captionText}
           </Text>
         </View>
       </View>
-      
+
       <Text style={{ marginTop: 12, fontSize: 12, color: colors.textSecondary }}>
-        Drag to select minutes before suhoor
+        {dragText}
       </Text>
     </View>
   );
@@ -309,7 +310,7 @@ export const FastingTimesScreen = () => {
 
   const handlePickAndUploadAudio = async () => {
     if (!DocumentPicker) {
-      Alert.alert('Not available', 'Document picker is not installed in this build.');
+      Alert.alert(t('common.notAvailable'), t('fastingTimes.audioPickerMissing'));
       return;
     }
     try {
@@ -321,14 +322,36 @@ export const FastingTimesScreen = () => {
 
       const MAX_MB = 10;
       if (file.size && file.size > MAX_MB * 1024 * 1024) {
-        triggerToast(`Audio file must be under ${MAX_MB}MB.`, 'error');
+        triggerToast(t('fastingTimes.audioTooLarge', { max: MAX_MB }), 'error');
         return;
       }
 
       setIsUploadingAudio(true);
-      const response = await fetch(file.uri);
-      const blob = await response.blob();
-      const storageRef = ref(storage, `alarm_audio/${currentUser.uid}/${Date.now()}_${file.name}`);
+      // fetch()+response.blob() crashes the native layer on Android content://
+      // URIs; the RN-patched XMLHttpRequest is the supported way to read them.
+      const blob = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.onload = () => resolve(xhr.response);
+        xhr.onerror = () => reject(new Error('Audio read failed'));
+        xhr.responseType = 'blob';
+        xhr.open('GET', file.uri);
+        xhr.send();
+      });
+      // content:// URIs can omit file.name — keep the extension so the stored
+      // object keeps a playable content type.
+      const AUDIO_EXT = {
+        'audio/mpeg': 'mp3',
+        'audio/mp3': 'mp3',
+        'audio/mp4': 'm4a',
+        'audio/x-m4a': 'm4a',
+        'audio/aac': 'aac',
+        'audio/wav': 'wav',
+        'audio/x-wav': 'wav',
+        'audio/ogg': 'ogg',
+      };
+      const safeName =
+        file.name || `alarm.${AUDIO_EXT[file.type] || 'mp3'}`;
+      const storageRef = ref(storage, `alarm_audio/${currentUser.uid}/${Date.now()}_${safeName}`);
       await uploadBytes(storageRef, blob);
       const downloadUrl = await getDownloadURL(storageRef);
 
@@ -336,18 +359,18 @@ export const FastingTimesScreen = () => {
       await updateDoc(profileRef, {
         'preferences.alarmAudioMode': 'custom',
         'preferences.customAlarmAudioUrl': downloadUrl,
-        'preferences.customAlarmAudioName': file.name,
+        'preferences.customAlarmAudioName': safeName,
         'preferences.alarmVolume': 1.0, // Set to maximum volume
       });
 
       setAlarmAudioMode('custom');
       setCustomAudioUrl(downloadUrl);
-      setCustomAudioName(file.name);
-      triggerToast('Custom alarm audio saved at maximum volume!', 'success');
+      setCustomAudioName(safeName);
+      triggerToast(t('fastingTimes.audioSaved'), 'success');
     } catch (err) {
       if (DocumentPicker.isCancel(err)) return;
       console.error('Audio upload error:', err);
-      triggerToast('Failed to upload audio. Try again.', 'error');
+      triggerToast(t('fastingTimes.audioUploadFailed'), 'error');
     } finally {
       setIsUploadingAudio(false);
     }
@@ -361,7 +384,7 @@ export const FastingTimesScreen = () => {
         'preferences.alarmAudioMode': 'default',
       });
       setAlarmAudioMode('default');
-      triggerToast('Using default Suhoor alarm sound.', 'success');
+      triggerToast(t('fastingTimes.usingDefaultSound'), 'success');
     } catch (err) {
       console.error(err);
     }
@@ -389,8 +412,8 @@ export const FastingTimesScreen = () => {
       });
 
       // Schedule background alarm for Suhoor wake-up
-      if (todayData?.suhoor_time && scheduleDailySuhoorAlarm) {
-        const [hours, minutes] = todayData.suhoor_time.split(':').map(Number);
+      if (todayData?.time?.sahur && scheduleDailySuhoorAlarm) {
+        const [hours, minutes] = todayData.time.sahur.split(':').map(Number);
         const alarmDate = new Date();
         alarmDate.setHours(hours, minutes - personalWakeUpMinutes, 0, 0);
         if (alarmDate.getTime() < Date.now()) {
@@ -398,7 +421,7 @@ export const FastingTimesScreen = () => {
         }
         await scheduleDailySuhoorAlarm(
           alarmDate,
-          `Suhoor Wake Up (${personalWakeUpMinutes}m before Fajr)`
+          t('fastingTimes.alarmLabel', { minutes: personalWakeUpMinutes })
         );
       }
 
@@ -462,10 +485,10 @@ export const FastingTimesScreen = () => {
               backgroundColor: colors.primary,
             }}
           >
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Retry</Text>
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>{t('common.retry')}</Text>
           </TouchableOpacity>
           <Text style={{ marginTop: 12, fontSize: 11, color: colors.textSecondary, textAlign: 'center' }}>
-            Pull down to refresh or tap Retry.
+            {t('fastingTimes.errorHint')}
           </Text>
         </ScrollView>
       </SafeAreaView>
@@ -720,10 +743,13 @@ export const FastingTimesScreen = () => {
                 })}
               </Text>
 
-              <TimePickerDial 
-                value={personalWakeUpMinutes} 
-                onChange={setPersonalWakeUpMinutes} 
-                colors={colors} 
+              <TimePickerDial
+                value={personalWakeUpMinutes}
+                onChange={setPersonalWakeUpMinutes}
+                colors={colors}
+                timeText={personalWakeUp}
+                captionText={t('fastingTimes.minutesBeforeValue', { minutes: personalWakeUpMinutes })}
+                dragText={t('fastingTimes.dragCaption')}
               />
 
               <Text style={{ fontSize: 13, fontWeight: '600', marginTop: 8, textAlign: 'center', color: colors.accent }}>
@@ -738,8 +764,8 @@ export const FastingTimesScreen = () => {
           <View style={{ flexDirection: 'row', alignItems: 'center', columnGap: 10, marginBottom: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
             <Ionicons name="musical-notes" size={24} color={colors.primary} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: '700', fontSize: 17, color: colors.text }}>Alarm Sound</Text>
-              <Text style={{ fontSize: 12, color: colors.textSecondary }}>Choose what plays when your Suhoor alarm rings</Text>
+              <Text style={{ fontWeight: '700', fontSize: 17, color: colors.text }}>{t('fastingTimes.alarmSound')}</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>{t('fastingTimes.alarmSoundSub')}</Text>
             </View>
           </View>
 
@@ -764,8 +790,8 @@ export const FastingTimesScreen = () => {
               <Ionicons name="notifications" size={20} color={alarmAudioMode === 'default' ? colors.primary : colors.textSecondary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: '700', fontSize: 14, color: colors.text }}>Default Suhoor Alarm</Text>
-              <Text style={{ fontSize: 12, color: colors.textSecondary }}>Built-in gentle wake-up chime</Text>
+              <Text style={{ fontWeight: '700', fontSize: 14, color: colors.text }}>{t('fastingTimes.defaultAlarm')}</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>{t('fastingTimes.defaultAlarmSub')}</Text>
             </View>
             {alarmAudioMode === 'default' && (
               <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
@@ -797,10 +823,10 @@ export const FastingTimesScreen = () => {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontWeight: '700', fontSize: 14, color: colors.text }}>
-                {alarmAudioMode === 'custom' && customAudioName ? customAudioName : 'Upload Custom Audio'}
+                {alarmAudioMode === 'custom' && customAudioName ? customAudioName : t('fastingTimes.uploadCustomAudio')}
               </Text>
               <Text style={{ fontSize: 12, color: colors.textSecondary }}>
-                {alarmAudioMode === 'custom' ? 'Tap to change \u00b7 MP3, M4A, WAV (max 10MB)' : 'Pick an audio file from your device (max 10MB)'}
+                {alarmAudioMode === 'custom' ? t('fastingTimes.changeCustomAudio') : t('fastingTimes.uploadCustomAudioSub')}
               </Text>
             </View>
             {alarmAudioMode === 'custom' && (

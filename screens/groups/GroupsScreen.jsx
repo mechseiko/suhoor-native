@@ -18,6 +18,7 @@ import { useTheme } from '../../context/ThemeContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useFastingTimes } from '../../hooks/useFastingTimes'
 import { db } from '../../config/firebase'
+import { COLLECTIONS } from '../../config/firestoreSchema'
 import {
   collection,
   query,
@@ -143,7 +144,7 @@ export const GroupsScreen = ({ navigation }) => {
     const fetchTodayCheckIn = async () => {
       try {
         const today = new Date().toLocaleDateString('en-CA')
-        const logsRef = collection(db, 'wake_up_logs')
+        const logsRef = collection(db, COLLECTIONS.wakeUpLogs)
         const q = query(
           logsRef,
           where('user_id', '==', currentUser.uid),
@@ -166,7 +167,7 @@ export const GroupsScreen = ({ navigation }) => {
     const fetchFastingIntention = async () => {
       try {
         const today = new Date().toLocaleDateString('en-CA')
-        const docRef = doc(db, 'daily_fasting_status', `${currentUser.uid}_${today}`)
+        const docRef = doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${today}`)
         const docSnap = await getDoc(docRef)
         if (docSnap.exists()) {
           setWantsToFast(docSnap.data().wantsToFast !== false)
@@ -188,14 +189,14 @@ export const GroupsScreen = ({ navigation }) => {
       const wakeUpTime = new Date().toISOString()
 
       // Add wake up log
-      await addDoc(collection(db, 'wake_up_logs'), {
+      await addDoc(collection(db, COLLECTIONS.wakeUpLogs), {
         user_id: currentUser.uid,
         date: todayStr,
         woke_up_at: wakeUpTime,
       })
 
       // Update daily_fasting_status to record completion
-      const statusRef = doc(db, 'daily_fasting_status', `${currentUser.uid}_${todayStr}`)
+      const statusRef = doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${todayStr}`)
       await setDoc(statusRef, {
         userId: currentUser.uid,
         date: todayStr,
@@ -306,7 +307,7 @@ export const GroupsScreen = ({ navigation }) => {
     try {
       console.log('[GroupsScreen] Fetching groups for user:', currentUser.uid);
       
-      const membersRef = collection(db, 'group_members')
+      const membersRef = collection(db, COLLECTIONS.groupMembers)
       const q = query(membersRef, where('user_id', '==', currentUser.uid))
       const querySnapshot = await getDocs(q)
 
@@ -320,8 +321,9 @@ export const GroupsScreen = ({ navigation }) => {
       console.log('[GroupsScreen] Group IDs:', groupIds);
 
       const groupsData = []
-      for (const groupId of groupIds) {
-        const groupRef = doc(db, 'groups', groupId)
+      // One card per group even if legacy duplicate membership rows exist
+      for (const groupId of [...new Set(groupIds)]) {
+        const groupRef = doc(db, COLLECTIONS.groups, groupId)
         const groupSnap = await getDoc(groupRef)
         if (groupSnap.exists()) {
           // Fetch member count
@@ -333,9 +335,11 @@ export const GroupsScreen = ({ navigation }) => {
 
           groupsData.push({
             id: groupSnap.id,
-            name: groupSnap.data().name || 'Unnamed Group',
+            name: groupSnap.data().name || t('groups.unnamedGroup'),
             group_key: groupSnap.data().group_key || '',
-            member_count: memberCountSnap.size,
+            member_count: new Set(
+              memberCountSnap.docs.map((m) => m.data().user_id)
+            ).size,
           })
         }
       }
@@ -381,7 +385,7 @@ export const GroupsScreen = ({ navigation }) => {
       // 8-character unique uppercase key
       const key = Math.random().toString(36).substring(2, 10).toUpperCase()
 
-      const groupRef = doc(collection(db, 'groups'))
+      const groupRef = doc(collection(db, COLLECTIONS.groups))
       await setDoc(groupRef, {
         name: newGroupName.trim(),
         group_key: key,
@@ -391,7 +395,13 @@ export const GroupsScreen = ({ navigation }) => {
         created_at: serverTimestamp(),
       })
 
-      const memberRef = doc(collection(db, 'group_members'))
+      // Deterministic membership doc id — (group, user) can only ever have one
+      // membership row, so a repeated create can't duplicate the admin.
+      const memberRef = doc(
+        db,
+        COLLECTIONS.groupMembers,
+        `${groupRef.id}_${currentUser.uid}`
+      )
       await setDoc(memberRef, {
         group_id: groupRef.id,
         user_id: currentUser.uid,
@@ -429,7 +439,7 @@ export const GroupsScreen = ({ navigation }) => {
 
     try {
       // 1. Query groups matching the key
-      const groupsRef = collection(db, 'groups')
+      const groupsRef = collection(db, COLLECTIONS.groups)
       const q = query(groupsRef, where('group_key', '==', cleanedKey))
       const groupSnap = await getDocs(q)
 
@@ -447,23 +457,24 @@ export const GroupsScreen = ({ navigation }) => {
       // 2. Check if user was previously removed or left (permanent exclusion)
       const exclusionRef = doc(
         db,
-        'group_exclusions',
+        COLLECTIONS.groupExclusions,
         `${groupId}_${currentUser.uid}`
       )
       const exclusionSnap = await getDoc(exclusionRef)
       if (exclusionSnap.exists()) {
         const reason = exclusionSnap.data()?.reason
-        const msg =
+        triggerToast(
           reason === 'removed'
-            ? 'You were removed from this group and cannot rejoin.'
-            : 'You left this group and cannot rejoin.'
-        triggerToast(msg, 'error')
+            ? t('groups.removedBarred')
+            : t('groups.leftBarred'),
+          'error'
+        )
         setModalLoading(false)
         return
       }
 
       // 3. Check if already a member
-      const membersRef = collection(db, 'group_members')
+      const membersRef = collection(db, COLLECTIONS.groupMembers)
       const memberQ = query(
         membersRef,
         where('group_id', '==', groupId),
@@ -480,8 +491,13 @@ export const GroupsScreen = ({ navigation }) => {
         return
       }
 
-      // 4. Join the group
-      const newMemberRef = doc(collection(db, 'group_members'))
+      // 4. Join the group — deterministic doc id, so double-taps and racing
+      // joins can't create a second membership row for the same user.
+      const newMemberRef = doc(
+        db,
+        COLLECTIONS.groupMembers,
+        `${groupId}_${currentUser.uid}`
+      )
       await setDoc(newMemberRef, {
         group_id: groupId,
         user_id: currentUser.uid,

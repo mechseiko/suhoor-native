@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Image } from 'react-native';
+import { StyleSheet, View, Image, TouchableOpacity } from 'react-native';
 import { db } from '../config/firebase';
+import { COLLECTIONS } from '../config/firestoreSchema';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -29,7 +30,7 @@ export const FastingPrompt = () => {
   const { colors, isDark } = useTheme();
   const { t, locale, formatDate } = useLanguage();
   const { scheduleDailySuhoorAlarm, cancelDailySuhoorAlarm } = useAlarmState();
-  const { todayData } = useFastingTimes();
+  const { todayData, checkWakeUpWindow } = useFastingTimes();
   const [status, setStatus] = useState('idle');
   const [loading, setLoading] = useState(false);
   const [targetDate, setTargetDate] = useState('');
@@ -69,7 +70,7 @@ export const FastingPrompt = () => {
         const cachedAnswer = await AsyncStorage.getItem(`suhoor_intent_${targetStr}`);
 
         // Check Firestore database (server of truth)
-        const statusRef = doc(db, 'daily_fasting_status', `${currentUser.uid}_${targetStr}`);
+        const statusRef = doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${targetStr}`);
         const statusSnap = await getDoc(statusRef);
         if (statusSnap.exists()) {
           const wantsToFast = statusSnap.data().wantsToFast;
@@ -117,12 +118,77 @@ export const FastingPrompt = () => {
     determineTarget();
   }, [currentUser, userProfile, formatDate]);
 
+  // Auto-record the intention at the start of the wake-up window when the
+  // prompt was never answered — special days follow the user's fasting
+  // defaults, ordinary days default to not fasting.
+  useEffect(() => {
+    if (!currentUser) return;
+    const wakeMinutes =
+      userProfile?.preferences?.wakeUpMinutesBeforeSuhoor || 45;
+    if (!checkWakeUpWindow || !checkWakeUpWindow(wakeMinutes)) return;
+
+    const target = getTargetFastingDate();
+    if (!target) return;
+    const targetStr = target.toLocaleDateString('en-CA');
+
+    (async () => {
+      try {
+        const statusRef = doc(
+          db,
+          COLLECTIONS.dailyFastingStatus,
+          `${currentUser.uid}_${targetStr}`
+        );
+        const statusSnap = await getDoc(statusRef);
+        if (statusSnap.exists()) return;
+        const cachedAnswer = await AsyncStorage.getItem(
+          `suhoor_intent_${targetStr}`
+        );
+        if (cachedAnswer) return;
+
+        const wantsToFast = getDefaultIntention(target, userProfile);
+        await setDoc(statusRef, {
+          userId: currentUser.uid,
+          date: targetStr,
+          wantsToFast,
+          updatedAt: serverTimestamp(),
+        });
+        await AsyncStorage.setItem(
+          `suhoor_intent_${targetStr}`,
+          wantsToFast ? 'yes' : 'no'
+        );
+
+        const [sH, sM] = (todayData?.time?.sahur || '').split(':').map(Number);
+        if (wantsToFast) {
+          if (!isNaN(sH) && !isNaN(sM) && scheduleDailySuhoorAlarm) {
+            const alarmTime = new Date();
+            alarmTime.setHours(sH, sM, 0, 0);
+            alarmTime.setMinutes(alarmTime.getMinutes() - wakeMinutes);
+            if (alarmTime.getTime() > Date.now()) {
+              await scheduleDailySuhoorAlarm(alarmTime, t('fasting.suhoorAlarmLabel'));
+            }
+          }
+        } else if (cancelDailySuhoorAlarm) {
+          await cancelDailySuhoorAlarm();
+        }
+      } catch (err) {
+        console.error('Error auto-recording fasting intention:', err);
+      }
+    })();
+  }, [
+    currentUser,
+    userProfile,
+    todayData,
+    checkWakeUpWindow,
+    scheduleDailySuhoorAlarm,
+    cancelDailySuhoorAlarm,
+  ]);
+
   const handleYes = async () => {
     if (!currentUser) return;
     setLoading(true);
 
     try {
-      const statusRef = doc(db, 'daily_fasting_status', `${currentUser.uid}_${targetDate}`);
+      const statusRef = doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${targetDate}`);
       await setDoc(statusRef, {
         userId: currentUser.uid,
         date: targetDate,
@@ -132,14 +198,22 @@ export const FastingPrompt = () => {
 
       await AsyncStorage.setItem(`suhoor_intent_${targetDate}`, 'yes');
 
-      // Schedule native Suhoor alarm at wake-up window start (45 min before Suhoor ends)
-      // For now, use a default time - this should be enhanced to fetch actual Suhoor time
-      const targetDateObj = new Date(targetDate + 'T00:00:00');
-      let alarmTime = new Date(targetDateObj);
-      alarmTime.setHours(4, 30, 0, 0); // Default 4:30 AM - should be replaced with actual Suhoor time - 45min
-      
-      if (scheduleDailySuhoorAlarm) {
-        await scheduleDailySuhoorAlarm(alarmTime, 'Suhoor Wake-Up Alarm');
+      // Wake-up alarm = suhoor end minus the user's wake-up window length.
+      // Suhoor's time of day drifts by ~1 minute a day, so today's value is
+      // the closest source when the prompt targets tomorrow.
+      const wakeMinutes =
+        userProfile?.preferences?.wakeUpMinutesBeforeSuhoor || 45;
+      const [sH, sM] = (todayData?.time?.sahur || '').split(':').map(Number);
+      const alarmTime = new Date(`${targetDate}T00:00:00`);
+      if (!isNaN(sH) && !isNaN(sM)) {
+        alarmTime.setHours(sH, sM, 0, 0);
+        alarmTime.setMinutes(alarmTime.getMinutes() - wakeMinutes);
+      } else {
+        alarmTime.setHours(4, 30, 0, 0);
+      }
+
+      if (scheduleDailySuhoorAlarm && alarmTime.getTime() > Date.now()) {
+        await scheduleDailySuhoorAlarm(alarmTime, t('fasting.suhoorAlarmLabel'));
       }
 
       setStatus('confirmed_fasting');
@@ -166,7 +240,7 @@ export const FastingPrompt = () => {
     setLoading(true);
 
     try {
-      const statusRef = doc(db, 'daily_fasting_status', `${currentUser.uid}_${targetDate}`);
+      const statusRef = doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${targetDate}`);
       await setDoc(statusRef, {
         userId: currentUser.uid,
         date: targetDate,
@@ -189,6 +263,13 @@ export const FastingPrompt = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleReset = () => {
+    setDefaultAnswer(
+      getDefaultIntention(new Date(`${targetDate}T00:00:00`), userProfile)
+    );
+    setStatus('idle');
   };
 
   // Hide entirely during the wake-up window — not the time for tomorrow's fasting prompt
@@ -413,6 +494,19 @@ export const FastingPrompt = () => {
                 {t('fasting.alarmActiveNotice')}
               </Text>
             </View>
+            <TouchableOpacity
+              onPress={handleReset}
+              style={styles.resetButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel={t('fasting.changeIntention')}
+            >
+              <Ionicons
+                name="refresh"
+                size={20}
+                color={isDark ? '#34D399' : '#059669'}
+              />
+            </TouchableOpacity>
           </View>
         </Card>
       )}
@@ -433,6 +527,15 @@ export const FastingPrompt = () => {
                 {t('fasting.notFastingSub')}
               </Text>
             </View>
+            <TouchableOpacity
+              onPress={handleReset}
+              style={styles.resetButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel={t('fasting.changeIntention')}
+            >
+              <Ionicons name="refresh" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
           </View>
         </Card>
       )}
@@ -478,6 +581,9 @@ const styles = StyleSheet.create({
   },
   flexButton: {
     flex: 1,
+  },
+  resetButton: {
+    padding: spacing.xs,
   },
   footNote: {
     textAlign: 'center',

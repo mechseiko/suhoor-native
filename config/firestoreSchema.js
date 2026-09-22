@@ -30,6 +30,8 @@ export const COLLECTIONS = {
   groupMessages: 'group_messages',
   groupExclusions: 'group_exclusions',
   gamificationStats: 'gamification_stats',
+  groupBuzzes: 'group_buzzes',
+  notifications: 'notifications',
 }
 
 /** Subcollection of `groups`: groups/{groupId}/locations/{userId}. */

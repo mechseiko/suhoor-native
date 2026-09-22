@@ -1,5 +1,6 @@
 /**
  * Password validation utilities for Suhoor mobile app.
+ * Returns i18n keys (see translations/*.js) — resolve them with t() at the call site.
  *
  * Requirements:
  * - At least 6 characters
@@ -12,40 +13,37 @@ export const validatePassword = (password) => {
   if (!password || typeof password !== 'string') {
     return {
       isValid: false,
-      error: 'Password is required.',
+      errorKey: 'auth.passwordRequired',
     }
   }
 
   if (password.length < 6) {
     return {
       isValid: false,
-      error: 'Password must be at least 6 characters long.',
+      errorKey: 'auth.passwordMinLength',
     }
   }
 
   if (!/[A-Z]/.test(password)) {
     return {
       isValid: false,
-      error: 'Password must include at least one uppercase letter.',
+      errorKey: 'auth.passwordUppercase',
     }
   }
 
   if (!/[a-z]/.test(password)) {
     return {
       isValid: false,
-      error: 'Password must include at least one lowercase letter.',
+      errorKey: 'auth.passwordLowercase',
     }
   }
 
   if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password)) {
     return {
       isValid: false,
-      error: 'Password must include at least one special character.',
+      errorKey: 'auth.passwordSpecial',
     }
   }
 
-  return { isValid: true, error: null }
+  return { isValid: true, errorKey: null }
 }
-
-export const PASSWORD_REQUIREMENTS_HINT =
-  'Min. 6 chars with uppercase, lowercase & special character.'
