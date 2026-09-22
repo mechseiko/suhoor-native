@@ -71,6 +71,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
   const [group, setGroup] = useState(null);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [membersLoading, setMembersLoading] = useState(false);
 
   // Group settings/edit states
   const [isEditingName, setIsEditingName] = useState(false);
@@ -131,6 +132,9 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         setShowLeaderboard(groupData.show_on_leaderboard || false);
       }
 
+      // Set members loading state
+      setMembersLoading(true);
+
       const membersRef = collection(db, "group_members");
       const q = query(membersRef, where("group_id", "==", groupId));
       const querySnapshot = await getDocs(q);
@@ -153,8 +157,10 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         }
       }
       setMembers(membersData);
+      setMembersLoading(false);
     } catch (err) {
       console.error("Error fetching group and members:", err);
+      setMembersLoading(false);
     } finally {
       setLoading(false);
     }
@@ -513,6 +519,14 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     const link = `https://suhoorapp.cv/groups?groupKey=${group.group_key}`;
     await copyToClipboard(link);
     triggerToast(t('groups.inviteLinkCopied'), "success");
+  };
+
+  const handleOpenSettings = () => {
+    navigation.navigate('GroupSettings', {
+      groupId,
+      groupName: group?.name || groupName,
+      groupKey: group?.group_key,
+    });
   };
 
   const handleLeaveGroup = () => {
@@ -1072,21 +1086,14 @@ export const GroupDetailScreen = ({ route, navigation }) => {
           {isCurrentUserAdmin && (
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-              onPress={handleToggleLeaderboard}
+              onPress={handleOpenSettings}
             >
               <Ionicons
-                name={showLeaderboard ? "trophy" : "trophy-outline"}
+                name="settings-outline"
                 size={16}
-                color={showLeaderboard ? colors.secondary : colors.textSecondary}
+                color={colors.primary}
               />
-              <Text
-                style={[
-                  styles.leaderboardBtnText,
-                  { color: showLeaderboard ? colors.secondary : colors.textSecondary },
-                ]}
-              >
-                {showLeaderboard ? "On Leaderboard" : "Off Leaderboard"}
-              </Text>
+              <Text style={[styles.shareBtnText, { color: colors.primary }]}>Settings</Text>
             </TouchableOpacity>
           )}
           {!isCurrentUserAdmin && (
@@ -1176,13 +1183,22 @@ export const GroupDetailScreen = ({ route, navigation }) => {
             ) : null}
           </View>
 
-          <FlatList
-            data={members}
-            keyExtractor={(item) => item.id}
-            renderItem={renderMemberItem}
-            contentContainerStyle={styles.membersList}
-            showsVerticalScrollIndicator={false}
-          />
+          {membersLoading ? (
+            <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+              <ActivityIndicator color={colors.primary} size="large" />
+              <Text style={{ marginTop: 12, color: colors.textSecondary, fontSize: 14 }}>
+                {t('groups.fetchingMembers', 'Fetching members...')}
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={members}
+              keyExtractor={(item) => item.id}
+              renderItem={renderMemberItem}
+              contentContainerStyle={styles.membersList}
+              showsVerticalScrollIndicator={false}
+            />
+          )}
         </View>
       ) : (
         /* Group Info Card */
@@ -1191,13 +1207,22 @@ export const GroupDetailScreen = ({ route, navigation }) => {
             <Text style={[styles.trackerTitle, { color: colors.text }]}>{t('groups.groupMembers')}</Text>
           </View>
 
-          <FlatList
-            data={members}
-            keyExtractor={(item) => item.id}
-            renderItem={renderMemberItem}
-            contentContainerStyle={styles.membersList}
-            showsVerticalScrollIndicator={false}
-          />
+          {membersLoading ? (
+            <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+              <ActivityIndicator color={colors.primary} size="large" />
+              <Text style={{ marginTop: 12, color: colors.textSecondary, fontSize: 14 }}>
+                {t('groups.fetchingMembers', 'Fetching members...')}
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={members}
+              keyExtractor={(item) => item.id}
+              renderItem={renderMemberItem}
+              contentContainerStyle={styles.membersList}
+              showsVerticalScrollIndicator={false}
+            />
+          )}
         </View>
       )}
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import GroupsScreen from '../screens/groups/GroupsScreen';
 import GroupDetailScreen from '../screens/groups/GroupDetailScreen';
+import GroupSettingsScreen from '../screens/groups/GroupSettingsScreen';
 import Colors from '../constants/Colors';
 
 const Stack = createNativeStackNavigator();
@@ -29,6 +30,11 @@ export const GroupsStack = () => {
         name="GroupDetail"
         component={GroupDetailScreen}
         options={({ route }) => ({ title: route.params.groupName })}
+      />
+      <Stack.Screen
+        name="GroupSettings"
+        component={GroupSettingsScreen}
+        options={{ title: 'Group Settings' }}
       />
     </Stack.Navigator>
   );
