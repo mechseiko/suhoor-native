@@ -49,6 +49,9 @@ const ProfileScreen = () => {
   const [displayName, setDisplayName] = useState(
     userProfile?.display_name || ""
   );
+  const [originalDisplayName, setOriginalDisplayName] = useState(
+    userProfile?.display_name || ""
+  );
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   // Password fields
@@ -76,6 +79,7 @@ const ProfileScreen = () => {
 
   // Alarm PIN state
   const [alarmPin, setAlarmPin] = useState(["", "", "", ""]);
+  const [originalPin, setOriginalPin] = useState(["", "", "", ""]);
   const [pinError, setPinError] = useState("");
   const [isSavingPin, setIsSavingPin] = useState(false);
   const pinRefs = [
@@ -105,6 +109,11 @@ const ProfileScreen = () => {
     if (userProfile?.pin) {
       const pinDigits = userProfile.pin.split("");
       setAlarmPin(pinDigits.length === 4 ? pinDigits : ["", "", "", ""]);
+      setOriginalPin(pinDigits.length === 4 ? pinDigits : ["", "", "", ""]);
+    }
+    if (userProfile?.display_name) {
+      setDisplayName(userProfile.display_name);
+      setOriginalDisplayName(userProfile.display_name);
     }
   }, [userProfile]);
 
@@ -314,7 +323,7 @@ const ProfileScreen = () => {
         ...result.coordinates,
         name: t("profile.currentDeviceLocation", "Current device location"),
       };
-      await updateDoc(doc(db, "profiles", currentUser.uid), {
+      await updateDoc(doc(db, COLLECTIONS.profiles, currentUser.uid), {
         "preferences.defaultLocation": current,
       });
       await saveUserLocation(current);
@@ -425,6 +434,10 @@ const ProfileScreen = () => {
   const initial = (displayName || currentUser?.email || "U")
     .charAt(0)
     .toUpperCase();
+
+  // Check if PIN has actually changed
+  const hasPinChanged = alarmPin.join("") !== originalPin.join("");
+  const hasDisplayNameChanged = displayName.trim() !== originalDisplayName.trim();
 
   const createdDate = currentUser?.metadata?.creationTime
     ? new Date(currentUser.metadata.creationTime).toLocaleDateString("en-US", {
@@ -788,10 +801,13 @@ const ProfileScreen = () => {
               <TouchableOpacity
                 style={[
                   styles.primaryButton,
-                  { backgroundColor: Colors.primary },
+                  { 
+                    backgroundColor: hasDisplayNameChanged ? Colors.primary : Colors.gray,
+                    opacity: hasDisplayNameChanged ? 1 : 0.5
+                  },
                 ]}
                 onPress={handleUpdateProfile}
-                disabled={isSavingProfile}
+                disabled={isSavingProfile || !hasDisplayNameChanged}
               >
                 {isSavingProfile ? (
                   <ActivityIndicator color={Colors.white} size="small" />
@@ -935,10 +951,13 @@ const ProfileScreen = () => {
                 <TouchableOpacity
                   style={[
                     styles.primaryButton,
-                    { backgroundColor: Colors.primary },
+                    { 
+                      backgroundColor: hasPinChanged ? Colors.primary : Colors.gray,
+                      opacity: hasPinChanged ? 1 : 0.5
+                    },
                   ]}
                   onPress={handleSavePin}
-                  disabled={isSavingPin}
+                  disabled={isSavingPin || !hasPinChanged}
                 >
                   {isSavingPin ? (
                     <ActivityIndicator color={Colors.white} size="small" />

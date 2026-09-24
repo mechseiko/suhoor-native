@@ -543,6 +543,8 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       groupId,
       groupName: group?.name || groupName,
       groupKey: group?.group_key,
+      isAdmin: isCurrentUserAdmin,
+      admins: members.filter((m) => m?.role === "admin"),
     });
   };
 
@@ -795,9 +797,20 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     setSelectedBulkIds([]);
   };
 
+  const isMemberBuzzable = (member) => {
+    if (!isStatusVisibleNow()) return false;
+    if (!currentUser || !member?.profiles) return false;
+    if (member.profiles.id === currentUser.uid) return false;
+    if (memberIntentions[member.profiles.id] === false) return false;
+    if (getMemberStatus(member) !== "sleeping") return false;
+    return isMemberInWakeUpWindow(member);
+  };
+
+  const selectableMembers = members.filter((m) => isMemberBuzzable(m));
+
   const enterBulkMode = () => {
     setBulkMode(true);
-    setSelectedBulkIds([]);
+    setSelectedBulkIds(selectableMembers.map((m) => m.profiles.id));
   };
 
   const exitBulkMode = () => {
@@ -806,17 +819,13 @@ export const GroupDetailScreen = ({ route, navigation }) => {
   };
 
   const toggleBulkSelection = (member) => {
-    if (!member?.profiles || member.profiles.id === currentUser?.uid) return;
+    if (!member?.profiles || !isMemberBuzzable(member)) return;
     setSelectedBulkIds((prev) =>
       prev.includes(member.profiles.id)
         ? prev.filter((id) => id !== member.profiles.id)
         : [...prev, member.profiles.id]
     );
   };
-
-  const selectableMembers = members.filter(
-    (m) => m?.profiles && m.profiles.id !== currentUser?.uid
-  );
 
   const allSelected =
     selectableMembers.length > 0 &&
@@ -1084,10 +1093,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
 
         <View style={styles.memberActions}>
           {!bulkMode &&
-            memberStatus === "sleeping" &&
-            intendsToFast &&
-            !isSelf &&
-            isMemberInWakeUpWindow(item) && (
+            isMemberBuzzable(item) && (
               <TouchableOpacity
                 style={[styles.buzzYellowBtn, { backgroundColor: colors.secondary }]}
                 onPress={() => handleBuzzMember(item)}
@@ -1121,6 +1127,9 @@ export const GroupDetailScreen = ({ route, navigation }) => {
   const renderBulkBar = () => {
     if (members.length === 0) return null;
 
+    // Only show bulk buzz button during wake-up window and when there are members that can be buzzed
+    if (!isStatusVisibleNow() || selectableMembers.length === 0) return null;
+
     if (!bulkMode) {
       return (
         <View style={styles.bulkBar}>
@@ -1131,7 +1140,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
           >
             <Ionicons name="notifications" size={15} color={colors.secondary} />
             <Text style={[styles.bulkStartText, { color: colors.secondary }]}>
-              {t('groups.bulkBuzz')}
+              {t('groups.bulkBuzz', 'Buzz All')} ({selectableMembers.length})
             </Text>
           </TouchableOpacity>
         </View>
@@ -1312,19 +1321,17 @@ export const GroupDetailScreen = ({ route, navigation }) => {
             />
             <Text style={[styles.shareBtnText, { color: colors.primary }]}>Invite Link</Text>
           </TouchableOpacity>
-          {isCurrentUserAdmin && (
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-              onPress={handleOpenSettings}
-            >
-              <Ionicons
-                name="settings-outline"
-                size={16}
-                color={colors.primary}
-              />
-              <Text style={[styles.shareBtnText, { color: colors.primary }]}>Settings</Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onPress={handleOpenSettings}
+          >
+            <Ionicons
+              name="settings-outline"
+              size={16}
+              color={colors.primary}
+            />
+            <Text style={[styles.shareBtnText, { color: colors.primary }]}>Settings</Text>
+          </TouchableOpacity>
           {!isCurrentUserAdmin && (
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.05)' : 'rgba(239, 68, 68, 0.05)', borderColor: isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.2)' }]}

@@ -929,13 +929,13 @@ const FastingRoutineStep = ({ fastingDefaults, setFastingDefaults }) => {
             variant="inherit"
             style={{ color: brand.primary, fontWeight: "800" }}
           >
-            Flexible{" "}
+            Fasting{" "}
           </Text>
           <Text
             variant="inherit"
             style={{ color: brand.secondary, fontWeight: "800" }}
           >
-            Routines
+            Defaults
           </Text>
         </Text>
         <Text
@@ -948,8 +948,8 @@ const FastingRoutineStep = ({ fastingDefaults, setFastingDefaults }) => {
             fontSize: 13,
           }}
         >
-          Suhoor adapts around your worship schedule. Select your routine now,
-          you can always fine-tune this anytime in Settings.
+          Suhoor will know when you like to fast and automatically set your alarm for that day, if you let it.
+          you can always change this anytime in Settings.
         </Text>
       </View>
 

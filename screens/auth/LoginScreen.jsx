@@ -7,7 +7,8 @@ import { useTheme } from '../../context/ThemeContext'
 import AuthWrapper from '../../components/AuthWrapper'
 import { Button, Input, Text } from '../../components/ui'
 import { db } from '../../config/firebase'
-import { doc, updateDoc } from 'firebase/firestore'
+import { COLLECTIONS } from '../../config/firestoreSchema'
+import { doc, updateDoc, getDoc } from 'firebase/firestore'
 
 export const LoginScreen = ({ navigation }) => {
   const { t } = useLanguage()
@@ -31,22 +32,41 @@ export const LoginScreen = ({ navigation }) => {
       const userCredential = await login(email.trim(), password)
       const user = userCredential.user
 
+      // Check Firebase Auth verification status first
       if (!user.emailVerified) {
-        await logout()
-        setError(t('auth.emailNotVerified'))
-        return
+        // Even if Firebase says not verified, check Firestore profile
+        // to handle the case where the user just verified but Auth hasn't synced yet
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
+        const userProfileDoc = await getDoc(doc(db, COLLECTIONS.profiles, user.uid))
+        const isProfileVerified = userProfileDoc.exists() ? userProfileDoc.data().isVerified : false
+        
+        if (!isProfileVerified) {
+          // Both Firebase and Firestore say not verified
+          await logout()
+          setError(t('auth.emailNotVerified'))
+          return
+        }
+        // If Firestore says verified but Firebase doesn't, proceed
+        // AuthContext will sync the status
       }
 
       // Sync alarm PIN from AsyncStorage to profile if it exists
       try {
         const alarmPin = await AsyncStorage.getItem('suhoor_alarm_pin')
         if (alarmPin) {
-          const profileRef = doc(db, 'profiles', user.uid)
+          const profileRef = doc(db, COLLECTIONS.profiles, user.uid)
           await updateDoc(profileRef, { pin: alarmPin })
         }
       } catch (syncErr) {
         console.log('Error syncing alarm PIN:', syncErr)
       }
+
+      // Navigate to main app on successful login
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'MainTabs' }],
+      })
     } catch (err) {
       console.error('Login error:', err)
       const errorCode = err.code

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { NativeModules, Platform } from 'react-native';
 import {
   subscribeToNotifications,
   scheduleNotification,
@@ -66,6 +67,35 @@ export const AlarmProvider = ({ children }) => {
     return unsubscribe;
   }, [currentUser]);
 
+  // Foreground heartbeat: if scheduled alarm time arrives while app is open, activate alarm immediately
+  useEffect(() => {
+    if (!scheduledAlarmTime || isAlarmActive) return;
+
+    const checkAlarmTrigger = async () => {
+      const now = Date.now();
+      const alarmMs = scheduledAlarmTime.getTime();
+      const diff = now - alarmMs;
+
+      // Within 2.5 hours past alarm time, trigger if not already dismissed today
+      if (diff >= 0 && diff < 2.5 * 3600 * 1000) {
+        const todayStr = new Date().toLocaleDateString('en-CA');
+        const dismissedKey = `suhoor_alarm_dismissed_${todayStr}`;
+        const alreadyDismissed = await AsyncStorage.getItem(dismissedKey);
+        if (!alreadyDismissed) {
+          setIsAlarmActive(true);
+          setAlarmData({
+            type: 'wake_up_alarm',
+            time: scheduledAlarmTime.toISOString(),
+          });
+        }
+      }
+    };
+
+    const interval = setInterval(checkAlarmTrigger, 2000);
+    checkAlarmTrigger();
+    return () => clearInterval(interval);
+  }, [scheduledAlarmTime, isAlarmActive]);
+
   const scheduleDailySuhoorAlarm = useCallback(
     async (targetTime, label = 'Suhoor Wake Up') => {
       try {
@@ -74,6 +104,33 @@ export const AlarmProvider = ({ children }) => {
 
         // Cancel previous scheduled daily alarm
         await cancelNotification('suhoor-daily-alarm');
+
+        // Cancel previous native alarm if available
+        if (Platform.OS === 'android' && NativeModules.AlarmBridge?.cancelAlarm) {
+          try {
+            await NativeModules.AlarmBridge.cancelAlarm('suhoor-daily-alarm');
+          } catch (e) {}
+        }
+
+        // Reset today's dismissed status so the new alarm will fire
+        const todayStr = new Date().toLocaleDateString('en-CA');
+        await AsyncStorage.removeItem(`suhoor_alarm_dismissed_${todayStr}`);
+
+        // Schedule exact native Android alarm (survives Doze, device sleep, and deep background)
+        if (Platform.OS === 'android' && NativeModules.AlarmBridge?.scheduleAlarm) {
+          try {
+            await NativeModules.AlarmBridge.scheduleAlarm(
+              'suhoor-daily-alarm',
+              alarmDate.getTime(),
+              currentUser?.uid || '',
+              '',
+              'wake_up'
+            );
+            console.log('⏰ Native exact alarm scheduled for:', alarmDate.toISOString());
+          } catch (nativeErr) {
+            console.warn('Native exact alarm scheduling error:', nativeErr);
+          }
+        }
 
         // Determine sound to use based on user preferences
         let soundName = 'default';
@@ -97,12 +154,9 @@ export const AlarmProvider = ({ children }) => {
           },
         });
 
-        if (scheduledId) {
-          setScheduledAlarmTime(alarmDate);
-          await AsyncStorage.setItem(DAILY_ALARM_KEY, alarmDate.toISOString());
-          return true;
-        }
-        return false;
+        setScheduledAlarmTime(alarmDate);
+        await AsyncStorage.setItem(DAILY_ALARM_KEY, alarmDate.toISOString());
+        return true;
       } catch (err) {
         console.error('Failed to schedule daily Suhoor alarm:', err);
         return false;
@@ -114,6 +168,11 @@ export const AlarmProvider = ({ children }) => {
   const cancelDailySuhoorAlarm = useCallback(async () => {
     try {
       await cancelNotification('suhoor-daily-alarm');
+      if (Platform.OS === 'android' && NativeModules.AlarmBridge?.cancelAlarm) {
+        try {
+          await NativeModules.AlarmBridge.cancelAlarm('suhoor-daily-alarm');
+        } catch (e) {}
+      }
       setScheduledAlarmTime(null);
       await AsyncStorage.removeItem(DAILY_ALARM_KEY);
       return true;
@@ -123,9 +182,11 @@ export const AlarmProvider = ({ children }) => {
     }
   }, []);
 
-  const dismissAlarm = () => {
+  const dismissAlarm = async () => {
     setIsAlarmActive(false);
     setAlarmData(null);
+    const todayStr = new Date().toLocaleDateString('en-CA');
+    await AsyncStorage.setItem(`suhoor_alarm_dismissed_${todayStr}`, 'true');
   };
 
   const triggerAlarmManually = (data) => {

@@ -155,13 +155,13 @@ export const LeaderboardScreen = () => {
                 <Text variant="h3" numberOfLines={1} style={styles.meName}>
                   {currentUserGroup.name}
                 </Text>
-                <Badge label="Your Group" tone="primary" bordered />
+                <Text variant="caption" tone="primary" style={[styles.bold, { marginLeft: 'auto' }]}>
+                  ⭐ {currentUserGroup.suhoorPoints} SP
+                </Text>
               </View>
 
               <View style={styles.meStats}>
-                <Text variant="caption" tone="primary" style={styles.bold}>
-                  {currentUserGroup.suhoorPoints} SP
-                </Text>
+                <Badge label="Your Group" tone="primary" bordered />
                 <Text variant="caption" tone="secondary">
                   {currentUserGroup.memberCount} members
                 </Text>
@@ -277,15 +277,14 @@ export const LeaderboardScreen = () => {
                       {group.isCurrentUserGroup && (
                         <Badge label="Your Group" tone="primary" size="sm" />
                       )}
+                      <View style={styles.points}>
+                        <Text variant="label" numberOfLines={1} style={styles.bold}>
+                          ⭐ {group.suhoorPoints} SP
+                        </Text>
+                      </View>
                     </View>
                     <Text variant="caption" tone="secondary">
                       {group.memberCount} members
-                    </Text>
-                  </View>
-
-                  <View style={styles.points}>
-                    <Text variant="label" numberOfLines={1} style={styles.bold}>
-                      ⭐ {group.suhoorPoints} SP
                     </Text>
                   </View>
                 </View>

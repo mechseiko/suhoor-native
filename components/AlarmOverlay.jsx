@@ -13,6 +13,7 @@ import {
   Vibration,
   View,
 } from 'react-native'
+import { Audio } from 'expo-av'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAlarm } from '../hooks/useAlarm'
@@ -236,13 +237,24 @@ export const AlarmOverlay = () => {
       if (!savedPin && userProfile?.pin) {
         savedPin = userProfile.pin
       }
+      if (!savedPin && userProfile?.alarmPin) {
+        savedPin = userProfile.alarmPin
+      }
+      if (!savedPin && userProfile?.preferences?.alarmPin) {
+        savedPin = userProfile.preferences.alarmPin
+      }
     } catch { }
 
-    if (savedPin && entered !== savedPin) {
-      setPinError(t('alarm.incorrectPin'))
-      setPinDigits(['', '', '', ''])
-      setTimeout(() => pinRefs[0]?.current?.focus(), 100)
-      return
+    if (savedPin) {
+      if (entered !== savedPin) {
+        setPinError(t('alarm.incorrectPin', 'Incorrect PIN. Try again.'))
+        setPinDigits(['', '', '', ''])
+        setTimeout(() => pinRefs[0]?.current?.focus(), 100)
+        return
+      }
+    } else {
+      // If no PIN was saved in storage or profile yet, persist this one
+      await AsyncStorage.setItem('suhoor_alarm_pin', entered);
     }
 
     setPinError('')
@@ -264,7 +276,13 @@ export const AlarmOverlay = () => {
   })
 
   return (
-    <Modal visible={visible} animationType="fade" transparent={false} statusBarTranslucent>
+    <Modal
+      visible={visible}
+      animationType="fade"
+      transparent={false}
+      statusBarTranslucent
+      onRequestClose={() => {}}
+    >
       <SafeAreaView style={styles.container}>
         {/* Top Header: Logo + App Name */}
         <View style={styles.topHeader}>

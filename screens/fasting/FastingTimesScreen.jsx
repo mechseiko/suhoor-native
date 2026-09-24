@@ -200,19 +200,33 @@ const TimePickerDial = ({ value, onChange, colors, timeText, captionText, dragTe
         <View
           style={{
             position: 'absolute',
-            top: CLOCK_RADIUS - 32,
-            left: CLOCK_RADIUS - 50,
-            width: 100,
-            height: 64,
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
             alignItems: 'center',
             justifyContent: 'center',
-            rowGap: 2,
+            pointerEvents: 'none',
           }}
         >
-          <Text style={{ fontSize: 24, fontWeight: '800', color: colors.text }}>
+          <Text
+            style={{
+              fontSize: 24,
+              fontWeight: '800',
+              color: colors.text,
+              textAlign: 'center',
+            }}
+          >
             {timeText}
           </Text>
-          <Text style={{ fontSize: 11, color: colors.textSecondary, textAlign: 'center' }}>
+          <Text
+            style={{
+              fontSize: 11,
+              color: colors.textSecondary,
+              textAlign: 'center',
+              marginTop: 2,
+            }}
+          >
             {captionText}
           </Text>
         </View>

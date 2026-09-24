@@ -506,6 +506,9 @@ export const FastingPrompt = () => {
                 size={20}
                 color={isDark ? '#34D399' : '#059669'}
               />
+              <Text style={{ color: isDark ? '#34D399' : '#059669', fontSize: 12, marginLeft: 4 }}>
+                Reset
+              </Text>
             </TouchableOpacity>
           </View>
         </Card>
