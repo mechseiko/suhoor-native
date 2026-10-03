@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { View, TouchableOpacity, Linking } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -7,9 +7,9 @@ import { useTheme } from "../../context/ThemeContext";
 import { useLanguage } from "../../context/LanguageContext";
 import AuthWrapper from "../../components/AuthWrapper";
 import { Button, Input, Text } from "../../components/ui";
-import { db, auth } from "../../config/firebase";
+import { db } from "../../config/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { reload, sendEmailVerification } from "firebase/auth";
+import { sendEmailVerification } from "firebase/auth";
 import { validatePassword } from "../../utils/passwordUtils";
 import { detectUserCountry } from "../../utils/country";
 
@@ -22,59 +22,7 @@ export const SignupScreen = ({ navigation }) => {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showVerificationScreen, setShowVerificationScreen] = useState(false);
-  const [userEmail, setUserEmail] = useState("");
-  const [resendCooldown, setResendCooldown] = useState(0);
-  const [verificationChecking, setVerificationChecking] = useState(false);
-  const [notice, setNotice] = useState("");
   const { signup } = useAuth();
-
-  useEffect(() => {
-    if (resendCooldown <= 0) return undefined;
-    const timer = setInterval(() => {
-      setResendCooldown((value) => Math.max(0, value - 1));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [resendCooldown]);
-
-  const resendVerification = async () => {
-    if (resendCooldown > 0 || !auth.currentUser) return;
-    setError("");
-    setNotice("");
-    try {
-      await sendEmailVerification(auth.currentUser, {
-        url: "https://suhoor-group.web.app/login",
-        handleCodeInApp: true,
-      });
-      setResendCooldown(30);
-      setNotice(t("auth.verificationResent"));
-    } catch (emailErr) {
-      setError(
-        emailErr?.code === "auth/too-many-requests"
-          ? t("auth.verificationTooMany")
-          : t("auth.verificationSendError")
-      );
-    }
-  };
-
-  const checkVerification = async () => {
-    if (!auth.currentUser) return;
-    setVerificationChecking(true);
-    setError("");
-    setNotice("");
-    try {
-      await reload(auth.currentUser);
-      if (auth.currentUser.emailVerified) {
-        setNotice(t("auth.verifiedSuccess"));
-      } else {
-        setError(t("auth.notVerifiedYet"));
-      }
-    } catch (checkErr) {
-      setError(t("auth.verificationCheckError"));
-    } finally {
-      setVerificationChecking(false);
-    }
-  };
 
   const handleSignup = async () => {
     setError("");
@@ -115,7 +63,7 @@ export const SignupScreen = ({ navigation }) => {
       const userCredential = await signup(email.trim(), password);
       const user = userCredential.user;
 
-      // 2. Get alarm PIN and fasting defaults from AsyncStorage (set during onboarding)
+      // 2. Get alarm PIN and fasting defaults from AsyncStorage
       let alarmPin = "";
       let fastingDefaults = {
         sunnah: true,
@@ -142,7 +90,7 @@ export const SignupScreen = ({ navigation }) => {
         display_name: email.trim().split("@")[0],
         isVerified: false,
         country: userCountry,
-        pin: alarmPin, // Save the alarm PIN from onboarding
+        pin: alarmPin,
         createdAt: serverTimestamp(),
         fastingDefaults,
         preferences: {
@@ -151,28 +99,26 @@ export const SignupScreen = ({ navigation }) => {
         },
       });
 
-      // Triggers the one-time tab tour when the new user first enters the app
+      // Triggers the one-time tab tour
       try {
         await AsyncStorage.setItem("suhoor-tab-tour-pending", "true");
       } catch (tourFlagErr) {
         console.log("Error setting tab tour flag:", tourFlagErr);
       }
 
-      // 3. Send Firebase email verification (built-in Firebase syntax)
+      // 4. Send Firebase email verification
       try {
         await sendEmailVerification(user, {
           url: "https://suhoor-group.web.app/login",
           handleCodeInApp: true,
         });
-        setResendCooldown(30);
       } catch (emailErr) {
         console.log("Firebase verification email error:", emailErr);
-        setError(t("auth.verificationSignupFail"));
+        // We don't block the success screen just because the email failed to send
       }
 
-      // Show verification screen instead of auto-navigating to home
-      setUserEmail(email.trim());
-      setShowVerificationScreen(true);
+      // Navigation will be handled by RootNavigator since user is now authenticated but not verified
+
     } catch (err) {
       if (err.code === "auth/email-already-in-use") {
         setError(t("auth.emailInUse"));
@@ -186,109 +132,15 @@ export const SignupScreen = ({ navigation }) => {
 
   return (
     <AuthWrapper
-      title={
-        showVerificationScreen
-          ? t("auth.checkYourEmail")
-          : t("auth.createAccount")
-      }
-      subtitle={
-        showVerificationScreen
-          ? t("auth.verificationEmailSent")
-          : t("auth.signupSubtitle")
-      }
+      title={t("auth.createAccount")}
+      subtitle={t("auth.signupSubtitle")}
       error={error}
-      bottomTitle={
-        showVerificationScreen
-          ? t("auth.backToLogin")
-          : t("auth.alreadyHaveAccount")
-      }
-      bottomsubTitle={
-        showVerificationScreen ? t("auth.login") : t("auth.login")
-      }
+      bottomTitle={t("auth.alreadyHaveAccount")}
+      bottomsubTitle={t("auth.login")}
       onBottomPress={() => navigation.navigate("Login")}
-      onBackPress={() =>
-        showVerificationScreen
-          ? navigation.navigate("Login")
-          : navigation.goBack()
-      }
     >
-      {showVerificationScreen ? (
-        <>
-        <View
-          style={{
-            backgroundColor: "#ECFDF5",
-            borderColor: "#A7F3D0",
-            borderWidth: 1,
-            borderRadius: 8,
-            padding: 16,
-            marginBottom: 20,
-            alignItems: "center",
-          }}
-        >
-          <Ionicons
-            name="mail-outline"
-            size={48}
-            color="#059669"
-            style={{ marginBottom: 12 }}
-          />
-          <Text
-            style={{
-              color: "#065F46",
-              fontSize: 16,
-              fontWeight: "600",
-              textAlign: "center",
-              marginBottom: 8,
-            }}
-          >
-            {t("auth.verificationEmailSentTo")}
-          </Text>
-          <Text
-            style={{
-              color: "#065F46",
-              fontSize: 18,
-              fontWeight: "700",
-              textAlign: "center",
-            }}
-          >
-            {userEmail}
-          </Text>
-        </View>
-
-        {notice ? (
-          <Text
-            style={{
-              color: "#059669",
-              fontSize: 14,
-              fontWeight: "600",
-              textAlign: "center",
-              marginBottom: 16,
-            }}
-          >
-            {notice}
-          </Text>
-        ) : null}
-
-        <Button
-          title={
-            resendCooldown > 0
-              ? t("auth.resendIn", { seconds: resendCooldown })
-              : t("auth.resendVerification")
-          }
-          onPress={resendVerification}
-          disabled={resendCooldown > 0}
-          variant="outline"
-        />
-
-        <Button
-          title={t("auth.checkVerification")}
-          onPress={checkVerification}
-          loading={verificationChecking}
-          variant="primary"
-          style={{ marginTop: 12, borderRadius: 8 }}
-        />
-        </>
-      ) : (
-        <>
+      {/* --- FORM UI --- */}
+      <>
           <Input
             label={t("settings.emailAddress")}
             icon="mail-outline"
@@ -395,8 +247,7 @@ export const SignupScreen = ({ navigation }) => {
             variant="primary"
             style={{ borderRadius: 8 }}
           />
-        </>
-      )}
+      </>
     </AuthWrapper>
   );
 };

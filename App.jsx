@@ -11,6 +11,7 @@ import { NetworkProvider } from "./context/NetworkContext";
 import AlarmOverlay from "./components/AlarmOverlay";
 import RootNavigator from "./navigation/RootNavigator";
 import Animated, { FadeIn, ZoomIn } from "react-native-reanimated";
+import { CLOSED_TESTER_FEATURES } from "./config/closedTesterFeatures";
 import { configureNotifications } from "./services/notifications";
 import FastingNotificationsManager from "./components/FastingNotificationsManager";
 import NetworkStatusNotification from "./components/NetworkStatusNotification";
@@ -69,7 +70,7 @@ export default function App() {
                   >
                     <RootNavigator />
                     <AlarmOverlay />
-                    <FastingNotificationsManager />
+                    {CLOSED_TESTER_FEATURES.fastingPromptReminder && <FastingNotificationsManager />}
                     <NetworkStatusNotification />
                     <StatusBar barStyle="default" />
                   </View>
@@ -93,7 +94,7 @@ export default function App() {
                   <View style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
                     <RootNavigator />
                     <AlarmOverlay />
-                    <FastingNotificationsManager />
+                    {CLOSED_TESTER_FEATURES.fastingPromptReminder && <FastingNotificationsManager />}
                     <NetworkStatusNotification />
                     <StatusBar barStyle="default" />
                   </View>

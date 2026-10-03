@@ -17,10 +17,12 @@ import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useGamification } from '../hooks/useGamification'
+import { CLOSED_TESTER_FEATURES } from '../config/closedTesterFeatures'
 import { brand, neutral, radius } from '../theme'
 import { Badge, Text } from './ui'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
+const SEND_FEEDBACK_URL = 'https://play.google.com/store/apps/details?id=com.mechseiko.suhoor'
 const DRAWER_WIDTH = Math.min(SCREEN_WIDTH * 0.82, 340)
 
 export const ProfileSidebar = ({ visible, onClose, navigation }) => {
@@ -102,6 +104,13 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
     setThemeMode(nextMode)
   }
 
+  const handleSendFeedback = () => {
+    onClose()
+    Linking.openURL(SEND_FEEDBACK_URL).catch((error) =>
+      console.error('Unable to open the Play Store feedback page:', error)
+    )
+  }
+
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
       <View style={styles.modalRoot}>
@@ -155,18 +164,20 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
           >
             {/* Menu List */}
             <View style={styles.menuSection}>
-              <TouchableOpacity
-                style={styles.menuRow}
-                onPress={() => navigateTo('LeaderboardTab')}
-              >
-                <View style={[styles.menuIconBox, { backgroundColor: 'rgba(168, 85, 247, 0.12)' }]}>
-                  <Ionicons name="trophy-outline" size={18} color="#A855F7" />
-                </View>
-                <Text variant="body" style={styles.menuLabel}>
-                  {t('nav.leaderboard', 'Leaderboard')}
-                </Text>
-                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary || '#9CA3AF'} />
-              </TouchableOpacity>
+              {CLOSED_TESTER_FEATURES.leaderboard && (
+                <TouchableOpacity
+                  style={styles.menuRow}
+                  onPress={() => navigateTo('LeaderboardTab')}
+                >
+                  <View style={[styles.menuIconBox, { backgroundColor: 'rgba(168, 85, 247, 0.12)' }]}>
+                    <Ionicons name="trophy-outline" size={18} color="#A855F7" />
+                  </View>
+                  <Text variant="body" style={styles.menuLabel}>
+                    {t('nav.leaderboard')}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textSecondary || '#9CA3AF'} />
+                </TouchableOpacity>
+              )}
 
               <TouchableOpacity
                 style={styles.menuRow}
@@ -183,16 +194,13 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
 
               <TouchableOpacity
                 style={styles.menuRow}
-                onPress={() => {
-                  onClose()
-                  Linking.openURL('https://play.google.com/store/apps/details?id=com.mechseiko.suhoor')
-                }}
+                onPress={handleSendFeedback}
               >
                 <View style={[styles.menuIconBox, { backgroundColor: 'rgba(34, 197, 94, 0.12)' }]}>
-                  <Ionicons name="star-outline" size={18} color="#22C55E" />
+                  <Ionicons name="chatbubble-ellipses-outline" size={18} color="#22C55E" />
                 </View>
                 <Text variant="body" style={styles.menuLabel}>
-                  {t('profile.rateUs', 'Rate on Play Store')}
+                  {t('profile.sendFeedback')}
                 </Text>
                 <Ionicons name="chevron-forward" size={18} color={colors.textSecondary || '#9CA3AF'} />
               </TouchableOpacity>
@@ -212,29 +220,11 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
             </View>
 
             {/* Logout Row */}
-            <View style={[styles.logoutSection, { borderTopColor: colors.border || '#E5E7EB' }]}>
-              <TouchableOpacity
-                style={[
-                  styles.logoutBtn,
-                  {
-                    backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.05)',
-                    borderWidth: 1,
-                    borderColor: isDark ? 'rgba(239, 68, 68, 0.35)' : '#FCA5A5',
-                    borderRadius: 10,
-                  },
-                ]}
-                onPress={handleLogout}
-              >
-                <Ionicons name="log-out-outline" size={20} color={isDark ? '#F87171' : '#EF4444'} />
-                <Text style={[styles.logoutText, { color: isDark ? '#F87171' : '#EF4444' }]}>
-                  {t('profile.logout', 'Log Out')}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            
 
             {/* Version */}
             <View style={styles.versionSection}>
-              <Text style={styles.versionText}>v1.0.8</Text>
+              <Text style={styles.versionText}>v1.0.9</Text>
             </View>
           </ScrollView>
         </Animated.View>

@@ -61,17 +61,15 @@ export const ForgotPasswordScreen = ({ navigation }) => {
       console.error('Password reset error:', err)
       const errorCode = err.code
       let errorMessage = t('auth.resetError')
-      
-      if (errorCode === 'auth/user-not-found') {
-        errorMessage = t('auth.userNotFound') || 'No account found with this email'
-      } else if (errorCode === 'auth/invalid-email') {
+
+      if (errorCode === 'auth/invalid-email') {
         errorMessage = t('auth.invalidEmail') || 'Invalid email address'
       } else if (errorCode === 'auth/too-many-requests') {
         errorMessage = t('auth.tooManyRequests') || 'Too many attempts. Please try again later'
       } else if (err.message) {
         errorMessage = err.message
       }
-      
+
       setError(errorMessage)
     } finally {
       setLoading(false)
@@ -134,11 +132,20 @@ export const ForgotPasswordScreen = ({ navigation }) => {
       />
 
       <Button
-        // title={cooldownRemaining > 0 ? `Wait ${cooldownRemaining}s` : t('auth.sendResetLink')}
-        title={t('auth.sendResetLink')}
-        onPress={handleResetPassword}
+        title={
+          success !== ''
+            ? t('auth.backToLogin') || "Back to Login"
+            : cooldownRemaining > 0
+              ? `Wait ${cooldownRemaining}s to resend`
+              : t('auth.sendResetLink')
+        }
+        onPress={
+          success !== ''
+            ? () => navigation.navigate('Login')
+            : handleResetPassword
+        }
         loading={loading}
-        disabled={cooldownRemaining > 0 || loading}
+        disabled={success !== '' ? false : (cooldownRemaining > 0 || loading)}
         variant="primary"
         style={{ borderRadius: 8 }}
       />

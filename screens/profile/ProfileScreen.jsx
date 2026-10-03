@@ -38,7 +38,7 @@ import { COLLECTIONS } from "../../config/firestoreSchema";
 import Toast from "../../components/Toast";
 import LanguageSelector from "../../components/LanguageSelector";
 
-const APP_VERSION = "1.0.8";
+const APP_VERSION = "1.0.9";
 
 const ProfileScreen = () => {
   const { currentUser, userProfile, logout, deleteAccount } = useAuth();
@@ -1189,72 +1189,7 @@ const ProfileScreen = () => {
                 </View>
               </View>
 
-              <View style={styles.sectionDivider} />
-
-              <View style={styles.cardHeader}>
-                <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
-                  {t("settings.language", "Language")}
-                </Text>
-              </View>
-              <LanguageSelector />
-
-              <View style={styles.sectionDivider} />
-
-              <View style={styles.cardHeader}>
-                <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
-                  {t("profile.locationPreferences", "Location Preferences")}
-                </Text>
-              </View>
-
-              <View style={styles.settingRow}>
-                <View style={styles.settingInfo}>
-                  <Text
-                    style={[styles.settingLabel, themedStyles.settingLabel]}
-                  >
-                    {t("profile.defaultLocation", "Default Location")}
-                  </Text>
-                  <Text style={[styles.settingSub, themedStyles.settingSub]}>
-                    {selectedLocation
-                      ? selectedLocation.name
-                      : t(
-                          "profile.locationNotSet",
-                          "Not set (using device GPS)"
-                        )}
-                  </Text>
-                </View>
-                <View style={{ flexDirection: "row", gap: 8 }}>
-                  {selectedLocation && (
-                    <TouchableOpacity
-                      style={[
-                        styles.actionBtn,
-                        { backgroundColor: colors.surfaceVariant },
-                      ]}
-                      onPress={handleClearLocation}
-                      disabled={isUpdatingSettings}
-                    >
-                      <Ionicons
-                        name="close-outline"
-                        size={18}
-                        color={colors.text}
-                      />
-                    </TouchableOpacity>
-                  )}
-                  <TouchableOpacity
-                    style={[
-                      styles.actionBtn,
-                      { backgroundColor: Colors.primary },
-                    ]}
-                    onPress={() => setShowLocationModal(true)}
-                    disabled={isUpdatingSettings}
-                  >
-                    <Ionicons
-                      name="location-outline"
-                      size={18}
-                      color={Colors.white}
-                    />
-                  </TouchableOpacity>
-                </View>
-              </View>
+  
             </View>
           </View>
         )}

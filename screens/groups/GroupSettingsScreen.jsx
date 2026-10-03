@@ -201,7 +201,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
   const handleCopyInviteLink = async () => {
     const key = group?.group_key || groupKey;
     if (!key) return;
-    const link = `https://suhoorapp.cv/groups?groupKey=${key}`;
+    const link = `https://suhoor-group.web.app/groups?groupKey=${key}`;
     if (Clipboard.setStringAsync) {
       await Clipboard.setStringAsync(link);
     } else if (Clipboard.setString) {

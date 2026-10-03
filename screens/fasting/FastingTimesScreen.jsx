@@ -20,6 +20,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAlarmState } from '../../context/AlarmContext';
 import { hijriMonthName } from '../../config/languages';
+import { CLOSED_TESTER_FEATURES } from '../../config/closedTesterFeatures';
 import { db, storage } from '../../config/firebase';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -773,86 +774,12 @@ export const FastingTimesScreen = () => {
           </View>
         </View>
 
-        {/* Alarm Audio Section */}
-        <View style={{ backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 18, marginBottom: 16 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', columnGap: 10, marginBottom: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-            <Ionicons name="musical-notes" size={24} color={colors.primary} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: '700', fontSize: 17, color: colors.text }}>{t('fastingTimes.alarmSound')}</Text>
-              <Text style={{ fontSize: 12, color: colors.textSecondary }}>{t('fastingTimes.alarmSoundSub')}</Text>
-            </View>
-          </View>
-
-          {/* Default option */}
-          <TouchableOpacity
-            onPress={handleSelectDefaultAudio}
-            style={{
-              flexDirection: 'row', alignItems: 'center', columnGap: 12,
-    rowGap: 12,
-              paddingVertical: 14, paddingHorizontal: 14,
-              borderRadius: 12, marginBottom: 10,
-              borderWidth: 1.5,
-              borderColor: alarmAudioMode === 'default' ? colors.primary : colors.border,
-              backgroundColor: alarmAudioMode === 'default' ? colors.primary + '08' : colors.surfaceVariant,
-            }}
-          >
-            <View style={{
-              width: 40, height: 40, borderRadius: 20,
-              backgroundColor: alarmAudioMode === 'default' ? colors.primary + '20' : colors.border,
-              alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Ionicons name="notifications" size={20} color={alarmAudioMode === 'default' ? colors.primary : colors.textSecondary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: '700', fontSize: 14, color: colors.text }}>{t('fastingTimes.defaultAlarm')}</Text>
-              <Text style={{ fontSize: 12, color: colors.textSecondary }}>{t('fastingTimes.defaultAlarmSub')}</Text>
-            </View>
-            {alarmAudioMode === 'default' && (
-              <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
-            )}
-          </TouchableOpacity>
-
-          {/* Custom audio option */}
-          <TouchableOpacity
-            onPress={handlePickAndUploadAudio}
-            disabled={isUploadingAudio}
-            style={{
-              flexDirection: 'row', alignItems: 'center', columnGap: 12,
-    rowGap: 12,
-              paddingVertical: 14, paddingHorizontal: 14,
-              borderRadius: 12,
-              borderWidth: 1.5,
-              borderColor: alarmAudioMode === 'custom' ? colors.accent : colors.border,
-              backgroundColor: alarmAudioMode === 'custom' ? colors.accent + '08' : colors.surfaceVariant,
-            }}
-          >
-            <View style={{
-              width: 40, height: 40, borderRadius: 20,
-              backgroundColor: alarmAudioMode === 'custom' ? colors.accent + '20' : colors.border,
-              alignItems: 'center', justifyContent: 'center',
-            }}>
-              {isUploadingAudio
-                ? <ActivityIndicator size="small" color={colors.accent} />
-                : <Ionicons name="cloud-upload-outline" size={20} color={alarmAudioMode === 'custom' ? colors.accent : colors.textSecondary} />}
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: '700', fontSize: 14, color: colors.text }}>
-                {alarmAudioMode === 'custom' && customAudioName ? customAudioName : t('fastingTimes.uploadCustomAudio')}
-              </Text>
-              <Text style={{ fontSize: 12, color: colors.textSecondary }}>
-                {alarmAudioMode === 'custom' ? t('fastingTimes.changeCustomAudio') : t('fastingTimes.uploadCustomAudioSub')}
-              </Text>
-            </View>
-            {alarmAudioMode === 'custom' && (
-              <Ionicons name="checkmark-circle" size={22} color={colors.accent} />
-            )}
-          </TouchableOpacity>
-        </View>
+       
 
         <TouchableOpacity
             style={[
               { flexDirection: 'row', alignItems: 'center', columnGap: 12, paddingVertical: 14, paddingHorizontal: 14, borderRadius: 12, marginTop: 8 },
-              { backgroundColor: colors.primary },
+              { backgroundColor: colors.primary, justifyContent: "center" },
             ]}
             onPress={handleSaveWakeUpTime}
             disabled={isSaving}

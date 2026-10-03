@@ -1,12 +1,13 @@
-import { FlatList, Image, Modal, RefreshControl, StyleSheet, TouchableOpacity, View, TextInput } from 'react-native';
+import { FlatList, Image, Linking, Modal, RefreshControl, StyleSheet, TouchableOpacity, View, TextInput } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../config/firebase';
+import { CLOSED_TESTER_FEATURES } from '../../config/closedTesterFeatures';
 import { COLLECTIONS } from '../../config/firestoreSchema';
-import { collection, query, where, getDocs, orderBy, limit, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import FastingPrompt from '../../components/FastingPrompt';
 import AudioModeWarning from '../../components/AudioModeWarning';
 import StatsCard from '../../components/StatsCard';
@@ -29,43 +30,15 @@ export const HomeScreen = ({ navigation }) => {
   const { t, formatDate } = useLanguage();
   const [refreshing, setRefreshing] = useState(false);
   const [sidebarVisible, setSidebarVisible] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [lastSeenNotifications, setLastSeenNotifications] = useState(0);
-  
+
   // PIN setup modal state
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinDigits, setPinDigits] = useState(['', '', '', '']);
   const [pinError, setPinError] = useState('');
   const pinRefs = [useRef(), useRef(), useRef(), useRef()];
 
-  // Notifications listener (Goal 14)
-  useEffect(() => {
-    AsyncStorage.getItem('suhoor_notifications_last_seen').then(val => {
-      if (val) setLastSeenNotifications(Number(val));
-    });
-
-    const q = query(collection(db, 'notifications'), orderBy('created_at', 'desc'), limit(20));
-    const unsub = onSnapshot(q, snap => {
-      const list = [];
-      snap.forEach(d => list.push({ id: d.id, ...d.data() }));
-      setNotifications(list);
-    }, err => console.log('Error fetching notifications:', err));
-
-    return () => unsub();
-  }, []);
-
-  const unreadNotificationsCount = notifications.filter(n => {
-    const t = n.created_at?.toMillis ? n.created_at.toMillis() : (n.created_at?.seconds ? n.created_at.seconds * 1000 : 0);
-    return t > lastSeenNotifications;
-  }).length;
-
-  const handleOpenNotifications = () => {
-    setShowNotifications(true);
-    const now = Date.now();
-    setLastSeenNotifications(now);
-    AsyncStorage.setItem('suhoor_notifications_last_seen', String(now));
-  };
+  // Update available modal state
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
 
   // Stats
   const [totalGroups, setTotalGroups] = useState(0);
@@ -75,6 +48,25 @@ export const HomeScreen = ({ navigation }) => {
 
   // Calendar history (for visual styling)
   const [weeklyFasting, setWeeklyFasting] = useState([false, false, false, false, false, false, false]);
+
+  // Check for forced update
+useEffect(() => {
+  const checkForUpdate = async () => {
+    if (!currentUser?.uid) return; // wait until user is loaded
+    try {
+      // Read from the user's OWN profile document
+      const userDoc = await getDoc(doc(db, 'profiles', currentUser.uid));
+      // ⬆️ change 'profiles' to 'users' if that's your collection name
+
+      if (userDoc.exists() && userDoc.data()?.force_update === true) {
+        setShowUpdateModal(true);
+      }
+    } catch (err) {
+      console.log('[HomeScreen] Could not check for update:', err);
+    }
+  };
+  checkForUpdate();
+}, [currentUser]); // ⬅️ IMPORTANT: re-run when currentUser is ready
 
   const fetchDashboardData = async () => {
     if (!currentUser) return;
@@ -235,39 +227,7 @@ export const HomeScreen = ({ navigation }) => {
         </View>
 
         <View style={{ alignItems: 'flex-end', gap: 8 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            {/* Bell Icon button (Goal 14) */}
-            <TouchableOpacity
-              onPress={handleOpenNotifications}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Notifications"
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 19,
-                backgroundColor: colors.surfaceVariant || '#F3F4F6',
-                alignItems: 'center',
-                justifyContent: 'center',
-                position: 'relative',
-              }}
-            >
-              <Ionicons name="notifications-outline" size={20} color={colors.text} />
-              {unreadNotificationsCount > 0 && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    top: 4,
-                    right: 4,
-                    width: 8,
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: colors.primary,
-                  }}
-                />
-              )}
-            </TouchableOpacity>
-
+          <View style={{ alignItems: 'center' }}>
             {/* Profile Avatar */}
             <TouchableOpacity
               onPress={() => setSidebarVisible(true)}
@@ -326,7 +286,7 @@ export const HomeScreen = ({ navigation }) => {
             style={{ borderRadius: 8 }}
           />
         </Card>
-      ) : <FastingPrompt />}
+      ) : CLOSED_TESTER_FEATURES.fastingPrompt ? <FastingPrompt /> : null}
 
       <AudioModeWarning />
 
@@ -425,6 +385,53 @@ export const HomeScreen = ({ navigation }) => {
         navigation={navigation}
       />
 
+      {/* ── Uncancellable Update Modal ── */}
+      <Modal
+        visible={showUpdateModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => {/* intentionally uncancellable */}}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 24, padding: 28, width: '100%', maxWidth: 340, alignItems: 'center' }}>
+            {/* Icon */}
+            <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: alpha(colors.primary, 0.1), alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+              <Ionicons name="arrow-up-circle" size={40} color={colors.primary} />
+            </View>
+
+            <Text variant="h2" style={{ textAlign: 'center', marginBottom: 10 }}>
+              Update Available
+            </Text>
+            <Text variant="body" tone="secondary" style={{ textAlign: 'center', lineHeight: 22, marginBottom: 28 }}>
+              A new version of Suhoor is available. Download the latest version to continue using the app.
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => Linking.openURL('https://play.google.com/store/apps/details?id=com.mechseiko.suhoor')}
+              activeOpacity={0.85}
+              style={{
+                backgroundColor: colors.primary,
+                borderRadius: 14,
+                paddingVertical: 16,
+                paddingHorizontal: 32,
+                width: '100%',
+                alignItems: 'center',
+                shadowColor: colors.primary,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 5,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Ionicons name="logo-google-playstore" size={20} color="#FFFFFF" />
+                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16 }}>Update on Play Store</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* PIN Setup Modal */}
       <Modal
         visible={showPinModal}
@@ -494,118 +501,6 @@ export const HomeScreen = ({ navigation }) => {
                 style={{ flex: 1 }}
               />
             </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Notifications Modal (Goal 14) */}
-      <Modal
-        visible={showNotifications}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowNotifications(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View
-            style={{
-              backgroundColor: colors.surface || '#FFFFFF',
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              maxHeight: '80%',
-              paddingBottom: 28,
-            }}
-          >
-            {/* Modal Header */}
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                paddingHorizontal: 20,
-                paddingVertical: 18,
-                borderBottomWidth: 1,
-                borderBottomColor: colors.border || '#F3F4F6',
-              }}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Ionicons name="notifications" size={20} color={colors.primary} />
-                <Text variant="h2">Notifications</Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => setShowNotifications(false)}
-                hitSlop={10}
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 16,
-                  backgroundColor: colors.surfaceVariant || '#F3F4F6',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Ionicons name="close" size={18} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Notifications List */}
-            {notifications.length === 0 ? (
-              <View style={{ padding: 40, alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name="notifications-outline" size={48} color={colors.muted || '#9CA3AF'} />
-                <Text variant="h3" style={{ marginTop: 12 }}>No notifications yet</Text>
-                <Text variant="caption" tone="secondary" style={{ marginTop: 4, textAlign: 'center' }}>
-                  You are all caught up on everything.
-                </Text>
-              </View>
-            ) : (
-              <FlatList
-                data={notifications}
-                keyExtractor={item => item.id}
-                contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12 }}
-                renderItem={({ item }) => (
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'flex-start',
-                      columnGap: 12,
-                    rowGap: 12,
-                      paddingVertical: 14,
-                      paddingHorizontal: 14,
-                      borderRadius: 14,
-                      backgroundColor: colors.surfaceVariant || '#F9FAFB',
-                      marginBottom: 10,
-                      borderWidth: 1,
-                      borderColor: colors.border || '#E5E7EB',
-                    }}
-                  >
-                    <Text style={{ fontSize: 24 }}>{item.emoji || '🌙'}</Text>
-                    <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                        <Text variant="h3" style={{ fontSize: 14 }}>{item.title}</Text>
-                        {item.category && (
-                          <View
-                            style={{
-                              paddingHorizontal: 6,
-                              paddingVertical: 2,
-                              borderRadius: 6,
-                              backgroundColor: alpha(colors.primary, 0.08),
-                            }}
-                          >
-                            <Text style={{ fontSize: 10, fontWeight: '700', color: colors.primary }}>
-                              {item.category}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                      {item.message ? (
-                        <Text variant="body" tone="secondary" style={{ fontSize: 12, lineHeight: 16 }}>
-                          {item.message}
-                        </Text>
-                      ) : null}
-                    </View>
-                  </View>
-                )}
-              />
-            )}
           </View>
         </View>
       </Modal>

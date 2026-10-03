@@ -4,6 +4,7 @@ import LoginScreen from "../screens/auth/LoginScreen";
 import SignupScreen from "../screens/auth/SignupScreen";
 import ForgotPasswordScreen from "../screens/auth/ForgotPasswordScreen";
 import OnboardingScreen from "../screens/auth/OnboardingScreen";
+import VerifyEmailScreen from "../screens/auth/VerifyEmailScreen";
 
 const Stack = createNativeStackNavigator();
 const OnboardingCompleteContext = React.createContext(null);
@@ -13,12 +14,12 @@ const OnboardingRoute = () => {
   return <OnboardingScreen onComplete={onComplete} />;
 };
 
-export const AuthStack = ({ showOnboarding, onCompleteOnboarding }) => {
+export const AuthStack = ({ showOnboarding, onCompleteOnboarding, initialRoute }) => {
   return (
     <OnboardingCompleteContext.Provider value={onCompleteOnboarding}>
       <Stack.Navigator
         key={showOnboarding ? "onboarding" : "signup"}
-        initialRouteName={showOnboarding ? "Onboarding" : "Signup"}
+        initialRouteName={initialRoute || (showOnboarding ? "Onboarding" : "Signup")}
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: "#FFFFFF" },
@@ -29,6 +30,7 @@ export const AuthStack = ({ showOnboarding, onCompleteOnboarding }) => {
         ) : null}
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Signup" component={SignupScreen} />
+        <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       </Stack.Navigator>
     </OnboardingCompleteContext.Provider>

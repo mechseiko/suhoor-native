@@ -283,16 +283,29 @@ export const AppTour = ({ children, tabBarRef }) => {
   const current = TOUR_STEPS[step];
   const iconName = TAB_ICONS[current.tab];
 
-  const renderControls = () => (
+  const renderControls = () => {
+  const onCard = current.phase === 'summary'; // white card context
+  const backBg = onCard
+    ? (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)')
+    : 'rgba(255, 255, 255, 0.14)';
+  const backIconColor = onCard ? colors.text : '#FFFFFF';
+  const backTextColor = onCard ? colors.text : '#FFFFFF';
+
+  return (
     <View style={styles.controlsRow}>
       {step > 0 && (
-        <TouchableOpacity style={styles.backBtn} onPress={() => goToStep(step - 1)}>
+        <TouchableOpacity
+          style={[styles.backBtn, { backgroundColor: backBg }]}
+          onPress={() => goToStep(step - 1)}
+        >
           <Ionicons
             name={layoutRtl ? 'arrow-forward' : 'arrow-back'}
             size={18}
-            color="#FFFFFF"
+            color={backIconColor}
           />
-          <Text style={styles.backBtnText}>{t('common.back')}</Text>
+          <Text style={[styles.backBtnText, { color: backTextColor }]}>
+            {t('common.back')}
+          </Text>
         </TouchableOpacity>
       )}
       <TouchableOpacity
@@ -310,6 +323,7 @@ export const AppTour = ({ children, tabBarRef }) => {
       </TouchableOpacity>
     </View>
   );
+};
 
   return (
     <>
@@ -555,20 +569,20 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   backBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.14)',
-  },
-  backBtnText: {
-    color: '#FFFFFF',
-    fontSize: size.sm,
-    ...font('body', weight.semibold),
-  },
+  flex: 1,
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 8,
+  paddingVertical: 12,
+  borderRadius: 12,
+  // backgroundColor removed - now set dynamically
+},
+backBtnText: {
+  fontSize: size.sm,
+  ...font('body', weight.semibold),
+  // color removed - now set dynamically
+},
   nextBtn: {
     flex: 2,
     flexDirection: 'row',

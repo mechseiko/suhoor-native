@@ -75,6 +75,15 @@ export const RootNavigator = () => {
           <AppTour tabBarRef={tabBarRef}>
             <TabNavigator tabBarRef={tabBarRef} />
           </AppTour>
+        ) : currentUser && !isVerified ? (
+          <AuthStack
+            showOnboarding={false}
+            onCompleteOnboarding={async () => {
+              await AsyncStorage.setItem('suhoor-onboarding-complete', 'true')
+              setOnboardingComplete(true)
+            }}
+            initialRoute="VerifyEmail"
+          />
         ) : (
           <AuthStack
             showOnboarding={!onboardingComplete}

@@ -9,6 +9,7 @@ import { Button, Input, Text } from '../../components/ui'
 import { db } from '../../config/firebase'
 import { COLLECTIONS } from '../../config/firestoreSchema'
 import { doc, updateDoc, getDoc } from 'firebase/firestore'
+import { sendEmailVerification } from 'firebase/auth'
 
 export const LoginScreen = ({ navigation }) => {
   const { t } = useLanguage()
@@ -20,82 +21,88 @@ export const LoginScreen = ({ navigation }) => {
   const { login, logout } = useAuth()
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      setError(t('auth.fillAllFields'))
-      return
-    }
-
-    setError('')
-    setLoading(true)
-
-    try {
-      const userCredential = await login(email.trim(), password)
-      const user = userCredential.user
-
-      // Check Firebase Auth verification status first
-      if (!user.emailVerified) {
-        // Even if Firebase says not verified, check Firestore profile
-        // to handle the case where the user just verified but Auth hasn't synced yet
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        const userProfileDoc = await getDoc(doc(db, COLLECTIONS.profiles, user.uid))
-        const isProfileVerified = userProfileDoc.exists() ? userProfileDoc.data().isVerified : false
-        
-        if (!isProfileVerified) {
-          // Both Firebase and Firestore say not verified
-          await logout()
-          setError(t('auth.emailNotVerified'))
-          return
-        }
-        // If Firestore says verified but Firebase doesn't, proceed
-        // AuthContext will sync the status
-      }
-
-      // Sync alarm PIN from AsyncStorage to profile if it exists
-      try {
-        const alarmPin = await AsyncStorage.getItem('suhoor_alarm_pin')
-        if (alarmPin) {
-          const profileRef = doc(db, COLLECTIONS.profiles, user.uid)
-          await updateDoc(profileRef, { pin: alarmPin })
-        }
-      } catch (syncErr) {
-        console.log('Error syncing alarm PIN:', syncErr)
-      }
-
-      // Navigate to main app on successful login
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'MainTabs' }],
-      })
-    } catch (err) {
-      console.error('Login error:', err)
-      const errorCode = err.code
-      let errorMessage = t('auth.loginError')
-      
-      if (
-        errorCode === 'auth/invalid-credential' ||
-        errorCode === 'auth/invalid-login-credentials'
-      ) {
-        errorMessage = t('auth.invalidCredentials')
-      } else if (errorCode === 'auth/user-not-found') {
-        errorMessage = t('auth.userNotFound')
-      } else if (errorCode === 'auth/wrong-password') {
-        errorMessage = t('auth.wrongPassword')
-      } else if (errorCode === 'auth/invalid-email') {
-        errorMessage = t('auth.invalidEmail')
-      } else if (errorCode === 'auth/user-disabled') {
-        errorMessage = t('auth.userDisabled')
-      } else if (errorCode === 'auth/too-many-requests') {
-        errorMessage = t('auth.tooManyRequests')
-      } else if (errorCode === 'auth/network-request-failed') {
-        errorMessage = t('auth.networkError')
-      }
-      
-      setError(errorMessage)
-    } finally {
-      setLoading(false)
-    }
+  if (!email || !password) {
+    setError(t('auth.fillAllFields'))
+    return
   }
+
+  setError('')
+  setLoading(true)
+
+  try {
+    const userCredential = await login(email.trim(), password)
+    const user = userCredential.user
+
+    // Check Firebase Auth verification status first
+    if (!user.emailVerified) {
+      // Give Auth a moment to sync in case they just verified
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      const userProfileDoc = await getDoc(doc(db, COLLECTIONS.profiles, user.uid))
+      const isProfileVerified = userProfileDoc.exists()
+        ? userProfileDoc.data().isVerified
+        : false
+
+      if (!isProfileVerified) {
+        // Silently send a fresh verification email so they have a valid link
+        try {
+          await sendEmailVerification(user, {
+            url: 'https://suhoor-group.web.app/login',
+            handleCodeInApp: true,
+          })
+        } catch (sendErr) {
+          console.log('Could not auto-send verification email:', sendErr)
+        }
+
+        await logout()
+        setError(t('auth.verificationEmailSent'))
+        return
+      }
+      // If Firestore says verified but Firebase doesn't, proceed
+      // AuthContext will sync the status
+    }
+
+    // Sync alarm PIN from AsyncStorage to profile if it exists
+    try {
+      const alarmPin = await AsyncStorage.getItem('suhoor_alarm_pin')
+      if (alarmPin) {
+        const profileRef = doc(db, COLLECTIONS.profiles, user.uid)
+        await updateDoc(profileRef, { pin: alarmPin })
+      }
+    } catch (syncErr) {
+      console.log('Error syncing alarm PIN:', syncErr)
+    }
+
+    // Navigation will be handled by RootNavigator since user is now authenticated and verified
+  } catch (err) {
+    console.error('Login error:', err)
+    const errorCode = err.code
+    let errorMessage = t('auth.loginError')
+
+    if (
+      errorCode === 'auth/invalid-credential' ||
+      errorCode === 'auth/invalid-login-credentials'
+    ) {
+      errorMessage = t('auth.invalidCredentials')
+    } else if (errorCode === 'auth/user-not-found') {
+      errorMessage = t('auth.userNotFound')
+    } else if (errorCode === 'auth/wrong-password') {
+      errorMessage = t('auth.wrongPassword')
+    } else if (errorCode === 'auth/invalid-email') {
+      errorMessage = t('auth.invalidEmail')
+    } else if (errorCode === 'auth/user-disabled') {
+      errorMessage = t('auth.userDisabled')
+    } else if (errorCode === 'auth/too-many-requests') {
+      errorMessage = t('auth.tooManyRequests')
+    } else if (errorCode === 'auth/network-request-failed') {
+      errorMessage = t('auth.networkError')
+    }
+
+    setError(errorMessage)
+  } finally {
+    setLoading(false)
+  }
+}
 
   return (
     <AuthWrapper
@@ -105,6 +112,7 @@ export const LoginScreen = ({ navigation }) => {
       bottomTitle={t('auth.dontHaveAccount')}
       bottomsubTitle={t('auth.signup')}
       onBottomPress={() => navigation.navigate('Signup')}
+      onBackPress={() => navigation.goBack()}
     >
       <Input
         label={t('settings.emailAddress')}

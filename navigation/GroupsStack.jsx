@@ -1,5 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { CLOSED_TESTER_FEATURES } from '../config/closedTesterFeatures';
+import GroupsComingSoonScreen from '../screens/groups/GroupsComingSoonScreen';
 import GroupsScreen from '../screens/groups/GroupsScreen';
 import GroupDetailScreen from '../screens/groups/GroupDetailScreen';
 import GroupSettingsScreen from '../screens/groups/GroupSettingsScreen';
@@ -23,8 +25,11 @@ export const GroupsStack = () => {
     >
       <Stack.Screen
         name="GroupsList"
-        component={GroupsScreen}
-        options={{ title: 'My Groups' }}
+        component={CLOSED_TESTER_FEATURES.groups ? GroupsScreen : GroupsComingSoonScreen}
+        options={{
+          title: 'My Groups',
+          headerShown: CLOSED_TESTER_FEATURES.groups,
+        }}
       />
       <Stack.Screen
         name="GroupDetail"
