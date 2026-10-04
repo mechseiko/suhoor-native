@@ -1033,8 +1033,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    padding: 16,
-    paddingTop: 24,
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 16,
     borderBottomWidth: 1,
   },
   searchContainer: {
@@ -1056,15 +1057,17 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: 'row',
     columnGap: 12,
+    marginTop: 10,
   },
   actionBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 42,
-    borderRadius: 10,
+    height: 46,
+    borderRadius: 12,
     columnGap: 6,
+    paddingHorizontal: 16,
   },
   btnJoin: {
     borderWidth: 1.5,
@@ -1079,6 +1082,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
+    paddingTop: 12,
   },
   circularLoaderContainer: {
     alignItems: 'center',

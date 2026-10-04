@@ -2,7 +2,7 @@
   "expo": {
     "name": "Suhoor",
     "slug": "suhoor",
-    "version": "1.0.0",
+    "version": "1.0.9",
     "icon": "./assets/icon.png",
     "platforms": [
       "android",

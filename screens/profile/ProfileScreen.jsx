@@ -37,13 +37,22 @@ import { Colors } from "../../constants/Colors";
 import { COLLECTIONS } from "../../config/firestoreSchema";
 import Toast from "../../components/Toast";
 import LanguageSelector from "../../components/LanguageSelector";
-
-const APP_VERSION = "1.0.8";
+import { getCurrentVersion, getLatestPlayStoreVersion, compareVersions } from "../../services/versionService";
 
 const ProfileScreen = () => {
   const { currentUser, userProfile, logout, deleteAccount } = useAuth();
   const { colors, themeMode, setThemeMode, isDark } = useTheme();
   const { t, isRTL } = useLanguage();
+  const [appVersion] = useState(getCurrentVersion());
+  const [latestVersion, setLatestVersion] = useState(null);
+
+  React.useEffect(() => {
+    getLatestPlayStoreVersion().then((v) => {
+      if (v && compareVersions(v, getCurrentVersion()) > 0) {
+        setLatestVersion(v);
+      }
+    }).catch(() => {});
+  }, []);
 
   const [activeTab, setActiveTab] = useState("profile"); // 'profile' | 'security' | 'preferences' | 'about'
   const [displayName, setDisplayName] = useState(
@@ -1282,9 +1291,18 @@ const ProfileScreen = () => {
                 <Text style={[styles.supportLabel, themedStyles.supportLabel]}>
                   {t("profile.version", "Version")}
                 </Text>
-                <Text style={[styles.supportValue, themedStyles.supportValue]}>
-                  {APP_VERSION}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text style={[styles.supportValue, themedStyles.supportValue]}>
+                    {appVersion}
+                  </Text>
+                  {latestVersion && (
+                    <View style={{ backgroundColor: colors.primary + '20', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary }}>
+                        {latestVersion} available
+                      </Text>
+                    </View>
+                  )}
+                </View>
               </View>
 
               <View style={styles.sectionDivider} />

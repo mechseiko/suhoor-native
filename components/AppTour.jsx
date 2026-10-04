@@ -27,7 +27,7 @@ const INTRO_KEYS = [
   'tour.intro.overview',
   'tour.intro.alarms',
   'tour.intro.groups',
-  'tour.intro.duas',
+  'tour.intro.learn',
   'tour.intro.profile',
 ];
 const SUMMARY = [
@@ -44,8 +44,8 @@ const SUMMARY = [
     bulletKeys: ['tour.groups.1', 'tour.groups.2', 'tour.groups.3', 'tour.groups.4'],
   },
   {
-    titleKey: 'tour.summary.duas',
-    bulletKeys: ['tour.duas.1', 'tour.duas.2', 'tour.duas.3'],
+    titleKey: 'tour.summary.learn',
+    bulletKeys: ['tour.learn.1', 'tour.learn.2', 'tour.learn.3'],
   },
   {
     titleKey: 'tour.summary.profile',

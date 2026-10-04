@@ -5,7 +5,7 @@ import HomeScreen from '../screens/home/HomeScreen'
 import GroupsStack from './GroupsStack'
 import ProfileScreen from '../screens/profile/ProfileScreen'
 import FastingTimesScreen from '../screens/fasting/FastingTimesScreen'
-import DuasScreen from '../screens/duas/DuasScreen'
+import LearnScreen from '../screens/learn/LearnScreen'
 import LeaderboardScreen from '../screens/leaderboard/LeaderboardScreen'
 import MilestonesScreen from '../screens/milestones/MilestonesScreen'
 import { useTheme } from '../context/ThemeContext'
@@ -63,7 +63,7 @@ export const TabNavigator = ({ tabBarRef }) => {
             HomeTab: 'home',
             FastingTimesTab: 'alarm',
             GroupsTab: 'people',
-            DuasTab: 'book',
+            LearnTab: 'book',
             ProfileTab: 'person',
           }
           const base = NAMES[route.name] ?? 'ellipse'
@@ -136,12 +136,12 @@ export const TabNavigator = ({ tabBarRef }) => {
         }}
       />
       <Tab.Screen
-        name="DuasTab"
-        component={DuasScreen}
+        name="LearnTab"
+        component={LearnScreen}
         options={{
-          title: 'Duas',
-          tabBarLabel: 'Duas',
-          headerTitle: t('duas.title'),
+          title: t('learn.title', 'Learn'),
+          tabBarLabel: t('learn.tabLabel', 'Learn'),
+          headerTitle: t('learn.title', 'Learn'),
         }}
       />
       <Tab.Screen

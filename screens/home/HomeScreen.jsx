@@ -11,6 +11,8 @@ import FastingPrompt from '../../components/FastingPrompt';
 import AudioModeWarning from '../../components/AudioModeWarning';
 import StatsCard from '../../components/StatsCard';
 import ProfileSidebar from '../../components/ProfileSidebar';
+import UpdateModal from '../../components/UpdateModal';
+import { checkAppUpdate } from '../../services/versionService';
 import { Badge, Button, Card, IconTile, Screen, Text } from '../../components/ui';
 import { brand, radius, spacing } from '../../theme';
 import { useState, useEffect, useRef } from 'react';
@@ -38,6 +40,47 @@ export const HomeScreen = ({ navigation }) => {
   const [pinDigits, setPinDigits] = useState(['', '', '', '']);
   const [pinError, setPinError] = useState('');
   const pinRefs = [useRef(), useRef(), useRef(), useRef()];
+
+  // App Update Modal state
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState({
+    isAvailable: false,
+    currentVersion: '',
+    latestVersion: '',
+    playStoreUrl: '',
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    const verifyAppUpdate = async () => {
+      try {
+        const res = await checkAppUpdate();
+        if (!isMounted) return;
+        if (res?.isAvailable) {
+          setUpdateInfo(res);
+          const lastDismissed = await AsyncStorage.getItem('suhoor_update_dismissed_time');
+          const now = Date.now();
+          // If never dismissed, or dismissed > 24 hours ago, prompt user
+          if (!lastDismissed || now - Number(lastDismissed) > 24 * 60 * 60 * 1000) {
+            setShowUpdateModal(true);
+          }
+        }
+      } catch (err) {
+        console.log('[HomeScreen] Version verification notice:', err);
+      }
+    };
+    verifyAppUpdate();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleDismissUpdate = async () => {
+    setShowUpdateModal(false);
+    try {
+      await AsyncStorage.setItem('suhoor_update_dismissed_time', String(Date.now()));
+    } catch (e) {}
+  };
 
   // Notifications listener (Goal 14)
   useEffect(() => {
@@ -609,6 +652,15 @@ export const HomeScreen = ({ navigation }) => {
           </View>
         </View>
       </Modal>
+
+      {/* App Update Modal */}
+      <UpdateModal
+        visible={showUpdateModal}
+        currentVersion={updateInfo.currentVersion}
+        latestVersion={updateInfo.latestVersion}
+        playStoreUrl={updateInfo.playStoreUrl}
+        onClose={handleDismissUpdate}
+      />
     </Screen>
   );
 };

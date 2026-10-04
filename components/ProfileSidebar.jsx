@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   Alert,
   Animated,
@@ -19,6 +19,7 @@ import { useLanguage } from '../context/LanguageContext'
 import { useGamification } from '../hooks/useGamification'
 import { brand, neutral, radius } from '../theme'
 import { Badge, Text } from './ui'
+import { getCurrentVersion } from '../services/versionService'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const DRAWER_WIDTH = Math.min(SCREEN_WIDTH * 0.82, 340)
@@ -28,6 +29,7 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
   const { colors, isDark, setThemeMode, themeMode } = useTheme()
   const { t } = useLanguage()
   const { stats, currentLevel } = useGamification()
+  const [appVersion] = useState(getCurrentVersion())
 
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -73,15 +75,24 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
   const email = currentUser?.email || ''
 
   const handleLogout = () => {
+    const doLogout = async () => {
+      onClose()
+      try {
+        await logout()
+      } catch (e) {
+        console.warn('[ProfileSidebar] logout error:', e)
+      }
+    }
+    if (Platform.OS === 'web') {
+      doLogout()
+      return
+    }
     Alert.alert(t('profile.logout', 'Log Out'), t('profile.logoutConfirmMessage', 'Are you sure you want to log out?'), [
       { text: t('common.cancel', 'Cancel'), style: 'cancel' },
       {
         text: t('profile.logout', 'Log Out'),
         style: 'destructive',
-        onPress: async () => {
-          onClose()
-          await logout()
-        },
+        onPress: doLogout,
       },
     ])
   }
@@ -234,7 +245,7 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
 
             {/* Version */}
             <View style={styles.versionSection}>
-              <Text style={styles.versionText}>v1.0.8</Text>
+              <Text style={styles.versionText}>v{appVersion}</Text>
             </View>
           </ScrollView>
         </Animated.View>

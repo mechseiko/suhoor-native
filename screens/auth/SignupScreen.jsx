@@ -11,7 +11,7 @@ import { db, auth } from "../../config/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { reload, sendEmailVerification } from "firebase/auth";
 import { validatePassword } from "../../utils/passwordUtils";
-import { detectUserCountry } from "../../utils/country";
+import { detectUserCountry, detectUserLocationDetails } from "../../utils/country";
 
 export const SignupScreen = ({ navigation }) => {
   const { colors } = useTheme();
@@ -109,7 +109,8 @@ export const SignupScreen = ({ navigation }) => {
     setLoading(true);
 
     try {
-      const userCountry = await detectUserCountry();
+      const locationDetails = await detectUserLocationDetails();
+      const userCountry = locationDetails.locationString || "Unknown";
 
       // 1. Sign up user in Firebase Auth
       const userCredential = await signup(email.trim(), password);
@@ -142,11 +143,12 @@ export const SignupScreen = ({ navigation }) => {
         display_name: email.trim().split("@")[0],
         isVerified: false,
         country: userCountry,
+        state: locationDetails.state || "",
+        city: locationDetails.city || "",
         pin: alarmPin, // Save the alarm PIN from onboarding
         createdAt: serverTimestamp(),
         fastingDefaults,
         preferences: {
-          soundEnabled: true,
           buzzNotifications: true,
         },
       });

@@ -19,7 +19,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { Text } from '../../components/ui';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Toast from '../../components/Toast';
-import * as Clipboard from '@react-native-clipboard/clipboard';
+import { copyToClipboard } from '../../utils/clipboard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const GroupSettingsScreen = ({ route, navigation }) => {
@@ -65,8 +65,9 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
     try {
       const groupRef = doc(db, COLLECTIONS.groups, groupId);
       const groupSnap = await getDoc(groupRef);
+      let data = null;
       if (groupSnap.exists()) {
-        const data = { id: groupSnap.id, ...groupSnap.data() };
+        data = { id: groupSnap.id, ...groupSnap.data() };
         setGroup(data);
         setEditedName(data.name || groupName);
         setOnlyAdminsEdit(data.only_admins_edit ?? true);
@@ -77,17 +78,26 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
 
       // Check current user role if not passed
       if (currentUser) {
-        const memberRef = doc(db, COLLECTIONS.groupMembers, `${groupId}_${currentUser.uid}`);
-        const memberSnap = await getDoc(memberRef);
-        if (memberSnap.exists()) {
-          setIsAdmin(memberSnap.data().role === 'admin');
+        if (data?.creator_id === currentUser.uid) {
+          setIsAdmin(true);
+        } else {
+          const memberRef = doc(db, COLLECTIONS.groupMembers, `${groupId}_${currentUser.uid}`);
+          const memberSnap = await getDoc(memberRef);
+          if (memberSnap.exists()) {
+            setIsAdmin(memberSnap.data().role === 'admin');
+          } else {
+            const q = query(
+              collection(db, COLLECTIONS.groupMembers),
+              where('group_id', '==', groupId),
+              where('user_id', '==', currentUser.uid)
+            );
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+              setIsAdmin(snap.docs[0].data().role === 'admin');
+            }
+          }
         }
       }
-
-      // Check per-user group mute status
-      const muteKey = `group_mute_${groupId}`;
-      const isMuted = await AsyncStorage.getItem(muteKey);
-      setMuteNotifications(isMuted === 'true');
     } catch (err) {
       console.error('Error fetching group details:', err);
     } finally {
@@ -111,22 +121,6 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
       triggerToast(t('groups.settingsUpdateError', 'Failed to update setting'), 'error');
     } finally {
       setIsUpdatingSetting(false);
-    }
-  };
-
-  const handleToggleMute = async (value) => {
-    setMuteNotifications(value);
-    try {
-      const muteKey = `group_mute_${groupId}`;
-      if (value) {
-        await AsyncStorage.setItem(muteKey, 'true');
-        triggerToast(t('groups.notificationsMuted', 'Notifications muted for this group'), 'info');
-      } else {
-        await AsyncStorage.removeItem(muteKey);
-        triggerToast(t('groups.notificationsUnmuted', 'Notifications enabled for this group'), 'success');
-      }
-    } catch (e) {
-      console.error('Error saving notification preference:', e);
     }
   };
 
@@ -188,25 +182,25 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
   };
 
   const handleCopyKey = async () => {
+    if (!isAdmin && onlyAdminsInvite) {
+      triggerToast(t('groups.onlyAdminsCanInvite', 'Only admins can share the invite key'), 'info');
+      return;
+    }
     const key = group?.group_key || groupKey;
     if (!key) return;
-    if (Clipboard.setStringAsync) {
-      await Clipboard.setStringAsync(key);
-    } else if (Clipboard.setString) {
-      Clipboard.setString(key);
-    }
+    await copyToClipboard(key);
     triggerToast(t('groups.groupKeyCopied', 'Group code copied!'), 'success');
   };
 
   const handleCopyInviteLink = async () => {
+    if (!isAdmin && onlyAdminsInvite) {
+      triggerToast(t('groups.onlyAdminsCanInvite', 'Only admins can share the invite link'), 'info');
+      return;
+    }
     const key = group?.group_key || groupKey;
     if (!key) return;
     const link = `https://suhoorapp.cv/groups?groupKey=${key}`;
-    if (Clipboard.setStringAsync) {
-      await Clipboard.setStringAsync(link);
-    } else if (Clipboard.setString) {
-      Clipboard.setString(link);
-    }
+    await copyToClipboard(link);
     triggerToast(t('groups.inviteLinkCopied', 'Invite link copied!'), 'success');
   };
 
@@ -222,7 +216,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
   const handleLeaveGroup = () => {
     if (!currentUser) return;
     if (isAdmin) {
-      Alert.alert(t('common.cannotLeave', 'Cannot Leave'), t('groups.cannotLeaveAsAdmin', 'Admins cannot leave without assigning another admin.'));
+      Alert.alert(t('common.cannotLeave', 'Cannot Leave'), t('groups.cannotLeaveAsAdmin', 'Admins cannot leave without assigning another admin. Use Disband Group to permanently delete this group.'));
       return;
     }
     Alert.alert(
@@ -251,6 +245,40 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
             } catch (err) {
               console.error(err);
               triggerToast(t('groups.leaveGroupError', 'Failed to leave group'), 'error');
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteGroup = () => {
+    if (!currentUser || !isAdmin) return;
+    Alert.alert(
+      t('groups.deleteGroup', 'Disband & Delete Group'),
+      t('groups.deleteGroupConfirm', 'Are you sure you want to permanently delete this group? All members will be removed and this action cannot be undone.'),
+      [
+        { text: t('common.cancel', 'Cancel'), style: 'cancel' },
+        {
+          text: t('common.delete', 'Delete Group'),
+          style: 'destructive',
+          onPress: async () => {
+            setLoading(true);
+            try {
+              const membersRef = collection(db, COLLECTIONS.groupMembers);
+              const q = query(membersRef, where('group_id', '==', groupId));
+              const snap = await getDocs(q);
+              const deletes = snap.docs.map((d) => deleteDoc(d.ref));
+              await Promise.all(deletes);
+
+              await deleteDoc(doc(db, COLLECTIONS.groups, groupId));
+              triggerToast(t('groups.groupDeleted', 'Group deleted successfully'), 'success');
+              navigation.navigate('GroupsList');
+            } catch (err) {
+              console.error('Error deleting group:', err);
+              triggerToast(t('groups.deleteGroupError', 'Failed to delete group'), 'error');
             } finally {
               setLoading(false);
             }
@@ -350,16 +378,25 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('groups.inviteSettings', 'Invite & Sharing')}</Text>
           </View>
 
-          <TouchableOpacity
-            style={[styles.actionRow, { backgroundColor: colors.surfaceVariant }]}
-            onPress={handleCopyInviteLink}
-          >
-            <View style={styles.actionLeft}>
-              <Ionicons name="copy-outline" size={20} color={colors.primary} />
-              <Text style={[styles.actionText, { color: colors.text }]}>{t('groups.copyInviteLink', 'Copy Invite Link')}</Text>
+          {(!isAdmin && onlyAdminsInvite) ? (
+            <View style={[styles.actionRow, { backgroundColor: colors.surfaceVariant, paddingVertical: 12 }]}>
+              <Ionicons name="lock-closed" size={18} color={colors.textSecondary} style={{ marginRight: 8 }} />
+              <Text style={{ color: colors.textSecondary, fontSize: 13, flex: 1 }}>
+                {t('groups.inviteRestricted', 'Invite code & link sharing is restricted to group admins.')}
+              </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[styles.actionRow, { backgroundColor: colors.surfaceVariant }]}
+              onPress={handleCopyInviteLink}
+            >
+              <View style={styles.actionLeft}>
+                <Ionicons name="copy-outline" size={20} color={colors.primary} />
+                <Text style={[styles.actionText, { color: colors.text }]}>{t('groups.copyInviteLink', 'Copy Invite Link')}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          )}
 
           {isAdmin && (
             <TouchableOpacity
@@ -380,138 +417,163 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
           )}
         </View>
 
-        {/* Group Permissions (Admin Controls) */}
+        {/* Group Permissions (Admin Controls vs Member Rules) */}
+        {isAdmin ? (
+          <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="shield-checkmark" size={20} color={colors.primary} />
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                {t('groups.adminControls', 'Group Permissions (Admin Controls)')}
+              </Text>
+            </View>
+
+            {/* Edit Group Info Permission */}
+            <View style={[styles.switchRow, { borderBottomColor: colors.border }]}>
+              <View style={styles.switchLabelBlock}>
+                <Text style={[styles.switchTitle, { color: colors.text }]}>{t('groups.editGroupSettings', 'Edit Group Settings')}</Text>
+                <Text style={[styles.switchSub, { color: colors.textSecondary }]}>
+                  {onlyAdminsEdit ? t('groups.adminsOnly', 'Only admins can edit name and info') : t('groups.allMembers', 'All members can edit name and info')}
+                </Text>
+              </View>
+              <Switch
+                value={onlyAdminsEdit}
+                disabled={isUpdatingSetting}
+                onValueChange={(val) => {
+                  setOnlyAdminsEdit(val);
+                  handleUpdateSetting('only_admins_edit', val);
+                }}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor={onlyAdminsEdit ? colors.secondary : '#f4f3f4'}
+              />
+            </View>
+
+            {/* Add Members Permission */}
+            <View style={[styles.switchRow, { borderBottomColor: colors.border }]}>
+              <View style={styles.switchLabelBlock}>
+                <Text style={[styles.switchTitle, { color: colors.text }]}>{t('groups.addMembers', 'Invite & Add Members')}</Text>
+                <Text style={[styles.switchSub, { color: colors.textSecondary }]}>
+                  {onlyAdminsInvite ? t('groups.adminsOnlyInvite', 'Only admins can share invite code') : t('groups.allMembersInvite', 'All members can share invite code')}
+                </Text>
+              </View>
+              <Switch
+                value={onlyAdminsInvite}
+                disabled={isUpdatingSetting}
+                onValueChange={(val) => {
+                  setOnlyAdminsInvite(val);
+                  handleUpdateSetting('only_admins_invite', val);
+                }}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor={onlyAdminsInvite ? colors.secondary : '#f4f3f4'}
+              />
+            </View>
+
+            {/* Approve New Members */}
+            <View style={[styles.switchRow, { borderBottomColor: colors.border }]}>
+              <View style={styles.switchLabelBlock}>
+                <Text style={[styles.switchTitle, { color: colors.text }]}>{t('groups.approveNewMembers', 'Approve New Members')}</Text>
+                <Text style={[styles.switchSub, { color: colors.textSecondary }]}>
+                  {requireApproval ? t('groups.approvalOn', 'Admins must manually approve new joins') : t('groups.approvalOff', 'Anyone with the invite code joins immediately')}
+                </Text>
+              </View>
+              <Switch
+                value={requireApproval}
+                disabled={isUpdatingSetting}
+                onValueChange={(val) => {
+                  setRequireApproval(val);
+                  handleUpdateSetting('require_approval', val);
+                }}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor={requireApproval ? colors.secondary : '#f4f3f4'}
+              />
+            </View>
+
+            {/* Show on Leaderboard */}
+            <View style={styles.switchRow}>
+              <View style={styles.switchLabelBlock}>
+                <Text style={[styles.switchTitle, { color: colors.text }]}>{t('groups.leaderboardVisibility', 'Global Leaderboard')}</Text>
+                <Text style={[styles.switchSub, { color: colors.textSecondary }]}>
+                  {showOnLeaderboard ? t('groups.leaderboardOn', 'Group appears on global Leaderboard') : t('groups.leaderboardOff', 'Group is hidden from global Leaderboard')}
+                </Text>
+              </View>
+              <Switch
+                value={showOnLeaderboard}
+                disabled={isUpdatingSetting}
+                onValueChange={(val) => {
+                  setShowOnLeaderboard(val);
+                  handleUpdateSetting('show_on_leaderboard', val);
+                }}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor={showOnLeaderboard ? colors.secondary : '#f4f3f4'}
+              />
+            </View>
+          </View>
+        ) : (
+          <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                {t('groups.groupRules', 'Group Rules')}
+              </Text>
+            </View>
+
+            <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('groups.editGroupSettings', 'Editing Info')}</Text>
+              <Text style={[styles.infoValue, { color: colors.text, fontSize: 13 }]}>
+                {onlyAdminsEdit ? t('groups.adminsOnly', 'Admins Only') : t('groups.allMembers', 'All Members')}
+              </Text>
+            </View>
+
+            <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('groups.addMembers', 'Inviting Members')}</Text>
+              <Text style={[styles.infoValue, { color: colors.text, fontSize: 13 }]}>
+                {onlyAdminsInvite ? t('groups.adminsOnly', 'Admins Only') : t('groups.allMembers', 'All Members')}
+              </Text>
+            </View>
+
+            <View style={styles.infoRow}>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('groups.leaderboardVisibility', 'Leaderboard')}</Text>
+              <Text style={[styles.infoValue, { color: colors.text, fontSize: 13 }]}>
+                {showOnLeaderboard ? t('groups.visible', 'Visible') : t('groups.hidden', 'Hidden')}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Preferences & Contact */}
         <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="shield-checkmark" size={20} color={colors.primary} />
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              {isAdmin ? t('groups.adminControls', 'Group Permissions (Admin Controls)') : t('groups.groupPermissions', 'Group Permissions')}
-            </Text>
-          </View>
-
-          {/* Edit Group Info Permission */}
-          <View style={[styles.switchRow, { borderBottomColor: colors.border }]}>
-            <View style={styles.switchLabelBlock}>
-              <Text style={[styles.switchTitle, { color: colors.text }]}>{t('groups.editGroupSettings', 'Edit Group Settings')}</Text>
-              <Text style={[styles.switchSub, { color: colors.textSecondary }]}>
-                {onlyAdminsEdit ? t('groups.adminsOnly', 'Only admins can edit name and info') : t('groups.allMembers', 'All members can edit name and info')}
-              </Text>
-            </View>
-            <Switch
-              value={onlyAdminsEdit}
-              disabled={!isAdmin || isUpdatingSetting}
-              onValueChange={(val) => {
-                setOnlyAdminsEdit(val);
-                handleUpdateSetting('only_admins_edit', val);
-              }}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor={onlyAdminsEdit ? colors.secondary : '#f4f3f4'}
-            />
-          </View>
-
-          {/* Add Members Permission */}
-          <View style={[styles.switchRow, { borderBottomColor: colors.border }]}>
-            <View style={styles.switchLabelBlock}>
-              <Text style={[styles.switchTitle, { color: colors.text }]}>{t('groups.addMembers', 'Invite & Add Members')}</Text>
-              <Text style={[styles.switchSub, { color: colors.textSecondary }]}>
-                {onlyAdminsInvite ? t('groups.adminsOnlyInvite', 'Only admins can share invite code') : t('groups.allMembersInvite', 'All members can share invite code')}
-              </Text>
-            </View>
-            <Switch
-              value={onlyAdminsInvite}
-              disabled={!isAdmin || isUpdatingSetting}
-              onValueChange={(val) => {
-                setOnlyAdminsInvite(val);
-                handleUpdateSetting('only_admins_invite', val);
-              }}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor={onlyAdminsInvite ? colors.secondary : '#f4f3f4'}
-            />
-          </View>
-
-          {/* Approve New Members */}
-          <View style={[styles.switchRow, { borderBottomColor: colors.border }]}>
-            <View style={styles.switchLabelBlock}>
-              <Text style={[styles.switchTitle, { color: colors.text }]}>{t('groups.approveNewMembers', 'Approve New Members')}</Text>
-              <Text style={[styles.switchSub, { color: colors.textSecondary }]}>
-                {requireApproval ? t('groups.approvalOn', 'Admins must manually approve new joins') : t('groups.approvalOff', 'Anyone with the invite code joins immediately')}
-              </Text>
-            </View>
-            <Switch
-              value={requireApproval}
-              disabled={!isAdmin || isUpdatingSetting}
-              onValueChange={(val) => {
-                setRequireApproval(val);
-                handleUpdateSetting('require_approval', val);
-              }}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor={requireApproval ? colors.secondary : '#f4f3f4'}
-            />
-          </View>
-
-          {/* Show on Leaderboard */}
-          <View style={styles.switchRow}>
-            <View style={styles.switchLabelBlock}>
-              <Text style={[styles.switchTitle, { color: colors.text }]}>{t('groups.leaderboardVisibility', 'Global Leaderboard')}</Text>
-              <Text style={[styles.switchSub, { color: colors.textSecondary }]}>
-                {showOnLeaderboard ? t('groups.leaderboardOn', 'Group appears on global Leaderboard') : t('groups.leaderboardOff', 'Group is hidden from global Leaderboard')}
-              </Text>
-            </View>
-            <Switch
-              value={showOnLeaderboard}
-              disabled={!isAdmin || isUpdatingSetting}
-              onValueChange={(val) => {
-                setShowOnLeaderboard(val);
-                handleUpdateSetting('show_on_leaderboard', val);
-              }}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor={showOnLeaderboard ? colors.secondary : '#f4f3f4'}
-            />
-          </View>
-        </View>
-
-        {/* Preferences & Privacy */}
-        <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="notifications-outline" size={20} color={colors.primary} />
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('groups.preferences', 'Preferences & Notifications')}</Text>
-          </View>
-
-          <View style={[styles.switchRow, { borderBottomColor: colors.border }]}>
-            <View style={styles.switchLabelBlock}>
-              <Text style={[styles.switchTitle, { color: colors.text }]}>{t('groups.muteGroup', 'Mute Group Buzzes')}</Text>
-              <Text style={[styles.switchSub, { color: colors.textSecondary }]}>
-                {muteNotifications ? t('groups.mutedNotice', 'Buzz alerts from this group are silenced') : t('groups.unmutedNotice', 'Receive wake-up alerts from this group')}
-              </Text>
-            </View>
-            <Switch
-              value={muteNotifications}
-              onValueChange={handleToggleMute}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor={muteNotifications ? colors.secondary : '#f4f3f4'}
-            />
+            <Ionicons name="people-outline" size={20} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('groups.adminContactTitle', 'Group Administration')}</Text>
           </View>
 
           <TouchableOpacity
-            style={[styles.actionRow, { backgroundColor: colors.surfaceVariant, marginTop: 8 }]}
+            style={[styles.actionRow, { backgroundColor: colors.surfaceVariant }]}
             onPress={handleContactAdmin}
           >
             <View style={styles.actionLeft}>
               <Ionicons name="person-circle-outline" size={20} color={colors.primary} />
-              <Text style={[styles.actionText, { color: colors.text }]}>{t('groups.contactAdmin', 'Contact Group Admin')}</Text>
+              <Text style={[styles.actionText, { color: colors.text }]}>{t('groups.contactAdmin', 'View Group Admins')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
 
-        {/* Leave Group Action */}
-        {!isAdmin && (
+        {/* Danger Zone Actions */}
+        {!isAdmin ? (
           <TouchableOpacity
             style={[styles.leaveBtn, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.08)', borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)' }]}
             onPress={handleLeaveGroup}
           >
             <Ionicons name="log-out-outline" size={20} color={colors.error} />
             <Text style={[styles.leaveBtnText, { color: colors.error }]}>{t('groups.leaveGroup', 'Leave Group')}</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[styles.leaveBtn, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.08)', borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)' }]}
+            onPress={handleDeleteGroup}
+          >
+            <Ionicons name="trash-outline" size={20} color={colors.error} />
+            <Text style={[styles.leaveBtnText, { color: colors.error }]}>{t('groups.deleteGroup', 'Disband & Delete Group')}</Text>
           </TouchableOpacity>
         )}
 

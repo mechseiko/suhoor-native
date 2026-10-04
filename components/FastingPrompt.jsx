@@ -503,10 +503,10 @@ export const FastingPrompt = () => {
             >
               <Ionicons
                 name="refresh"
-                size={20}
+                size={18}
                 color={isDark ? '#34D399' : '#059669'}
               />
-              <Text style={{ color: isDark ? '#34D399' : '#059669', fontSize: 12, marginLeft: 4 }}>
+              <Text style={{ color: isDark ? '#34D399' : '#059669', fontSize: 12, marginLeft: 4, fontWeight: '600' }}>
                 Reset
               </Text>
             </TouchableOpacity>
@@ -537,7 +537,10 @@ export const FastingPrompt = () => {
               accessibilityRole="button"
               accessibilityLabel={t('fasting.changeIntention')}
             >
-              <Ionicons name="refresh" size={20} color={colors.textSecondary} />
+              <Ionicons name="refresh" size={18} color={colors.textSecondary} />
+              <Text style={{ color: colors.textSecondary, fontSize: 12, marginLeft: 4, fontWeight: '600' }}>
+                Reset
+              </Text>
             </TouchableOpacity>
           </View>
         </Card>
@@ -586,6 +589,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   resetButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: spacing.xs,
   },
   footNote: {

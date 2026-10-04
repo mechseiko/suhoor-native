@@ -20,15 +20,12 @@ import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAlarmState } from '../../context/AlarmContext';
 import { hijriMonthName } from '../../config/languages';
-import { db, storage } from '../../config/firebase';
+import { db } from '../../config/firebase';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Toast from '../../components/Toast';
 import { getHijriDate } from '../../utils/fastingUtils';
-// DocumentPicker for custom audio upload (gracefully no-ops if not installed)
-let DocumentPicker;
-try { DocumentPicker = require('react-native-document-picker').default; } catch (e) {}
+
 
 // The wake-up window the README specifies: 45 minutes before suhoor ends by
 // default, user-configurable up to two hours. Named here so the copy, the
@@ -247,11 +244,6 @@ export const FastingTimesScreen = () => {
   const { scheduleDailySuhoorAlarm } = useAlarmState();
   const [personalWakeUpMinutes, setPersonalWakeUpMinutes] = useState(DEFAULT_WAKE_MINUTES);
   const [isSaving, setIsSaving] = useState(false);
-  // Alarm audio state
-  const [alarmAudioMode, setAlarmAudioMode] = useState('default'); // 'default' | 'custom'
-  const [customAudioUrl, setCustomAudioUrl] = useState(null);
-  const [customAudioName, setCustomAudioName] = useState('');
-  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [toastType, setToastType] = useState('info');
@@ -299,110 +291,7 @@ export const FastingTimesScreen = () => {
     loadWakeUpPreference();
   }, [currentUser]);
 
-  // Load alarm audio preference
-  useEffect(() => {
-    const loadAudioPreference = async () => {
-      if (!currentUser) return;
-      try {
-        const profileRef = doc(db, 'profiles', currentUser.uid);
-        const profileSnap = await getDoc(profileRef);
-        if (profileSnap.exists()) {
-          const data = profileSnap.data();
-          const mode = data.preferences?.alarmAudioMode || 'default';
-          const url = data.preferences?.customAlarmAudioUrl || null;
-          const name = data.preferences?.customAlarmAudioName || '';
-          setAlarmAudioMode(mode);
-          setCustomAudioUrl(url);
-          setCustomAudioName(name);
-        }
-      } catch (err) {
-        console.error('Error loading audio preference:', err);
-      }
-    };
-    loadAudioPreference();
-  }, [currentUser]);
 
-  const handlePickAndUploadAudio = async () => {
-    if (!DocumentPicker) {
-      Alert.alert(t('common.notAvailable'), t('fastingTimes.audioPickerMissing'));
-      return;
-    }
-    try {
-      const result = await DocumentPicker.pick({
-        type: [DocumentPicker.types.audio],
-      });
-      const file = result[0];
-      if (!file) return;
-
-      const MAX_MB = 10;
-      if (file.size && file.size > MAX_MB * 1024 * 1024) {
-        triggerToast(t('fastingTimes.audioTooLarge', { max: MAX_MB }), 'error');
-        return;
-      }
-
-      setIsUploadingAudio(true);
-      // fetch()+response.blob() crashes the native layer on Android content://
-      // URIs; the RN-patched XMLHttpRequest is the supported way to read them.
-      const blob = await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.onload = () => resolve(xhr.response);
-        xhr.onerror = () => reject(new Error('Audio read failed'));
-        xhr.responseType = 'blob';
-        xhr.open('GET', file.uri);
-        xhr.send();
-      });
-      // content:// URIs can omit file.name — keep the extension so the stored
-      // object keeps a playable content type.
-      const AUDIO_EXT = {
-        'audio/mpeg': 'mp3',
-        'audio/mp3': 'mp3',
-        'audio/mp4': 'm4a',
-        'audio/x-m4a': 'm4a',
-        'audio/aac': 'aac',
-        'audio/wav': 'wav',
-        'audio/x-wav': 'wav',
-        'audio/ogg': 'ogg',
-      };
-      const safeName =
-        file.name || `alarm.${AUDIO_EXT[file.type] || 'mp3'}`;
-      const storageRef = ref(storage, `alarm_audio/${currentUser.uid}/${Date.now()}_${safeName}`);
-      await uploadBytes(storageRef, blob);
-      const downloadUrl = await getDownloadURL(storageRef);
-
-      const profileRef = doc(db, 'profiles', currentUser.uid);
-      await updateDoc(profileRef, {
-        'preferences.alarmAudioMode': 'custom',
-        'preferences.customAlarmAudioUrl': downloadUrl,
-        'preferences.customAlarmAudioName': safeName,
-        'preferences.alarmVolume': 1.0, // Set to maximum volume
-      });
-
-      setAlarmAudioMode('custom');
-      setCustomAudioUrl(downloadUrl);
-      setCustomAudioName(safeName);
-      triggerToast(t('fastingTimes.audioSaved'), 'success');
-    } catch (err) {
-      if (DocumentPicker.isCancel(err)) return;
-      console.error('Audio upload error:', err);
-      triggerToast(t('fastingTimes.audioUploadFailed'), 'error');
-    } finally {
-      setIsUploadingAudio(false);
-    }
-  };
-
-  const handleSelectDefaultAudio = async () => {
-    if (!currentUser) return;
-    try {
-      const profileRef = doc(db, 'profiles', currentUser.uid);
-      await updateDoc(profileRef, {
-        'preferences.alarmAudioMode': 'default',
-      });
-      setAlarmAudioMode('default');
-      triggerToast(t('fastingTimes.usingDefaultSound'), 'success');
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   const handleSaveWakeUpTime = async () => {
     if (!currentUser) return;
@@ -773,80 +662,39 @@ export const FastingTimesScreen = () => {
           </View>
         </View>
 
-        {/* Alarm Audio Section */}
+        {/* Alarm Sound Section */}
         <View style={{ backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 18, marginBottom: 16 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', columnGap: 10, marginBottom: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', columnGap: 10, marginBottom: 12 }}>
             <Ionicons name="musical-notes" size={24} color={colors.primary} />
             <View style={{ flex: 1 }}>
               <Text style={{ fontWeight: '700', fontSize: 17, color: colors.text }}>{t('fastingTimes.alarmSound')}</Text>
-              <Text style={{ fontSize: 12, color: colors.textSecondary }}>{t('fastingTimes.alarmSoundSub')}</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>{t('fastingTimes.defaultAlarmSub')}</Text>
+            </View>
+            <View style={{ backgroundColor: colors.primary + '20', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary }}>{t('fastingTimes.defaultAlarm')}</Text>
             </View>
           </View>
-
-          {/* Default option */}
-          <TouchableOpacity
-            onPress={handleSelectDefaultAudio}
-            style={{
-              flexDirection: 'row', alignItems: 'center', columnGap: 12,
-    rowGap: 12,
-              paddingVertical: 14, paddingHorizontal: 14,
-              borderRadius: 12, marginBottom: 10,
-              borderWidth: 1.5,
-              borderColor: alarmAudioMode === 'default' ? colors.primary : colors.border,
-              backgroundColor: alarmAudioMode === 'default' ? colors.primary + '08' : colors.surfaceVariant,
-            }}
-          >
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', columnGap: 12,
+            paddingVertical: 14, paddingHorizontal: 14,
+            borderRadius: 12,
+            borderWidth: 1.5,
+            borderColor: colors.primary,
+            backgroundColor: colors.primary + '08',
+          }}>
             <View style={{
               width: 40, height: 40, borderRadius: 20,
-              backgroundColor: alarmAudioMode === 'default' ? colors.primary + '20' : colors.border,
+              backgroundColor: colors.primary + '20',
               alignItems: 'center', justifyContent: 'center',
             }}>
-              <Ionicons name="notifications" size={20} color={alarmAudioMode === 'default' ? colors.primary : colors.textSecondary} />
+              <Ionicons name="notifications" size={20} color={colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontWeight: '700', fontSize: 14, color: colors.text }}>{t('fastingTimes.defaultAlarm')}</Text>
-              <Text style={{ fontSize: 12, color: colors.textSecondary }}>{t('fastingTimes.defaultAlarmSub')}</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>{t('fastingTimes.usingDefaultSound')}</Text>
             </View>
-            {alarmAudioMode === 'default' && (
-              <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
-            )}
-          </TouchableOpacity>
-
-          {/* Custom audio option */}
-          <TouchableOpacity
-            onPress={handlePickAndUploadAudio}
-            disabled={isUploadingAudio}
-            style={{
-              flexDirection: 'row', alignItems: 'center', columnGap: 12,
-    rowGap: 12,
-              paddingVertical: 14, paddingHorizontal: 14,
-              borderRadius: 12,
-              borderWidth: 1.5,
-              borderColor: alarmAudioMode === 'custom' ? colors.accent : colors.border,
-              backgroundColor: alarmAudioMode === 'custom' ? colors.accent + '08' : colors.surfaceVariant,
-            }}
-          >
-            <View style={{
-              width: 40, height: 40, borderRadius: 20,
-              backgroundColor: alarmAudioMode === 'custom' ? colors.accent + '20' : colors.border,
-              alignItems: 'center', justifyContent: 'center',
-            }}>
-              {isUploadingAudio
-                ? <ActivityIndicator size="small" color={colors.accent} />
-                : <Ionicons name="cloud-upload-outline" size={20} color={alarmAudioMode === 'custom' ? colors.accent : colors.textSecondary} />}
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: '700', fontSize: 14, color: colors.text }}>
-                {alarmAudioMode === 'custom' && customAudioName ? customAudioName : t('fastingTimes.uploadCustomAudio')}
-              </Text>
-              <Text style={{ fontSize: 12, color: colors.textSecondary }}>
-                {alarmAudioMode === 'custom' ? t('fastingTimes.changeCustomAudio') : t('fastingTimes.uploadCustomAudioSub')}
-              </Text>
-            </View>
-            {alarmAudioMode === 'custom' && (
-              <Ionicons name="checkmark-circle" size={22} color={colors.accent} />
-            )}
-          </TouchableOpacity>
+            <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+          </View>
         </View>
 
         <TouchableOpacity

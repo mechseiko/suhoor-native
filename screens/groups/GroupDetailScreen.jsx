@@ -1910,10 +1910,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    height: 36,
-    borderRadius: 8,
+    height: 44,
+    borderRadius: 12,
     columnGap: 6,
     borderWidth: 1,
+    paddingHorizontal: 10,
   },
   shareBtnText: {
     fontSize: 12,
