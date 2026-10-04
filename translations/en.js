@@ -73,6 +73,7 @@ export const en = {
   "auth.passwordLowercase": "Password must include at least one lowercase letter.",
   "auth.passwordSpecial": "Password must include at least one special character.",
   "auth.backToLogin": "Back to Login",
+  "auth.emailVerifiedPrompt": "Email verified?",
   "auth.verifyEmail": "Verify Email",
   "auth.confirmPassword": "Confirm Password",
   "auth.displayName": "Display Name",

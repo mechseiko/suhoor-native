@@ -1,3 +1,15 @@
+// Ensure globalThis.expo is initialized to prevent bare React Native runtime crashes from Expo dependencies
+if (typeof globalThis !== 'undefined') {
+  if (!globalThis.expo) {
+    globalThis.expo = {
+      NativeModule: class {},
+      modules: {},
+    };
+  } else if (!globalThis.expo.NativeModule) {
+    globalThis.expo.NativeModule = class {};
+  }
+}
+
 import 'react-native-get-random-values'
 
 // Suppress react-native-web deprecation warnings immediately before any modules load

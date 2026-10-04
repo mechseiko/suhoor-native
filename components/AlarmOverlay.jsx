@@ -13,7 +13,6 @@ import {
   Vibration,
   View,
 } from 'react-native'
-import { Audio } from 'expo-av'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAlarm } from '../hooks/useAlarm'
@@ -79,61 +78,49 @@ export const AlarmOverlay = () => {
     if (visible && status === 'ringing') {
       if (soundAllowed) {
         try {
-          const setupAudio = async () => {
+          if (Platform.OS === 'web' && typeof window !== 'undefined' && window.Audio) {
             try {
-              await Audio.setAudioModeAsync({
-                playsInSilentModeIOS: true,
-                staysActiveInBackground: true,
-                shouldDuckAndroid: true,
-                volume: 1.0, // Maximum volume
-              })
-
-              // Load and play custom audio if available, otherwise use default
-              if (alarmAudioMode === 'custom' && customAudioUrl) {
-                try {
-                  const volume = userProfile?.preferences?.alarmVolume ?? 1.0;
-                  const { sound } = await Audio.Sound.createAsync(
-                    { uri: customAudioUrl },
-                    { shouldPlay: true, isLooping: true, volume }
-                  )
-                  soundRef.current = sound
-                } catch (customAudioError) {
-                  console.log('Custom audio load failed, falling back to default:', customAudioError)
-                  // Fallback to default alarm sound using Android resource URI
+              const audio = new window.Audio('/alarm_sound.mp3');
+              audio.loop = true;
+              audio.play().catch(() => {});
+              soundRef.current = {
+                stop: () => {
                   try {
-                    const { sound: defaultSound } = await Audio.Sound.createAsync(
-                      { uri: 'android.resource://com.mechseiko.suhoor/raw/alarm_sound' },
-                      { shouldPlay: true, isLooping: true, volume: 1.0 }
-                    )
-                    soundRef.current = defaultSound
-                  } catch (defaultAudioError) {
-                    console.log('Default audio load failed:', defaultAudioError)
-                  }
-                }
-              } else {
-                // Play default alarm sound using Android resource URI
-                try {
-                  const { sound: defaultSound } = await Audio.Sound.createAsync(
-                    { uri: 'android.resource://com.mechseiko.suhoor/raw/alarm_sound' },
-                    { shouldPlay: true, isLooping: true, volume: 1.0 }
-                  )
-                  soundRef.current = defaultSound
-                } catch (defaultAudioError) {
-                  console.log('Default audio load failed:', defaultAudioError)
-                }
+                    audio.pause();
+                    audio.currentTime = 0;
+                  } catch (e) {}
+                },
+              };
+            } catch (webAudioErr) {
+              console.log('[AlarmOverlay] Web audio failed:', webAudioErr);
+            }
+          } else {
+            try {
+              const Sound = require('react-native-sound');
+              if (Sound && Sound.setCategory) {
+                Sound.setCategory('Alarm', true);
               }
-            } catch (audioError) {
-              console.log('Audio init failed:', audioError)
+              const sound = new Sound('alarm_sound.mp3', Sound.MAIN_BUNDLE, (error) => {
+                if (!error) {
+                  sound.setNumberOfLoops(-1);
+                  sound.setVolume(1.0);
+                  sound.play();
+                } else {
+                  console.log('[AlarmOverlay] Sound load error:', error);
+                }
+              });
+              soundRef.current = sound;
+            } catch (nativeAudioErr) {
+              console.log('[AlarmOverlay] Native sound load failed:', nativeAudioErr);
             }
           }
-          setupAudio()
         } catch (e) {
-          console.log('Audio setup failed:', e)
+          console.log('[AlarmOverlay] Audio setup failed:', e);
         }
       }
 
       if (Platform.OS !== 'web') {
-        Vibration.vibrate([0, 600, 300, 600], true)
+        Vibration.vibrate([0, 600, 300, 600], true);
       }
 
       const pulse = Animated.loop(
@@ -175,22 +162,28 @@ export const AlarmOverlay = () => {
             }),
           ]),
         ])
-      )
-      pulse.start()
+      );
+      pulse.start();
 
       return () => {
         if (Platform.OS !== 'web') {
-          Vibration.cancel()
+          Vibration.cancel();
         }
         if (soundRef.current) {
-          soundRef.current.stopAsync()
-          soundRef.current.unloadAsync()
-          soundRef.current = null
+          try {
+            if (typeof soundRef.current.stop === 'function') {
+              soundRef.current.stop();
+            }
+            if (typeof soundRef.current.release === 'function') {
+              soundRef.current.release();
+            }
+          } catch (e) {}
+          soundRef.current = null;
         }
-        pulse.stop()
-      }
+        pulse.stop();
+      };
     }
-  }, [visible, status, soundAllowed])
+  }, [visible, status, soundAllowed]);
 
   // 1-Click dismiss for buzz alarms
   const handleBuzzDismiss = () => {

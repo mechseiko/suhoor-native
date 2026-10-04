@@ -18,8 +18,8 @@ export const AuthStack = ({ showOnboarding, onCompleteOnboarding, initialRoute }
   return (
     <OnboardingCompleteContext.Provider value={onCompleteOnboarding}>
       <Stack.Navigator
-        key={showOnboarding ? "onboarding" : "signup"}
-        initialRouteName={initialRoute || (showOnboarding ? "Onboarding" : "Signup")}
+        key={`${showOnboarding ? "onboarding" : "auth"}_${initialRoute || "default"}`}
+        initialRouteName={initialRoute || (showOnboarding ? "Onboarding" : "Login")}
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: "#FFFFFF" },

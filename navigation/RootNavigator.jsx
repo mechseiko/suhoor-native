@@ -13,7 +13,7 @@ import { COLLECTIONS } from '../config/firestoreSchema'
 import { doc, getDoc } from 'firebase/firestore'
 
 export const RootNavigator = () => {
-  const { currentUser, loading, userProfile } = useAuth()
+  const { currentUser, reloadTick, loading, userProfile } = useAuth()
   const { colors } = useTheme()
   const [onboardingComplete, setOnboardingComplete] = useState(null)
   const [isVerified, setIsVerified] = useState(false)
@@ -56,7 +56,7 @@ export const RootNavigator = () => {
     }
 
     checkVerification()
-  }, [currentUser, userProfile])
+  }, [currentUser, userProfile, reloadTick])
 
   if (loading || onboardingComplete === null || checkingVerification) {
     return <LogoLoader />
@@ -87,6 +87,7 @@ export const RootNavigator = () => {
         ) : (
           <AuthStack
             showOnboarding={!onboardingComplete}
+            initialRoute={!onboardingComplete ? "Onboarding" : "Signup"}
             onCompleteOnboarding={async () => {
               await AsyncStorage.setItem('suhoor-onboarding-complete', 'true')
               setOnboardingComplete(true)

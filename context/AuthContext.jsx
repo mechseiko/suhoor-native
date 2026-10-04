@@ -5,6 +5,7 @@ import {
   signOut,
   onAuthStateChanged,
   deleteUser,
+  reload,
 } from "firebase/auth";
 import { auth, db } from "../config/firebase";
 import { doc, onSnapshot, updateDoc } from "firebase/firestore";
@@ -31,6 +32,32 @@ export const AuthProvider = ({ children }) => {
     setCurrentUser(null);
     setUserProfile(null);
     await signOut(auth);
+  };
+
+  // Increment this to force RootNavigator's useEffect to re-run
+  const [reloadTick, setReloadTick] = useState(0);
+
+  const reloadUser = async () => {
+    if (!auth.currentUser) return false;
+    try {
+      await reload(auth.currentUser);
+      const user = auth.currentUser;
+      // Keep the real Firebase User object — never spread it (spreading strips class methods).
+      // Force React to notice the change by bumping a sibling counter.
+      setCurrentUser(user);
+      setReloadTick(t => t + 1);
+      if (user?.emailVerified && user?.uid) {
+        try {
+          await updateDoc(doc(db, "profiles", user.uid), { isVerified: true });
+          // Optimistically update userProfile so RootNavigator switches immediately
+          setUserProfile(prev => prev ? { ...prev, isVerified: true } : prev);
+        } catch (e) {}
+      }
+      return user?.emailVerified ?? false;
+    } catch (err) {
+      console.error("reloadUser error:", err);
+      return false;
+    }
   };
 
   const deleteAccount = async () => {
@@ -86,12 +113,14 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     currentUser,
+    reloadTick,
     loading,
     userProfile,
     profileLoading,
     signup,
     login,
     logout,
+    reloadUser,
     deleteAccount,
   };
 

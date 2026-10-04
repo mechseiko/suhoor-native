@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     paddingHorizontal: 24,
     paddingTop: 70,
-    paddingBottom: 24,
+    paddingBottom: 48,
   },
   header: {
     flexDirection: 'row',
@@ -211,7 +211,8 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 16,
+    marginTop: 18,
+    marginBottom: 8,
     paddingTop: 8,
   },
   bottomTitle: {

@@ -288,7 +288,6 @@ useEffect(() => {
         </Card>
       ) : CLOSED_TESTER_FEATURES.fastingPrompt ? <FastingPrompt /> : null}
 
-      <AudioModeWarning />
 
       <View style={styles.section}>
         <Text variant="h3">{t('home.dashboardStats')}</Text>

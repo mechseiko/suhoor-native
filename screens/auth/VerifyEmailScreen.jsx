@@ -1,28 +1,33 @@
 import React, { useEffect, useState } from "react";
-import { View, Platform } from "react-native";
+import { View } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { reload, sendEmailVerification } from "firebase/auth";
-import { auth } from "../../config/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "../../config/firebase";
+import { COLLECTIONS } from "../../config/firestoreSchema";
 import { useLanguage } from "../../context/LanguageContext";
+import { useAuth } from "../../context/AuthContext";
 import AuthWrapper from "../../components/AuthWrapper";
 import { Button, Text } from "../../components/ui";
 
 const VerifyEmailScreen = ({ navigation, route }) => {
   const { t } = useLanguage();
-  const userEmail = route?.params?.email || auth.currentUser?.email || "";
+  const { currentUser, logout } = useAuth();
+  const userEmail =
+    route?.params?.email || currentUser?.email || auth.currentUser?.email || "";
 
   const [resendCooldown, setResendCooldown] = useState(30);
-  const [verificationChecking, setVerificationChecking] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const currentUser = auth.currentUser;
-const isVerified = currentUser?.emailVerified ?? false;
 
   useEffect(() => {
-    if (resendCooldown <= 0) return undefined;
-    const timer = setInterval(() => {
-      setResendCooldown((v) => Math.max(0, v - 1));
-    }, 1000);
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(
+      () => setResendCooldown((v) => Math.max(0, v - 1)),
+      1000
+    );
     return () => clearInterval(timer);
   }, [resendCooldown]);
 
@@ -36,128 +41,186 @@ const isVerified = currentUser?.emailVerified ?? false;
         handleCodeInApp: true,
       });
       setResendCooldown(30);
-      setNotice(t("auth.verificationResent"));
-    } catch (emailErr) {
+      setNotice(t("auth.verificationResent", "Verification email sent!"));
+    } catch (e) {
       setError(
-        emailErr?.code === "auth/too-many-requests"
-          ? t("auth.verificationTooMany")
-          : t("auth.verificationSendError")
+        e?.code === "auth/too-many-requests"
+          ? t("auth.verificationTooMany", "Too many requests. Please wait a moment.")
+          : t("auth.verificationSendError", "Failed to send verification email.")
       );
     }
   };
 
-  const checkVerification = async () => {
-    if (!auth.currentUser) return;
-    setVerificationChecking(true);
+  const handleCheckVerification = async () => {
+    if (checking) return;
+    setChecking(true);
     setError("");
     setNotice("");
+
     try {
-      await reload(auth.currentUser);
-      if (auth.currentUser.emailVerified) {
-        setNotice(t("auth.verifiedSuccess"));
-        // Refresh the page to trigger RootNavigator to redirect to home
-        if (Platform.OS === 'web') {
-          window.location.reload();
+      if (auth.currentUser) {
+        await reload(auth.currentUser);
+        let verified = auth.currentUser.emailVerified;
+
+        if (!verified && auth.currentUser.uid) {
+          try {
+            const profileSnap = await getDoc(
+              doc(db, COLLECTIONS.profiles || "profiles", auth.currentUser.uid)
+            );
+            if (profileSnap.exists() && profileSnap.data()?.isVerified) {
+              verified = true;
+            }
+          } catch (_) {}
         }
-      } else {
-        setError(t("auth.notVerifiedYet"));
+
+        if (verified) {
+          setIsVerified(true);
+          setNotice(
+            t(
+              "auth.verificationSuccess",
+              "Email verified successfully! You can now log in."
+            )
+          );
+          return;
+        }
       }
-    } catch {
-      setError(t("auth.verificationCheckError"));
+      setError(
+        t(
+          "auth.verificationNotYet",
+          "Email not verified yet. Please check your inbox and tap the link first."
+        )
+      );
+    } catch (err) {
+      console.warn("Verification check failed:", err);
+      setError(
+        t(
+          "auth.verificationCheckError",
+          "Unable to confirm verification right now. Please try again."
+        )
+      );
     } finally {
-      setVerificationChecking(false);
+      setChecking(false);
     }
+  };
+
+  const handleBackToLogin = async () => {
+    try {
+      await logout();
+    } catch (_) {}
+    try {
+      navigation.navigate("Login");
+    } catch (_) {}
   };
 
   return (
     <AuthWrapper
-      title={t("auth.checkYourEmail")}
+      title={isVerified ? t("auth.verifiedTitle", "Email Verified!") : t("auth.checkYourEmail", "Check Your Email")}
       subtitle=""
       error={error}
     >
-      {currentUser && !isVerified && (<View
+      {/* Status card */}
+      <View
         style={{
-          backgroundColor: "#ECFDF5",
-          borderColor: "#A7F3D0",
+          backgroundColor: isVerified ? "#F0FDF4" : "#ECFDF5",
+          borderColor: isVerified ? "#86EFAC" : "#A7F3D0",
           borderWidth: 1,
-          borderRadius: 8,
-          padding: 16,
+          borderRadius: 12,
+          padding: 20,
           marginBottom: 20,
           alignItems: "center",
         }}
       >
         <Ionicons
-          name="mail-outline"
-          size={48}
-          color="#059669"
-          style={{ marginBottom: 12 }}
+          name={isVerified ? "checkmark-circle" : "mail-outline"}
+          size={52}
+          color={isVerified ? "#16A34A" : "#059669"}
+          style={{ marginBottom: 14 }}
         />
         <Text
           style={{
-            color: "#065F46",
-            fontSize: 16,
+            color: isVerified ? "#15803D" : "#065F46",
+            fontSize: 15,
             fontWeight: "600",
             textAlign: "center",
-            marginBottom: 8,
+            marginBottom: 6,
           }}
         >
-          {t("auth.verificationEmailSentTo")}
+          {isVerified
+            ? t("auth.emailVerifiedSuccess", "Your email has been verified!")
+            : t("auth.verificationEmailSentTo", "Verification email sent to")}
         </Text>
-        <Text
-          style={{
-            color: "#065F46",
-            fontSize: 18,
-            fontWeight: "700",
-            textAlign: "center",
-          }}
-        >
-          {userEmail.split("@")[0].slice(0, 3)}******@{userEmail.split("@")[1]}
-        </Text>
-      </View>)}
+        {userEmail ? (
+          <Text
+            style={{
+              color: isVerified ? "#166534" : "#065F46",
+              fontSize: 16,
+              fontWeight: "700",
+              textAlign: "center",
+            }}
+          >
+            {userEmail.split("@")[0].slice(0, 3)}******@{userEmail.split("@")[1]}
+          </Text>
+        ) : null}
+      </View>
 
-      {notice ? (
-        <Text
-          style={{
-            color: "#059669",
-            fontSize: 14,
-            fontWeight: "600",
-            textAlign: "center",
-            marginBottom: 16,
-          }}
-        >
-          {notice}
-        </Text>
-      ) : null}
+      {/* Instruction text */}
+      <Text
+        style={{
+          color: "#6B7280",
+          fontSize: 13,
+          textAlign: "center",
+          marginBottom: 20,
+          lineHeight: 20,
+        }}
+      >
+        {isVerified
+          ? t("auth.loginPrompt", "Please log in with your credentials to access your account.")
+          : t(
+              "auth.verificationInstructions",
+              "Check your email, click the verification link, then tap below to confirm."
+            )}
+      </Text>
 
-      {currentUser && !isVerified && (
+      {/* Main Action Button */}
+      {isVerified ? (
+        <Button
+          title={t("auth.backToLogin", "Back to Login")}
+          onPress={handleBackToLogin}
+          variant="primary"
+          icon="log-in-outline"
+          iconPosition="start"
+          style={{ borderRadius: 8 }}
+        />
+      ) : (
         <Button
           title={
-            resendCooldown > 0
-              ? t("auth.resendIn", { seconds: resendCooldown })
-              : t("auth.resendVerification")
+            checking
+              ? t("auth.checking", "Checking...")
+              : t("auth.iveVerifiedMyEmail", "I've Verified My Email")
           }
-          onPress={resendVerification}
-          disabled={resendCooldown > 0}
-          variant="outline"
+          onPress={handleCheckVerification}
+          loading={checking}
+          variant="primary"
+          icon="checkmark-outline"
+          iconPosition="start"
+          style={{ borderRadius: 8 }}
         />
       )}
 
-      <Button
-        title={isVerified ? "Continue to App" : t("auth.checkVerification")}
-        onPress={isVerified ? () => {
-          if (Platform.OS === 'web') {
-            window.location.reload();
-          } else {
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'HomeTab' }],
-            });
+      {/* Resend button (only shown when not yet verified) */}
+      {!isVerified && (
+        <Button
+          title={
+            resendCooldown > 0
+              ? t("auth.resendIn", { seconds: resendCooldown }) || `Resend in ${resendCooldown}s`
+              : t("auth.resendVerification", "Resend Verification Email")
           }
-        } : checkVerification}
-        loading={verificationChecking}
-        variant="primary"
-        style={{ marginTop: 12, borderRadius: 8 }}
-      />
+          onPress={resendVerification}
+          disabled={resendCooldown > 0 || checking}
+          variant="outline"
+          style={{ marginTop: 12 }}
+        />
+      )}
     </AuthWrapper>
   );
 };

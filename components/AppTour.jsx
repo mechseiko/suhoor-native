@@ -6,6 +6,7 @@ import {
   I18nManager,
   Modal,
   Platform,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -18,6 +19,8 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { font, size, weight } from '../theme';
 
 const { width: WINDOW_WIDTH, height: WINDOW_HEIGHT } = Dimensions.get('window');
+const { height: SCREEN_HEIGHT } = Dimensions.get('screen');
+const STATUS_BAR_HEIGHT = Platform.OS === 'android' ? (StatusBar.currentHeight || 0) : 0;
 
 const PENDING_KEY = 'suhoor-tab-tour-pending';
 const DONE_KEY = 'suhoor-tab-tour-done';
@@ -121,28 +124,40 @@ export const AppTour = ({ children, tabBarRef }) => {
 
   useEffect(() => {
     if (!visible) return;
+    const initialBottom =
+      (Platform.OS === 'android' ? SCREEN_HEIGHT : WINDOW_HEIGHT) -
+      TAB_BAR_FALLBACK_HEIGHT;
     setFrame({
       x: 0,
-      y: WINDOW_HEIGHT - TAB_BAR_FALLBACK_HEIGHT,
+      y: initialBottom,
       width: WINDOW_WIDTH,
       height: TAB_BAR_FALLBACK_HEIGHT,
     });
-    const timer = setTimeout(() => {
+
+    const measureTab = () => {
       try {
         const node = tabBarRef && tabBarRef.current;
         if (node && node.measureInWindow) {
           node.measureInWindow((x, y, w, h) => {
             if (w > 0 && h > 0 && y > 0) {
-              setFrame({ x, y, width: w, height: h });
+              const adjustedY =
+                Platform.OS === 'android' ? y + STATUS_BAR_HEIGHT : y;
+              setFrame({ x, y: adjustedY, width: w, height: h });
             }
           });
         }
       } catch (e) {
         console.warn('Tab tour measurement failed, using fallback:', e);
       }
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [visible]);
+    };
+
+    const timer1 = setTimeout(measureTab, 100);
+    const timer2 = setTimeout(measureTab, 400);
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
+  }, [visible, tabBarRef]);
 
   const getHoleRect = (stepIndex) => {
     const target = TOUR_STEPS[stepIndex];
@@ -165,22 +180,26 @@ export const AppTour = ({ children, tabBarRef }) => {
 
   useEffect(() => {
     if (!visible || !frame) return;
-    const rect = getHoleRect(0);
+    const rect = getHoleRect(step);
     holeL.setValue(rect.l);
     holeT.setValue(rect.t);
     holeW.setValue(rect.w);
     holeH.setValue(rect.h);
+  }, [frame, step]);
+
+  useEffect(() => {
+    if (!visible) return;
     Animated.parallel([
       Animated.timing(overlayOpacity, {
         toValue: 1,
         duration: 400,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
       Animated.timing(textOpacity, {
         toValue: 1,
         duration: 450,
         delay: 300,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
     ]).start();
     const pulse = Animated.loop(
@@ -189,20 +208,19 @@ export const AppTour = ({ children, tabBarRef }) => {
           toValue: 0.45,
           duration: 750,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(ringPulse, {
           toValue: 1,
           duration: 750,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
       ])
     );
     pulse.start();
     return () => pulse.stop();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, frame]);
+  }, [visible]);
 
   const goToStep = (next) => {
     if (next < 0 || next >= TOUR_STEPS.length || !frame) return;
@@ -235,14 +253,14 @@ export const AppTour = ({ children, tabBarRef }) => {
       Animated.timing(textOpacity, {
         toValue: 0,
         duration: 160,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
     ]).start(() => {
       setStep(next);
       Animated.timing(textOpacity, {
         toValue: 1,
         duration: 320,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }).start();
     });
   };
@@ -258,12 +276,12 @@ export const AppTour = ({ children, tabBarRef }) => {
       Animated.timing(overlayOpacity, {
         toValue: 0,
         duration: 320,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
       Animated.timing(textOpacity, {
         toValue: 0,
         duration: 200,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
     ]).start(() => setVisible(false));
   };

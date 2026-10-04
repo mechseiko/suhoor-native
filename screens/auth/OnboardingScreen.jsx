@@ -829,182 +829,6 @@ const BatteryOptimizationStep = ({ onStatusChange }) => {
   );
 };
 
-const FullScreenAlertsStep = ({ onStatusChange }) => {
-  const { t } = useLanguage();
-  const [granted, setGranted] = useState(false);
-
-  const checkStatus = async () => {
-    if (Platform.OS !== 'android') {
-      setGranted(true);
-      onStatusChange?.(true);
-      return;
-    }
-    try {
-      if (Platform.Version >= 34) {
-        // Android 14+: USE_FULL_SCREEN_INTENT requires explicit grant
-        const result = await PermissionsAndroid.check(
-          'android.permission.USE_FULL_SCREEN_INTENT'
-        );
-        setGranted(!!result);
-        onStatusChange?.(!!result);
-      } else {
-        // Below Android 14 it is always granted
-        setGranted(true);
-        onStatusChange?.(true);
-      }
-    } catch {
-      setGranted(true);
-      onStatusChange?.(true);
-    }
-  };
-
-  useEffect(() => {
-    checkStatus();
-    const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') checkStatus();
-    });
-    return () => sub.remove();
-  }, []);
-
-  const handleAction = async () => {
-    try {
-      if (Platform.OS === 'android') {
-        if (Platform.Version >= 34) {
-          await Linking.sendIntent(
-            'android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENT',
-            [{ key: 'android.provider.extra.APP_PACKAGE', value: 'com.mechseiko.suhoor' }]
-          ).catch(() => Linking.openSettings());
-        } else {
-          await Linking.openSettings();
-        }
-      } else {
-        await Linking.openSettings();
-      }
-    } catch {
-      Linking.openSettings().catch(() => {});
-    }
-  };
-
-  return (
-    <View
-      style={{
-        flex: 1,
-        width: '100%',
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 12,
-      }}
-    >
-      <View
-        style={{
-          width: 76,
-          height: 76,
-          borderRadius: 38,
-          backgroundColor: 'rgba(21, 12, 51, 0.07)',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: 20,
-        }}
-      >
-        <Ionicons name="tv-outline" size={36} color={brand.primary} />
-      </View>
-
-      <Text variant="hero" style={{ textAlign: 'center', marginBottom: 10 }}>
-        <Text variant="inherit" style={{ color: brand.primary, fontWeight: '800' }}>
-          Full-Screen{' '}
-        </Text>
-        <Text variant="inherit" style={{ color: brand.secondary, fontWeight: '800' }}>
-          Alerts
-        </Text>
-      </Text>
-
-      <Text
-        variant="body"
-        tone="secondary"
-        style={{
-          textAlign: 'center',
-          maxWidth: 320,
-          lineHeight: 21,
-          fontSize: 13,
-          marginBottom: 24,
-        }}
-      >
-        Allow Suhoor to show the alarm screen on top of your lock screen, so it wakes you up even when your phone is asleep.
-      </Text>
-
-      {/* Status Pill */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 14,
-          paddingVertical: 8,
-          borderRadius: 20,
-          backgroundColor: granted ? '#ECFDF5' : '#FFFBEB',
-          borderWidth: 1,
-          borderColor: granted ? '#10B981' : '#FCD34D',
-          marginBottom: 26,
-        }}
-      >
-        <Ionicons
-          name={granted ? 'checkmark-circle' : 'alert-circle-outline'}
-          size={16}
-          color={granted ? '#059669' : '#D97706'}
-          style={{ marginRight: 6 }}
-        />
-        <Text
-          style={{
-            fontSize: 12,
-            fontWeight: '700',
-            color: granted ? '#065F46' : '#B45309',
-            fontFamily: 'SpaceGrotesk-Bold',
-          }}
-        >
-          {granted ? 'Full-screen alerts allowed' : 'Full-screen alerts not allowed'}
-        </Text>
-      </View>
-
-      {/* Action Button */}
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={handleAction}
-        style={{
-          width: '100%',
-          backgroundColor: granted ? '#10B981' : brand.primary,
-          paddingVertical: 15,
-          borderRadius: 10,
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'row',
-          columnGap: 8,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.08,
-          shadowRadius: 4,
-          elevation: 2,
-        }}
-      >
-        <Ionicons
-          name={granted ? 'checkmark-outline' : 'tv-outline'}
-          size={18}
-          color="#FFFFFF"
-        />
-        <Text
-          style={{
-            color: '#FFFFFF',
-            fontSize: 14,
-            fontWeight: '800',
-            letterSpacing: 0.8,
-            fontFamily: 'SpaceGrotesk-Bold',
-          }}
-        >
-          {granted ? 'PERMISSION GRANTED' : 'ALLOW FULL-SCREEN ALERTS'}
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
-};
-
 const DisplayOverAppsStep = ({ onStatusChange }) => {
   const { t } = useLanguage();
   const [granted, setGranted] = useState(false);
@@ -1021,7 +845,6 @@ const DisplayOverAppsStep = ({ onStatusChange }) => {
       setGranted(ok);
       onStatusChange?.(ok);
     } catch {
-      // If native module not available, check via Linking intent later
       setGranted(false);
       onStatusChange?.(false);
     }
@@ -1038,10 +861,14 @@ const DisplayOverAppsStep = ({ onStatusChange }) => {
   const handleAction = async () => {
     try {
       if (Platform.OS === 'android') {
-        await Linking.sendIntent(
-          'android.settings.action.MANAGE_OVERLAY_PERMISSION',
-          [{ key: 'android.provider.extra.APP_PACKAGE', value: 'com.mechseiko.suhoor' }]
-        ).catch(() => Linking.openSettings());
+        if (NativeModules.AlarmBridge?.openOverlaySettings) {
+          await NativeModules.AlarmBridge.openOverlaySettings();
+        } else {
+          await Linking.sendIntent(
+            'android.settings.action.MANAGE_OVERLAY_PERMISSION',
+            [{ key: 'package', value: 'com.mechseiko.suhoor' }]
+          ).catch(() => Linking.openSettings());
+        }
       } else {
         await Linking.openSettings();
       }
@@ -1170,236 +997,6 @@ const DisplayOverAppsStep = ({ onStatusChange }) => {
   );
 };
 
-const SamsungBackgroundStep = ({ onStatusChange }) => {
-  const { t } = useLanguage();
-  const [isSamsung] = useState(() => {
-    // Detect Samsung device by manufacturer at render time
-    if (Platform.OS === 'android') {
-      try {
-        const { NativeModules: NM } = require('react-native');
-        const brand_ = NM?.DeviceInfo?.brand || NM?.PlatformConstants?.Brand || '';
-        return brand_.toLowerCase().includes('samsung');
-      } catch {
-        return false;
-      }
-    }
-    return false;
-  });
-  const [enabled, setEnabled] = useState(false);
-
-  const checkStatus = async () => {
-    if (!isSamsung || Platform.OS !== 'android') {
-      setEnabled(true);
-      onStatusChange?.(true);
-      return;
-    }
-    // We can't programmatically query Samsung autostart — treat as unchecked until user confirms
-    onStatusChange?.(true); // non-blocking, always allow continue
-  };
-
-  useEffect(() => {
-    checkStatus();
-    const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') {
-        setEnabled(true);
-        onStatusChange?.(true);
-      }
-    });
-    return () => sub.remove();
-  }, []);
-
-  const handleAction = async () => {
-    if (Platform.OS !== 'android') return;
-    const samsungIntents = [
-      // Samsung One UI Device Care > Battery > Background usage limits
-      { action: 'android.intent.action.MAIN', pkg: 'com.samsung.android.lool', cls: 'com.samsung.android.sm.battery.ui.BatteryActivity' },
-      // Older Samsung background app management
-      { action: 'android.intent.action.MAIN', pkg: 'com.samsung.android.sm', cls: 'com.samsung.android.sm.ui.battery.BatteryActivity' },
-    ];
-    for (const intent of samsungIntents) {
-      try {
-        await Linking.sendIntent(intent.action, [
-          { key: 'android.intent.extra.PACKAGE_NAME', value: 'com.mechseiko.suhoor' },
-        ]);
-        setEnabled(true);
-        return;
-      } catch {
-        // try next
-      }
-    }
-    // Fallback — generic battery optimization settings
-    try {
-      await Linking.sendIntent('android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS');
-    } catch {
-      Linking.openSettings().catch(() => {});
-    }
-    setEnabled(true);
-  };
-
-  // Non-Samsung devices skip this step automatically
-  if (!isSamsung) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          width: '100%',
-          justifyContent: 'center',
-          alignItems: 'center',
-          paddingHorizontal: 12,
-        }}
-      >
-        <View
-          style={{
-            width: 76,
-            height: 76,
-            borderRadius: 38,
-            backgroundColor: '#ECFDF5',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: 20,
-          }}
-        >
-          <Ionicons name="checkmark-circle" size={40} color="#059669" />
-        </View>
-        <Text variant="hero" style={{ textAlign: 'center', marginBottom: 10 }}>
-          <Text variant="inherit" style={{ color: brand.primary, fontWeight: '800' }}>
-            Samsung{' '}
-          </Text>
-          <Text variant="inherit" style={{ color: brand.secondary, fontWeight: '800' }}>
-            Background
-          </Text>
-        </Text>
-        <Text
-          variant="body"
-          tone="secondary"
-          style={{ textAlign: 'center', maxWidth: 300, lineHeight: 21, fontSize: 13 }}
-        >
-          Not required on your device. You're all set!
-        </Text>
-      </View>
-    );
-  }
-
-  return (
-    <View
-      style={{
-        flex: 1,
-        width: '100%',
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 12,
-      }}
-    >
-      <View
-        style={{
-          width: 76,
-          height: 76,
-          borderRadius: 38,
-          backgroundColor: 'rgba(21, 12, 51, 0.07)',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: 20,
-        }}
-      >
-        <Ionicons name="phone-portrait-outline" size={36} color={brand.primary} />
-      </View>
-
-      <Text variant="hero" style={{ textAlign: 'center', marginBottom: 10 }}>
-        <Text variant="inherit" style={{ color: brand.primary, fontWeight: '800' }}>
-          Samsung{' '}
-        </Text>
-        <Text variant="inherit" style={{ color: brand.secondary, fontWeight: '800' }}>
-          Background
-        </Text>
-      </Text>
-
-      <Text
-        variant="body"
-        tone="secondary"
-        style={{
-          textAlign: 'center',
-          maxWidth: 320,
-          lineHeight: 21,
-          fontSize: 13,
-          marginBottom: 24,
-        }}
-      >
-        Samsung devices restrict background apps aggressively. Open Device Care and set Suhoor to "No restrictions" so the alarm always fires on time.
-      </Text>
-
-      {/* Status Pill */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 14,
-          paddingVertical: 8,
-          borderRadius: 20,
-          backgroundColor: enabled ? '#ECFDF5' : '#FFFBEB',
-          borderWidth: 1,
-          borderColor: enabled ? '#10B981' : '#FCD34D',
-          marginBottom: 26,
-        }}
-      >
-        <Ionicons
-          name={enabled ? 'checkmark-circle' : 'alert-circle-outline'}
-          size={16}
-          color={enabled ? '#059669' : '#D97706'}
-          style={{ marginRight: 6 }}
-        />
-        <Text
-          style={{
-            fontSize: 12,
-            fontWeight: '700',
-            color: enabled ? '#065F46' : '#B45309',
-            fontFamily: 'SpaceGrotesk-Bold',
-          }}
-        >
-          {enabled ? 'Background running allowed' : 'Background running restricted'}
-        </Text>
-      </View>
-
-      {/* Action Button */}
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={handleAction}
-        style={{
-          width: '100%',
-          backgroundColor: enabled ? '#10B981' : brand.primary,
-          paddingVertical: 15,
-          borderRadius: 10,
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'row',
-          columnGap: 8,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.08,
-          shadowRadius: 4,
-          elevation: 2,
-        }}
-      >
-        <Ionicons
-          name={enabled ? 'checkmark-outline' : 'phone-portrait-outline'}
-          size={18}
-          color="#FFFFFF"
-        />
-        <Text
-          style={{
-            color: '#FFFFFF',
-            fontSize: 14,
-            fontWeight: '800',
-            letterSpacing: 0.8,
-            fontFamily: 'SpaceGrotesk-Bold',
-          }}
-        >
-          {enabled ? 'SETTING OPENED' : 'OPEN DEVICE CARE'}
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
-};
-
 const STEPS = [
   {
     id: 1,
@@ -1441,22 +1038,14 @@ const STEPS = [
   },
   {
     id: 8,
-    isFullScreen: true,
-  },
-  {
-    id: 9,
     isDisplayOverApps: true,
   },
   {
-    id: 10,
-    isSamsungBackground: true,
-  },
-  {
-    id: 11,
+    id: 9,
     isPin: true,
   },
   {
-    id: 12,
+    id: 10,
     isRoutine: true,
   },
 ];
@@ -1770,9 +1359,7 @@ export const OnboardingScreen = ({ onComplete }) => {
     notification: false,
     location: false,
     battery: false,
-    fullScreen: false,
     displayOverApps: false,
-    samsungBackground: false,
   });
   const [requirementError, setRequirementError] = useState("");
   const [fastingDefaults, setFastingDefaults] = useState({
@@ -1922,30 +1509,12 @@ export const OnboardingScreen = ({ onComplete }) => {
               }))
             }
           />
-        ) : current.isFullScreen ? (
-          <FullScreenAlertsStep
-            onStatusChange={(value) =>
-              setRequirements((currentState) => ({
-                ...currentState,
-                fullScreen: value,
-              }))
-            }
-          />
         ) : current.isDisplayOverApps ? (
           <DisplayOverAppsStep
             onStatusChange={(value) =>
               setRequirements((currentState) => ({
                 ...currentState,
                 displayOverApps: value,
-              }))
-            }
-          />
-        ) : current.isSamsungBackground ? (
-          <SamsungBackgroundStep
-            onStatusChange={(value) =>
-              setRequirements((currentState) => ({
-                ...currentState,
-                samsungBackground: value,
               }))
             }
           />
