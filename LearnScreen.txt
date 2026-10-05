@@ -1,6 +1,6 @@
 
 Conditions for Fasting
-Fasting Supplication (Duas)
+Fasting Supplication (Duas) - This is fecthed from an API
 Sunnah Practices
 Fasting Invalidator
 Benefits of Fasting
@@ -55,23 +55,7 @@ According to the consensus of the ulama, women who are menstruating or postpartu
 
 Fasting Supplication
 
-Niyyat to Fast on Monday
-
-نَوَيْتُ صَوْمَ غَدٍ فِي يَوْمِ الْإِثْنَيْنِ سُنَّةً لِلّٰهِ تَعَالَى
-
-Nawaitu sauma gadin fi yaumil-isnaini sunnatal lillāhi ta'ālā.
-
-Meaning:
-"I intend to fast on sunnah Mondays because of Allah Ta'ala."
-
-Niyyat to Fast on Thursday
-
-نَوَيْثُ صَوْمَ غَدٍ فِي يَوْمِ الْخَمِيسِ سُنَّةً لِلّٰهِ تَعَالَى
-
-Nawaitu sauma gadin fi yaumil-khamisi sunnatan lillāhi ta'ālā.
-
-Meaning:
-"I intend to fast on sunnah Thursdays because of Allah Ta'ala."
+*This is fecthed from an API*
 
 ---
 

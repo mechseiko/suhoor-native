@@ -8,7 +8,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import AuthWrapper from "../../components/AuthWrapper";
 import { Button, Input, Text } from "../../components/ui";
 import { db, auth } from "../../config/firebase";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, updateDoc, getDoc } from "firebase/firestore";
 import { reload, sendEmailVerification } from "firebase/auth";
 import { validatePassword } from "../../utils/passwordUtils";
 import { detectUserCountry, detectUserLocationDetails } from "../../utils/country";
@@ -27,7 +27,7 @@ export const SignupScreen = ({ navigation }) => {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [verificationChecking, setVerificationChecking] = useState(false);
   const [notice, setNotice] = useState("");
-  const { signup } = useAuth();
+  const { signup, reloadUser } = useAuth();
 
   useEffect(() => {
     if (resendCooldown <= 0) return undefined;
@@ -58,7 +58,10 @@ export const SignupScreen = ({ navigation }) => {
   };
 
   const checkVerification = async () => {
-    if (!auth.currentUser) return;
+    if (!auth.currentUser) {
+      navigation.navigate("Login");
+      return;
+    }
     setVerificationChecking(true);
     setError("");
     setNotice("");
@@ -66,8 +69,27 @@ export const SignupScreen = ({ navigation }) => {
       await reload(auth.currentUser);
       if (auth.currentUser.emailVerified) {
         setNotice(t("auth.verifiedSuccess"));
+        try {
+          await updateDoc(doc(db, "profiles", auth.currentUser.uid), {
+            isVerified: true,
+          });
+        } catch (updateErr) {
+          console.log("Error updating profile verification:", updateErr);
+        }
+        if (reloadUser) {
+          await reloadUser();
+        }
       } else {
-        setError(t("auth.notVerifiedYet"));
+        // Also check if Firestore profile was marked verified
+        const profileDoc = await getDoc(doc(db, "profiles", auth.currentUser.uid));
+        if (profileDoc.exists() && profileDoc.data()?.isVerified) {
+          setNotice(t("auth.verifiedSuccess"));
+          if (reloadUser) {
+            await reloadUser();
+          }
+        } else {
+          setError(t("auth.notVerifiedYet"));
+        }
       }
     } catch (checkErr) {
       setError(t("auth.verificationCheckError"));
@@ -150,6 +172,8 @@ export const SignupScreen = ({ navigation }) => {
         fastingDefaults,
         preferences: {
           buzzNotifications: true,
+          soundEnabled: true,
+          alarmSound: "default",
         },
       });
 

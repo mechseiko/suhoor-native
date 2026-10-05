@@ -5,7 +5,7 @@ import HomeScreen from '../screens/home/HomeScreen'
 import GroupsStack from './GroupsStack'
 import ProfileScreen from '../screens/profile/ProfileScreen'
 import FastingTimesScreen from '../screens/fasting/FastingTimesScreen'
-import LearnScreen from '../screens/learn/LearnScreen'
+import LearnStack from './LearnStack'
 import LeaderboardScreen from '../screens/leaderboard/LeaderboardScreen'
 import MilestonesScreen from '../screens/milestones/MilestonesScreen'
 import { useTheme } from '../context/ThemeContext'
@@ -137,11 +137,11 @@ export const TabNavigator = ({ tabBarRef }) => {
       />
       <Tab.Screen
         name="LearnTab"
-        component={LearnScreen}
+        component={LearnStack}
         options={{
           title: t('learn.title', 'Learn'),
           tabBarLabel: t('learn.tabLabel', 'Learn'),
-          headerTitle: t('learn.title', 'Learn'),
+          headerShown: false,
         }}
       />
       <Tab.Screen

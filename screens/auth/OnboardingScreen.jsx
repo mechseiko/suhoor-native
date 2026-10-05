@@ -392,42 +392,44 @@ const NotificationPermissionStep = ({ onStatusChange }) => {
       </View>
 
       {/* Action Button */}
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={handleAction}
-        style={{
-          width: "100%",
-          backgroundColor: granted ? "#10B981" : brand.primary,
-          paddingVertical: 15,
-          borderRadius: 10,
-          alignItems: "center",
-          justifyContent: "center",
-          flexDirection: "row",
-          columnGap: 8,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.08,
-          shadowRadius: 4,
-          elevation: 2,
-        }}
-      >
-        <Ionicons
-          name={granted ? "checkmark-outline" : "notifications"}
-          size={18}
-          color="#FFFFFF"
-        />
-        <Text
+      {!granted && (
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={handleAction}
           style={{
-            color: "#FFFFFF",
-            fontSize: 14,
-            fontWeight: "800",
-            letterSpacing: 0.8,
-            fontFamily: "SpaceGrotesk-Bold",
+            width: "100%",
+            backgroundColor: brand.primary,
+            paddingVertical: 15,
+            borderRadius: 10,
+            alignItems: "center",
+            justifyContent: "center",
+            flexDirection: "row",
+            columnGap: 8,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.08,
+            shadowRadius: 4,
+            elevation: 2,
           }}
         >
-          GRANT PERMISSION
-        </Text>
-      </TouchableOpacity>
+          <Ionicons
+            name="notifications"
+            size={18}
+            color="#FFFFFF"
+          />
+          <Text
+            style={{
+              color: "#FFFFFF",
+              fontSize: 14,
+              fontWeight: "800",
+              letterSpacing: 0.8,
+              fontFamily: "SpaceGrotesk-Bold",
+            }}
+          >
+            GRANT PERMISSION
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -604,44 +606,44 @@ const LocationPermissionStep = ({ onStatusChange }) => {
       </View>
 
       {/* Action Button */}
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={handleAction}
-        style={{
-          width: "100%",
-          backgroundColor: detected ? "#10B981" : brand.primary,
-          paddingVertical: 15,
-          borderRadius: 10,
-          alignItems: "center",
-          justifyContent: "center",
-          flexDirection: "row",
-          columnGap: 8,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.08,
-          shadowRadius: 4,
-          elevation: 2,
-        }}
-      >
-        <Ionicons
-          name={detected ? "checkmark-outline" : "navigate-outline"}
-          size={18}
-          color="#FFFFFF"
-        />
-        <Text
+      {!detected && (
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={handleAction}
           style={{
-            color: "#FFFFFF",
-            fontSize: 14,
-            fontWeight: "800",
-            letterSpacing: 0.8,
-            fontFamily: "SpaceGrotesk-Bold",
+            width: "100%",
+            backgroundColor: brand.primary,
+            paddingVertical: 15,
+            borderRadius: 10,
+            alignItems: "center",
+            justifyContent: "center",
+            flexDirection: "row",
+            columnGap: 8,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.08,
+            shadowRadius: 4,
+            elevation: 2,
           }}
         >
-          GRANT LOCATION PERMISSION
-        </Text>
-      </TouchableOpacity>
-      
-
+          <Ionicons
+            name="navigate-outline"
+            size={18}
+            color="#FFFFFF"
+          />
+          <Text
+            style={{
+              color: "#FFFFFF",
+              fontSize: 14,
+              fontWeight: "800",
+              letterSpacing: 0.8,
+              fontFamily: "SpaceGrotesk-Bold",
+            }}
+          >
+            GRANT LOCATION PERMISSION
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -787,44 +789,44 @@ const BatteryOptimizationStep = ({ onStatusChange }) => {
       </View>
 
       {/* Action Button */}
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={handleAction}
-        style={{
-          width: "100%",
-          backgroundColor: disabled ? "#10B981" : brand.primary,
-          paddingVertical: 15,
-          borderRadius: 10,
-          alignItems: "center",
-          justifyContent: "center",
-          flexDirection: "row",
-          columnGap: 8,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.08,
-          shadowRadius: 4,
-          elevation: 2,
-        }}
-      >
-        <Ionicons
-          name={disabled ? "checkmark-outline" : "flash-outline"}
-          size={18}
-          color="#FFFFFF"
-        />
-        <Text
+      {!disabled && (
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={handleAction}
           style={{
-            color: "#FFFFFF",
-            fontSize: 13,
-            fontWeight: "800",
-            letterSpacing: 0.8,
-            fontFamily: "SpaceGrotesk-Bold",
+            width: "100%",
+            backgroundColor: brand.primary,
+            paddingVertical: 15,
+            borderRadius: 10,
+            alignItems: "center",
+            justifyContent: "center",
+            flexDirection: "row",
+            columnGap: 8,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.08,
+            shadowRadius: 4,
+            elevation: 2,
           }}
         >
-          {disabled ? "BATTERY OPTIMIZATION DISABLED" : "DISABLE BATTERY OPTIMIZATION"}
-        </Text>
-      </TouchableOpacity>
-      
-
+          <Ionicons
+            name="flash-outline"
+            size={18}
+            color="#FFFFFF"
+          />
+          <Text
+            style={{
+              color: "#FFFFFF",
+              fontSize: 13,
+              fontWeight: "800",
+              letterSpacing: 0.8,
+              fontFamily: "SpaceGrotesk-Bold",
+            }}
+          >
+            DISABLE BATTERY OPTIMIZATION
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };

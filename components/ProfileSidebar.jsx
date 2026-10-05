@@ -19,7 +19,7 @@ import { useLanguage } from '../context/LanguageContext'
 import { useGamification } from '../hooks/useGamification'
 import { brand, neutral, radius } from '../theme'
 import { Badge, Text } from './ui'
-import { getCurrentVersion } from '../services/versionService'
+import { getCurrentVersion, getLatestPlayStoreVersion, compareVersions } from '../services/versionService'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const DRAWER_WIDTH = Math.min(SCREEN_WIDTH * 0.82, 340)
@@ -30,6 +30,15 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
   const { t } = useLanguage()
   const { stats, currentLevel } = useGamification()
   const [appVersion] = useState(getCurrentVersion())
+  const [latestVersion, setLatestVersion] = useState(null)
+
+  useEffect(() => {
+    getLatestPlayStoreVersion().then((v) => {
+      if (v && compareVersions(v, getCurrentVersion()) > 0) {
+        setLatestVersion(v)
+      }
+    }).catch(() => {})
+  }, [])
 
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -246,6 +255,13 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
             {/* Version */}
             <View style={styles.versionSection}>
               <Text style={styles.versionText}>v{appVersion}</Text>
+              {latestVersion && (
+                <View style={{ backgroundColor: (colors.primary || '#6366F1') + '18', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, marginTop: 4 }}>
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: colors.primary || '#6366F1' }}>
+                    v{latestVersion} available
+                  </Text>
+                </View>
+              )}
             </View>
           </ScrollView>
         </Animated.View>

@@ -38,6 +38,8 @@ import { COLLECTIONS } from "../../config/firestoreSchema";
 import Toast from "../../components/Toast";
 import LanguageSelector from "../../components/LanguageSelector";
 import { getCurrentVersion, getLatestPlayStoreVersion, compareVersions } from "../../services/versionService";
+import { Audio } from "expo-av";
+import { ALARM_SOUND_OPTIONS, getAlarmSoundUri } from "../../utils/soundGenerator";
 
 const ProfileScreen = () => {
   const { currentUser, userProfile, logout, deleteAccount } = useAuth();
@@ -106,6 +108,74 @@ const ProfileScreen = () => {
   const [selectedLocation, setSelectedLocation] = useState(
     userProfile?.preferences?.defaultLocation || null
   );
+
+  const selectedAlarmSound = userProfile?.preferences?.alarmSound || "default";
+  const [playingPreview, setPlayingPreview] = useState(null);
+  const previewSoundRef = React.useRef(null);
+
+  const stopAudioPreview = async () => {
+    if (previewSoundRef.current) {
+      try {
+        await previewSoundRef.current.stopAsync();
+        await previewSoundRef.current.unloadAsync();
+      } catch (_) {}
+      previewSoundRef.current = null;
+    }
+    setPlayingPreview(null);
+  };
+
+  React.useEffect(() => {
+    return () => {
+      stopAudioPreview();
+    };
+  }, []);
+
+  const handleToggleAudioPreview = async (soundId) => {
+    if (playingPreview === soundId) {
+      await stopAudioPreview();
+      return;
+    }
+    await stopAudioPreview();
+    try {
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: true,
+      });
+      const synthUri = getAlarmSoundUri(soundId);
+      let soundObj = null;
+      if (synthUri) {
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: synthUri },
+          { shouldPlay: true, isLooping: true, volume: 1.0 }
+        );
+        soundObj = sound;
+      } else {
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: "android.resource://com.mechseiko.suhoor/raw/alarm_sound" },
+          { shouldPlay: true, isLooping: true, volume: 1.0 }
+        );
+        soundObj = sound;
+      }
+      previewSoundRef.current = soundObj;
+      setPlayingPreview(soundId);
+    } catch (err) {
+      console.log("Preview sound error:", err);
+      showToast("Could not preview this sound", "error");
+    }
+  };
+
+  const handleSelectAlarmSound = async (soundId) => {
+    if (!currentUser?.uid) return;
+    try {
+      await updateDoc(doc(db, COLLECTIONS.profiles, currentUser.uid), {
+        "preferences.alarmSound": soundId,
+      });
+      showToast("Alarm sound updated", "success");
+    } catch (err) {
+      console.error("Failed to update alarm sound:", err);
+      showToast("Failed to update alarm sound", "error");
+    }
+  };
 
   const showToast = (msg, type) => {
     setToastMessage(msg);
@@ -1263,6 +1333,110 @@ const ProfileScreen = () => {
                     />
                   </TouchableOpacity>
                 </View>
+              </View>
+
+              <View style={styles.sectionDivider} />
+
+              <View style={styles.cardHeader}>
+                <View>
+                  <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
+                    Alarm Sound
+                  </Text>
+                  <Text style={[styles.settingSub, themedStyles.settingSub, { marginTop: 2 }]}>
+                    Choose the sound that plays when your alarm rings
+                  </Text>
+                </View>
+              </View>
+
+              <View style={{ rowGap: 8, marginTop: 4 }}>
+                {ALARM_SOUND_OPTIONS.map((option) => {
+                  const isSelected = selectedAlarmSound === option.id;
+                  const isPlaying = playingPreview === option.id;
+
+                  return (
+                    <TouchableOpacity
+                      key={option.id}
+                      activeOpacity={0.8}
+                      onPress={() => handleSelectAlarmSound(option.id)}
+                      style={[
+                        styles.settingRow,
+                        {
+                          paddingVertical: 12,
+                          paddingHorizontal: 12,
+                          borderRadius: 12,
+                          borderWidth: 1.5,
+                          borderColor: isSelected ? Colors.primary : colors.border || "#E5E7EB",
+                          backgroundColor: isSelected
+                            ? (isDark ? "rgba(99, 102, 241, 0.12)" : "rgba(21, 12, 51, 0.04)")
+                            : "transparent",
+                          marginBottom: 4,
+                        },
+                      ]}
+                    >
+                      <View style={{ flex: 1, paddingRight: 8 }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                          <Text
+                            style={[
+                              styles.settingLabel,
+                              themedStyles.settingLabel,
+                              { fontWeight: isSelected ? "700" : "600" },
+                            ]}
+                          >
+                            {option.title}
+                          </Text>
+                          <View
+                            style={{
+                              paddingHorizontal: 6,
+                              paddingVertical: 1.5,
+                              borderRadius: 6,
+                              backgroundColor: option.badge === "Standard" ? "rgba(0,0,0,0.06)" : "rgba(16, 185, 129, 0.12)",
+                            }}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 10,
+                                fontWeight: "700",
+                                color: option.badge === "Standard" ? colors.textSecondary : "#059669",
+                              }}
+                            >
+                              {option.badge}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={[styles.settingSub, themedStyles.settingSub, { fontSize: 11.5 }]}>
+                          {option.description}
+                        </Text>
+                      </View>
+
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                        <TouchableOpacity
+                          activeOpacity={0.7}
+                          onPress={() => handleToggleAudioPreview(option.id)}
+                          style={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: 17,
+                            backgroundColor: isPlaying ? Colors.primary : (colors.surfaceVariant || "#F3F4F6"),
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <Ionicons
+                            name={isPlaying ? "stop" : "play"}
+                            size={16}
+                            color={isPlaying ? Colors.white : colors.text}
+                          />
+                        </TouchableOpacity>
+
+                        <Ionicons
+                          name={isSelected ? "checkmark-circle" : "ellipse-outline"}
+                          size={22}
+                          color={isSelected ? Colors.primary : colors.textSecondary}
+                        />
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
           </View>

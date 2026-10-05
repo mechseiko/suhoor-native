@@ -84,6 +84,14 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
+  const reloadUser = async () => {
+    if (auth.currentUser) {
+      await reload(auth.currentUser);
+      setCurrentUser(Object.assign(Object.create(Object.getPrototypeOf(auth.currentUser)), auth.currentUser));
+      return auth.currentUser;
+    }
+  };
+
   const value = {
     currentUser,
     loading,
@@ -93,6 +101,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     deleteAccount,
+    reloadUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

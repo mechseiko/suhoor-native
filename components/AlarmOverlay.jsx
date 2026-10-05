@@ -27,6 +27,7 @@ import {
 } from '../utils/fastingUtils'
 import { brand, neutral } from '../theme'
 import { Button, Text } from './ui'
+import { getAlarmSoundUri } from '../utils/soundGenerator'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -73,6 +74,7 @@ export const AlarmOverlay = () => {
   const soundAllowed = userProfile?.preferences?.soundEnabled ?? true
   const customAudioUrl = userProfile?.preferences?.customAlarmAudioUrl
   const alarmAudioMode = userProfile?.preferences?.alarmAudioMode || 'default'
+  const selectedAlarmSound = userProfile?.preferences?.alarmSound || 'default'
 
   // Vibration and audio playback
   useEffect(() => {
@@ -88,39 +90,47 @@ export const AlarmOverlay = () => {
                 volume: 1.0, // Maximum volume
               })
 
-              // Load and play custom audio if available, otherwise use default
+              const volume = userProfile?.preferences?.alarmVolume ?? 1.0;
+
+              // Check if a synthesized code alarm sound is chosen (e.g. apex, soft, pulse)
+              const synthSoundUri = getAlarmSoundUri(selectedAlarmSound);
+
+              if (synthSoundUri) {
+                try {
+                  const { sound } = await Audio.Sound.createAsync(
+                    { uri: synthSoundUri },
+                    { shouldPlay: true, isLooping: true, volume }
+                  );
+                  soundRef.current = sound;
+                  return;
+                } catch (synthErr) {
+                  console.log('Synthesized sound playback failed, falling back:', synthErr);
+                }
+              }
+
+              // Load and play custom uploaded audio if available
               if (alarmAudioMode === 'custom' && customAudioUrl) {
                 try {
-                  const volume = userProfile?.preferences?.alarmVolume ?? 1.0;
                   const { sound } = await Audio.Sound.createAsync(
                     { uri: customAudioUrl },
                     { shouldPlay: true, isLooping: true, volume }
                   )
                   soundRef.current = sound
+                  return;
                 } catch (customAudioError) {
                   console.log('Custom audio load failed, falling back to default:', customAudioError)
-                  // Fallback to default alarm sound using Android resource URI
-                  try {
-                    const { sound: defaultSound } = await Audio.Sound.createAsync(
-                      { uri: 'android.resource://com.mechseiko.suhoor/raw/alarm_sound' },
-                      { shouldPlay: true, isLooping: true, volume: 1.0 }
-                    )
-                    soundRef.current = defaultSound
-                  } catch (defaultAudioError) {
-                    console.log('Default audio load failed:', defaultAudioError)
-                  }
                 }
-              } else {
-                // Play default alarm sound using Android resource URI
-                try {
-                  const { sound: defaultSound } = await Audio.Sound.createAsync(
-                    { uri: 'android.resource://com.mechseiko.suhoor/raw/alarm_sound' },
-                    { shouldPlay: true, isLooping: true, volume: 1.0 }
-                  )
-                  soundRef.current = defaultSound
-                } catch (defaultAudioError) {
-                  console.log('Default audio load failed:', defaultAudioError)
-                }
+              }
+
+              // Default alarm sound using Android resource URI
+              try {
+                const { sound: defaultSound } = await Audio.Sound.createAsync(
+                  { uri: 'android.resource://com.mechseiko.suhoor/raw/alarm_sound' },
+                  { shouldPlay: true, isLooping: true, volume: 1.0 }
+                )
+                soundRef.current = defaultSound
+              } catch (defaultAudioError) {
+                console.log('Default audio load failed:', defaultAudioError)
               }
             } catch (audioError) {
               console.log('Audio init failed:', audioError)
