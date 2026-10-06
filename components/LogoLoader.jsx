@@ -7,8 +7,8 @@ export const LogoLoader = () => {
   const loadingMessages = [
     'Fetching your data...',
     'Pulling your fasting times...',
-    'Loading...',
     'Bundling your experience...',
+    'Loading...',
     'Preparing the best...',
     'Getting your crossed milestones...',
   ]
