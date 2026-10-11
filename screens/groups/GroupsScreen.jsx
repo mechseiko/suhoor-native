@@ -18,7 +18,7 @@ import { useTheme } from '../../context/ThemeContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useFastingTimes } from '../../hooks/useFastingTimes'
 import { db } from '../../config/firebase'
-import { COLLECTIONS } from '../../config/firestoreSchema'
+import { COLLECTIONS, wakeUpLogId } from '../../config/firestoreSchema'
 import {
   collection,
   query,
@@ -28,7 +28,6 @@ import {
   getDoc,
   setDoc,
   serverTimestamp,
-  addDoc,
 } from 'firebase/firestore'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import Ionicons from 'react-native-vector-icons/Ionicons'
@@ -100,20 +99,19 @@ export const GroupsScreen = ({ navigation }) => {
 
     const checkTime = () => {
       const now = new Date()
-      const profile = userProfile
-      
-      let targetHour, targetMinute
-      
-      if (profile?.customWakeUpTime) {
-        [targetHour, targetMinute] = profile.customWakeUpTime.split(':').map(Number)
-      } else {
-        const [suhoorH, suhoorM] = todayData.time.sahur.split(':').map(Number)
-        const suhoorTime = new Date()
-        suhoorTime.setHours(suhoorH, suhoorM, 0, 0)
-        suhoorTime.setMinutes(suhoorTime.getMinutes() - 45) // 45 mins before suhoor
-        targetHour = suhoorTime.getHours()
-        targetMinute = suhoorTime.getMinutes()
-      }
+
+      // The user's saved offset from FastingTimesScreen (45 min is the
+      // app-wide default). There is no writer for the old customWakeUpTime
+      // field, so honoring it here only ever produced the fallback anyway.
+      const wakeMinutes =
+        userProfile?.preferences?.wakeUpMinutesBeforeSuhoor || 45
+
+      const [suhoorH, suhoorM] = todayData.time.sahur.split(':').map(Number)
+      const suhoorTime = new Date()
+      suhoorTime.setHours(suhoorH, suhoorM, 0, 0)
+      suhoorTime.setMinutes(suhoorTime.getMinutes() - wakeMinutes)
+      const targetHour = suhoorTime.getHours()
+      const targetMinute = suhoorTime.getMinutes()
 
       const targetTime = new Date()
       targetTime.setHours(targetHour, targetMinute, 0, 0)
@@ -121,7 +119,6 @@ export const GroupsScreen = ({ navigation }) => {
         targetTime.setDate(targetTime.getDate() + 1)
       }
 
-      const [suhoorH, suhoorM] = todayData.time.sahur.split(':').map(Number)
       const endTime = new Date()
       endTime.setHours(suhoorH, suhoorM, 0, 0)
       if (endTime < now && now.getHours() > 12) {
@@ -188,12 +185,17 @@ export const GroupsScreen = ({ navigation }) => {
       const todayStr = new Date().toLocaleDateString('en-CA')
       const wakeUpTime = new Date().toISOString()
 
-      // Add wake up log
-      await addDoc(collection(db, COLLECTIONS.wakeUpLogs), {
-        user_id: currentUser.uid,
-        date: todayStr,
-        woke_up_at: wakeUpTime,
-      })
+      // Add wake up log — deterministic per-user-per-day ID so a re-check-in
+      // merges instead of stacking duplicate logs for the same day.
+      await setDoc(
+        doc(db, COLLECTIONS.wakeUpLogs, wakeUpLogId(currentUser.uid, todayStr)),
+        {
+          user_id: currentUser.uid,
+          date: todayStr,
+          woke_up_at: wakeUpTime,
+        },
+        { merge: true }
+      )
 
       // Update daily_fasting_status to record completion
       const statusRef = doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${todayStr}`)
@@ -732,8 +734,11 @@ export const GroupsScreen = ({ navigation }) => {
           <TouchableOpacity
             style={styles.checkInBtn}
             onPress={handleDirectCheckIn}
+            disabled={loading}
           >
-            <Text style={styles.checkInBtnText}>Check in</Text>
+            <Text style={styles.checkInBtnText}>
+              {loading ? 'Checking in…' : 'Check in'}
+            </Text>
           </TouchableOpacity>
         </View>
       )}

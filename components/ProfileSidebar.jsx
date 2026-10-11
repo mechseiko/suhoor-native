@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Dimensions,
@@ -9,9 +10,12 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native'
+import { db } from '../config/firebase'
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
@@ -31,6 +35,39 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
   const { stats, currentLevel } = useGamification()
   const [appVersion] = useState(getCurrentVersion())
   const [latestVersion, setLatestVersion] = useState(null)
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [feedbackMessage, setFeedbackMessage] = useState('')
+  const [submittingFeedback, setSubmittingFeedback] = useState(false)
+
+  const handleSubmitFeedback = async () => {
+    if (!feedbackMessage.trim()) {
+      Alert.alert('Empty Message', 'Please enter your message before sending.')
+      return
+    }
+    setSubmittingFeedback(true)
+    try {
+      await addDoc(collection(db, 'feedbacks'), {
+        user_id: currentUser?.uid || 'anonymous',
+        user_name: displayName || userProfile?.display_name || 'Anonymous User',
+        user_email: email || currentUser?.email || 'No email',
+        message: feedbackMessage.trim(),
+        platform: Platform.OS,
+        app_version: appVersion || '1.0.9',
+        created_at: serverTimestamp(),
+      })
+      setFeedbackMessage('')
+      setShowFeedbackModal(false)
+      Alert.alert(
+        'Feedback Sent',
+        'Thank you! Your feedback has been sent directly to the admin dashboard.'
+      )
+    } catch (err) {
+      console.error('Error submitting feedback:', err)
+      Alert.alert('Error', 'Failed to send feedback. Please try again.')
+    } finally {
+      setSubmittingFeedback(false)
+    }
+  }
 
   useEffect(() => {
     getLatestPlayStoreVersion().then((v) => {
@@ -203,6 +240,19 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
 
               <TouchableOpacity
                 style={styles.menuRow}
+                onPress={() => setShowFeedbackModal(true)}
+              >
+                <View style={[styles.menuIconBox, { backgroundColor: 'rgba(59, 130, 246, 0.12)' }]}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={18} color="#3B82F6" />
+                </View>
+                <Text variant="body" style={styles.menuLabel}>
+                  {t('profile.sendFeedback', 'Send Us Feedback')}
+                </Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary || '#9CA3AF'} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.menuRow}
                 onPress={() => {
                   onClose()
                   Linking.openURL('https://play.google.com/store/apps/details?id=com.mechseiko.suhoor')
@@ -266,6 +316,102 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
           </ScrollView>
         </Animated.View>
       </View>
+
+      {/* In-App Feedback Modal */}
+      <Modal
+        visible={showFeedbackModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowFeedbackModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View
+            style={{
+              width: '100%',
+              maxWidth: 380,
+              backgroundColor: colors.surface || '#FFFFFF',
+              borderRadius: 20,
+              padding: 22,
+              borderWidth: 1,
+              borderColor: colors.border || '#E5E7EB',
+            }}
+          >
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(59, 130, 246, 0.12)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="chatbubble-ellipses" size={20} color="#3B82F6" />
+                </View>
+                <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text || '#111827' }}>
+                  Send Us Feedback
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowFeedbackModal(false)} hitSlop={10}>
+                <Ionicons name="close" size={22} color={colors.textSecondary || '#6B7280'} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ fontSize: 13, color: colors.textSecondary || '#6B7280', marginBottom: 16 }}>
+              Share your thoughts, suggestions, or report an issue directly with our team.
+            </Text>
+
+            <TextInput
+              style={{
+                width: '100%',
+                height: 120,
+                backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F9FAFB',
+                borderColor: colors.border || '#E5E7EB',
+                borderWidth: 1,
+                borderRadius: 14,
+                padding: 14,
+                fontSize: 14,
+                color: colors.text || '#111827',
+                textAlignVertical: 'top',
+                marginBottom: 18,
+              }}
+              multiline
+              numberOfLines={4}
+              placeholder="Type your message here..."
+              placeholderTextColor={colors.textSecondary || '#9CA3AF'}
+              value={feedbackMessage}
+              onChangeText={setFeedbackMessage}
+            />
+
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => setShowFeedbackModal(false)}
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6',
+                }}
+              >
+                <Text style={{ fontWeight: '600', fontSize: 14, color: colors.text || '#111827' }}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleSubmitFeedback}
+                disabled={submittingFeedback || !feedbackMessage.trim()}
+                style={{
+                  flex: 2,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  backgroundColor: brand.primary || '#6366F1',
+                  opacity: submittingFeedback || !feedbackMessage.trim() ? 0.6 : 1,
+                }}
+              >
+                {submittingFeedback ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={{ fontWeight: '700', fontSize: 14, color: '#FFFFFF' }}>Submit</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Modal>
   )
 }

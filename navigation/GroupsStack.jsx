@@ -11,13 +11,7 @@ export const GroupsStack = () => {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: {
-          backgroundColor: Colors.primary,
-        },
-        headerTintColor: Colors.white,
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
+        headerShown: false,
         contentStyle: { backgroundColor: Colors.background },
       }}
     >

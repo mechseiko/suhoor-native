@@ -3,6 +3,7 @@ import { TouchableOpacity } from 'react-native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import LearnScreen from '../screens/learn/LearnScreen'
 import DuasScreen from '../screens/duas/DuasScreen'
+import BooksScreen from '../screens/books/BooksScreen'
 import { useTheme } from '../context/ThemeContext'
 import { useLanguage } from '../context/LanguageContext'
 import Ionicons from 'react-native-vector-icons/Ionicons'
@@ -44,6 +45,23 @@ export const LearnStack = () => {
         options={({ navigation }) => ({
           title: t('learn.topic.fastingDuas', 'Fasting Supplications'),
           headerTitle: t('learn.topic.fastingDuas', 'Fasting Supplications'),
+          headerLeft: () => (
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={{ marginRight: 12, padding: 4 }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="chevron-back" size={24} color={colors.text} />
+            </TouchableOpacity>
+          ),
+        })}
+      />
+      <Stack.Screen
+        name="Books"
+        component={BooksScreen}
+        options={({ navigation }) => ({
+          title: t('learn.topic.books', 'Books'),
+          headerTitle: t('learn.topic.books', 'Books'),
           headerLeft: () => (
             <TouchableOpacity
               onPress={() => navigation.goBack()}

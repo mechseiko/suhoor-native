@@ -27,11 +27,6 @@ export const AlarmProvider = ({ children }) => {
   useEffect(() => {
     const handleGetBuzzed = (data) => {
       console.log('🔔 Received incoming buzz:', data);
-      const buzzAllowed = userProfile?.preferences?.buzzNotifications ?? true;
-      if (!buzzAllowed) {
-        console.log('🚫 Buzz ignored: user disabled group member buzz alerts');
-        return;
-      }
       setIsAlarmActive(true);
       setAlarmData({
         type: 'buzz',

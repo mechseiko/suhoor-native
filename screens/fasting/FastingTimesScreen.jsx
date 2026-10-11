@@ -236,7 +236,7 @@ const TimePickerDial = ({ value, onChange, colors, timeText, captionText, dragTe
   );
 };
 
-export const FastingTimesScreen = () => {
+export const FastingTimesScreen = ({ navigation }) => {
   const { currentUser, userProfile } = useAuth();
   const { colors, isDark } = useTheme();
   const { t, locale, formatDate, formatTime, isRTL } = useLanguage();
@@ -670,18 +670,25 @@ export const FastingTimesScreen = () => {
               <Text style={{ fontWeight: '700', fontSize: 17, color: colors.text }}>{t('fastingTimes.alarmSound')}</Text>
               <Text style={{ fontSize: 12, color: colors.textSecondary }}>{t('fastingTimes.defaultAlarmSub')}</Text>
             </View>
-            <View style={{ backgroundColor: colors.primary + '20', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
-              <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary }}>{t('fastingTimes.defaultAlarm')}</Text>
-            </View>
+            <TouchableOpacity
+              onPress={() => navigation?.navigate?.('ProfileTab') || navigation?.navigate?.('Profile')}
+              style={{ backgroundColor: colors.primary + '15', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 }}
+            >
+              <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary }}>Change Sound</Text>
+            </TouchableOpacity>
           </View>
-          <View style={{
-            flexDirection: 'row', alignItems: 'center', columnGap: 12,
-            paddingVertical: 14, paddingHorizontal: 14,
-            borderRadius: 12,
-            borderWidth: 1.5,
-            borderColor: colors.primary,
-            backgroundColor: colors.primary + '08',
-          }}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => navigation?.navigate?.('ProfileTab') || navigation?.navigate?.('Profile')}
+            style={{
+              flexDirection: 'row', alignItems: 'center', columnGap: 12,
+              paddingVertical: 14, paddingHorizontal: 14,
+              borderRadius: 12,
+              borderWidth: 1.5,
+              borderColor: colors.primary,
+              backgroundColor: colors.primary + '08',
+            }}
+          >
             <View style={{
               width: 40, height: 40, borderRadius: 20,
               backgroundColor: colors.primary + '20',
@@ -690,11 +697,17 @@ export const FastingTimesScreen = () => {
               <Ionicons name="notifications" size={20} color={colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: '700', fontSize: 14, color: colors.text }}>{t('fastingTimes.defaultAlarm')}</Text>
-              <Text style={{ fontSize: 12, color: colors.textSecondary }}>{t('fastingTimes.usingDefaultSound')}</Text>
+              <Text style={{ fontWeight: '700', fontSize: 14, color: colors.text }}>
+                {userProfile?.preferences?.alarmSound ? `${userProfile.preferences.alarmSound.charAt(0).toUpperCase() + userProfile.preferences.alarmSound.slice(1)} Alarm` : t('fastingTimes.defaultAlarm')}
+              </Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+                {userProfile?.preferences?.alarmSound && userProfile?.preferences?.alarmSound !== 'default'
+                  ? `Active sound set in profile (${userProfile.preferences.alarmSound})`
+                  : t('fastingTimes.usingDefaultSound')}
+              </Text>
             </View>
-            <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
-          </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+          </TouchableOpacity>
         </View>
 
         <TouchableOpacity

@@ -25,7 +25,7 @@ import { useNetwork } from "../../context/NetworkContext";
 import { useFastingTimes } from "../../hooks/useFastingTimes";
 import { useGamification } from "../../hooks/useGamification";
 import { db } from "../../config/firebase";
-import { COLLECTIONS } from "../../config/firestoreSchema";
+import { COLLECTIONS, wakeUpLogId } from "../../config/firestoreSchema";
 import {
   collection,
   query,
@@ -36,7 +36,6 @@ import {
   deleteDoc,
   updateDoc,
   onSnapshot,
-  addDoc,
   setDoc,
   serverTimestamp,
 } from "firebase/firestore";
@@ -383,7 +382,10 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         );
         if (exists) return prev;
 
-        const today = new Date().toISOString().split("T")[0];
+        // en-CA gives the local calendar day (YYYY-MM-DD) and matches the
+        // format used by every wake_up_logs write — toISOString() would be UTC
+        // and can land on the previous day for users ahead of UTC.
+        const today = new Date().toLocaleDateString("en-CA");
         return [
           ...prev,
           {
@@ -410,8 +412,6 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     };
 
     const handleGotBuzzed = (data) => {
-      const buzzAllowed = userProfile?.preferences?.buzzNotifications ?? true;
-      if (!buzzAllowed) return;
       console.log(
         "Got buzzed by:",
         data.fromUserName,
@@ -939,11 +939,17 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       const todayStr = new Date().toLocaleDateString("en-CA");
       const wakeUpTime = new Date().toISOString();
 
-      await addDoc(collection(db, COLLECTIONS.wakeUpLogs), {
-        user_id: currentUser.uid,
-        date: todayStr,
-        woke_up_at: wakeUpTime,
-      });
+      // Deterministic per-user-per-day ID ({uid}_{YYYY-MM-DD}): re-checking in
+      // on the same day merges into one log instead of stacking duplicates.
+      await setDoc(
+        doc(db, COLLECTIONS.wakeUpLogs, wakeUpLogId(currentUser.uid, todayStr)),
+        {
+          user_id: currentUser.uid,
+          date: todayStr,
+          woke_up_at: wakeUpTime,
+        },
+        { merge: true }
+      );
 
       // Award points for successful wake-up
       await recordActivity("wake_up", {
@@ -1332,15 +1338,6 @@ export const GroupDetailScreen = ({ route, navigation }) => {
             />
             <Text style={[styles.shareBtnText, { color: colors.primary }]}>Settings</Text>
           </TouchableOpacity>
-          {!isCurrentUserAdmin && (
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.05)' : 'rgba(239, 68, 68, 0.05)', borderColor: isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.2)' }]}
-              onPress={handleLeaveGroup}
-            >
-              <Ionicons name="log-out-outline" size={16} color={colors.error} />
-              <Text style={[styles.leaveBtnText, { color: colors.error }]}>Leave Group</Text>
-            </TouchableOpacity>
-          )}
         </View>
       </View>
 
@@ -1349,7 +1346,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         <TouchableOpacity
           style={[
             styles.segmentBtn,
-            activeTab === "tracker" && styles.segmentBtnActive,
+            activeTab === "tracker" && [styles.segmentBtnActive, { backgroundColor: colors.primary }],
           ]}
           onPress={() => setActiveTab("tracker")}
           activeOpacity={0.8}
@@ -1357,12 +1354,12 @@ export const GroupDetailScreen = ({ route, navigation }) => {
           <Ionicons
             name="alarm-outline"
             size={16}
-            color={activeTab === "tracker" ? colors.onPrimaryFill : colors.primary}
+            color={activeTab === "tracker" ? colors.onPrimaryFill : colors.text}
           />
           <Text
             style={[
               styles.segmentText,
-              { color: colors.primary },
+              { color: colors.text },
               activeTab === "tracker" && [styles.segmentTextActive, { color: colors.onPrimaryFill }],
             ]}
           >
@@ -1381,12 +1378,12 @@ export const GroupDetailScreen = ({ route, navigation }) => {
           <Ionicons
             name="people-outline"
             size={16}
-            color={activeTab === "members" ? colors.onPrimaryFill : colors.primary}
+            color={activeTab === "members" ? colors.onPrimaryFill : colors.text}
           />
           <Text
             style={[
               styles.segmentText,
-              { color: colors.primary },
+              { color: colors.text },
               activeTab === "members" && [styles.segmentTextActive, { color: colors.onPrimaryFill }],
             ]}
           >

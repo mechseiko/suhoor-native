@@ -177,6 +177,25 @@ const ProfileScreen = () => {
     }
   };
 
+  const handleToggleSoundEnabled = async (value) => {
+    if (!currentUser?.uid) return;
+    try {
+      setIsUpdatingSettings(true);
+      await updateDoc(doc(db, COLLECTIONS.profiles, currentUser.uid), {
+        "preferences.soundEnabled": value,
+      });
+      showToast(
+        value ? "Audible alarms turned on" : "Audible alarms turned off",
+        "info"
+      );
+    } catch (err) {
+      console.error("Failed to update sound preference:", err);
+      showToast("Failed to update sound preference", "error");
+    } finally {
+      setIsUpdatingSettings(false);
+    }
+  };
+
   const showToast = (msg, type) => {
     setToastMessage(msg);
     setToastType(type);
@@ -1337,6 +1356,32 @@ const ProfileScreen = () => {
 
               <View style={styles.sectionDivider} />
 
+              <View style={styles.settingRow}>
+                <View style={styles.settingInfo}>
+                  <Text
+                    style={[styles.settingLabel, themedStyles.settingLabel]}
+                  >
+                    Audible Alarms & Sounds
+                  </Text>
+                  <Text style={[styles.settingSub, themedStyles.settingSub]}>
+                    Play audio when your Suhoor alarm rings or when buzzed by group members
+                  </Text>
+                </View>
+                <Switch
+                  value={userProfile?.preferences?.soundEnabled ?? true}
+                  onValueChange={handleToggleSoundEnabled}
+                  trackColor={{ false: "#767577", true: Colors.primary }}
+                  thumbColor={
+                    (userProfile?.preferences?.soundEnabled ?? true)
+                      ? Colors.secondary
+                      : "#f4f3f4"
+                  }
+                  disabled={isUpdatingSettings}
+                />
+              </View>
+
+              <View style={styles.sectionDivider} />
+
               <View style={styles.cardHeader}>
                 <View>
                   <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
@@ -1540,19 +1585,19 @@ const ProfileScreen = () => {
               <TouchableOpacity
                 style={styles.supportLinkRow}
                 onPress={() =>
-                  Linking.openURL("mailto:support@suhoor-group.com")
+                  Linking.openURL("mailto:suhoorapp@gmail.com")
                 }
               >
                 <View style={styles.supportLinkInfo}>
                   <Ionicons
-                    name="mail-outline"
+                    name="chatbubble-outline"
                     size={20}
                     color={colors.textSecondary}
                   />
                   <Text
                     style={[styles.supportLabel, themedStyles.supportLabel]}
                   >
-                    {t("profile.contactSupport", "Contact Support")}
+                    {t("profile.sendFeedback", "Send us a feedback")}
                   </Text>
                 </View>
                 <Ionicons
@@ -1561,6 +1606,8 @@ const ProfileScreen = () => {
                   color={colors.textSecondary}
                 />
               </TouchableOpacity>
+
+
             </View>
           </View>
         )}

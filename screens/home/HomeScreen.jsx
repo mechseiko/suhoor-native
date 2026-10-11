@@ -13,6 +13,7 @@ import StatsCard from '../../components/StatsCard';
 import ProfileSidebar from '../../components/ProfileSidebar';
 import UpdateModal from '../../components/UpdateModal';
 import { checkAppUpdate } from '../../services/versionService';
+import { presentNotification } from '../../services/notifications';
 import { Badge, Button, Card, IconTile, Screen, Text } from '../../components/ui';
 import { brand, radius, spacing } from '../../theme';
 import { useState, useEffect, useRef } from 'react';
@@ -88,11 +89,26 @@ export const HomeScreen = ({ navigation }) => {
       if (val) setLastSeenNotifications(Number(val));
     });
 
+    let isFirst = true;
     const q = query(collection(db, 'notifications'), orderBy('created_at', 'desc'), limit(20));
     const unsub = onSnapshot(q, snap => {
       const list = [];
       snap.forEach(d => list.push({ id: d.id, ...d.data() }));
       setNotifications(list);
+
+      if (!isFirst) {
+        snap.docChanges().forEach(change => {
+          if (change.type === 'added') {
+            const data = change.doc.data();
+            presentNotification({
+              title: `${data.emoji || '🌙'} ${data.title}`,
+              message: data.message || '',
+              data: { id: change.doc.id, type: 'broadcast' }
+            });
+          }
+        });
+      }
+      isFirst = false;
     }, err => console.log('Error fetching notifications:', err));
 
     return () => unsub();
@@ -158,8 +174,15 @@ export const HomeScreen = ({ navigation }) => {
         where('user_id', '==', currentUser.uid)
       );
       const wakeUpSnap = await getDocs(wakeUpQuery);
-      setTotalFastingDays(wakeUpSnap.size);
-      console.log('[HomeScreen] Total fasting days:', wakeUpSnap.size);
+      // Count distinct days, not documents: legacy logs were added with random
+      // IDs, so the same day could hold several docs and inflate the stat.
+      const distinctFastingDays = new Set(
+        wakeUpSnap.docs
+          .map((logDoc) => logDoc.data().date)
+          .filter(Boolean)
+      );
+      setTotalFastingDays(distinctFastingDays.size);
+      console.log('[HomeScreen] Total fasting days:', distinctFastingDays.size);
 
       // 4. Determine fasting status for last 7 days for a nice visual widget (based on actual wake-ups)
       const last7DaysStatus = [];
@@ -243,8 +266,17 @@ export const HomeScreen = ({ navigation }) => {
     }
 
     try {
-      // Save PIN to AsyncStorage (matching onboarding flow)
+      // Save PIN to AsyncStorage (matching onboarding flow)...
       await AsyncStorage.setItem('suhoor_alarm_pin', entered);
+
+      // ...and to the Firestore profile, same as ProfileScreen.saveAlarmPin.
+      // The "Set Your Alarm PIN" card keys off userProfile.pin, so without
+      // this write the card could never be dismissed.
+      if (currentUser) {
+        await updateDoc(doc(db, COLLECTIONS.profiles, currentUser.uid), {
+          pin: entered,
+        });
+      }
 
       setPinError('');
       setShowPinModal(false);
@@ -372,6 +404,47 @@ export const HomeScreen = ({ navigation }) => {
       ) : <FastingPrompt />}
 
       <AudioModeWarning />
+
+      {/* Sound Disabled Disclaimer Card */}
+      {userProfile?.preferences?.soundEnabled === false && (
+        <Card style={[styles.pinPromptCard, { borderColor: '#EF4444', borderWidth: 1.5, backgroundColor: alpha('#EF4444', 0.05) }]}>
+          <View style={styles.cardHeader}>
+            <View style={[styles.iconContainer, { backgroundColor: alpha('#EF4444', 0.12) }]}>
+              <Ionicons name="volume-mute" size={20} color="#EF4444" />
+            </View>
+            <View style={styles.cardHeaderText}>
+              <Text variant="h3" style={{ color: '#EF4444' }}>Alarm Audio is Turned Off</Text>
+              <Text variant="caption" tone="secondary">
+                Your alarms and group member wake-up buzzes will not make any sound because audible alarms are disabled in your settings.
+              </Text>
+            </View>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+            <Button
+              title="Turn On Sound"
+              onPress={async () => {
+                if (currentUser?.uid) {
+                  try {
+                    await updateDoc(doc(db, COLLECTIONS.profiles, currentUser.uid), {
+                      'preferences.soundEnabled': true,
+                    });
+                  } catch (err) {
+                    console.error('Failed to enable sound:', err);
+                  }
+                }
+              }}
+              variant="primary"
+              style={{ flex: 1, borderRadius: 8 }}
+            />
+            <Button
+              title="Settings"
+              onPress={() => navigation.navigate('ProfileTab')}
+              variant="secondary"
+              style={{ borderRadius: 8, paddingHorizontal: 16 }}
+            />
+          </View>
+        </Card>
+      )}
 
       <View style={styles.section}>
         <Text variant="h3">{t('home.dashboardStats')}</Text>

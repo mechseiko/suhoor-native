@@ -170,12 +170,14 @@ export const DEFAULT_PREFERENCES = {
  * Both apps must write the same shape or the Settings screen has no
  * fastingDefaults to toggle and getDefaultIntention silently falls back.
  */
-export const newProfileDoc = ({ uid, email, displayName }) => ({
+export const newProfileDoc = ({ uid, email, displayName, signupSource = 'mobile', platform = 'mobile' }) => ({
   uid,
   email,
   display_name: displayName || (email ? email.split('@')[0] : ''),
   isVerified: false,
   createdAt: new Date().toISOString(),
+  signupSource,
+  platform,
   fastingDefaults: { ...DEFAULT_FASTING_DEFAULTS },
   preferences: { ...DEFAULT_PREFERENCES },
 })

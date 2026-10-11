@@ -5,6 +5,7 @@ import {
   signOut,
   onAuthStateChanged,
   deleteUser,
+  reload,
 } from "firebase/auth";
 import { auth, db } from "../config/firebase";
 import { doc, onSnapshot, updateDoc } from "firebase/firestore";

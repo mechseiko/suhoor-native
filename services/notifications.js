@@ -25,6 +25,7 @@ export const CHANNELS = {
   suhoorEnd: { id: 'suhoor-end', name: 'Suhoor Ending' },
   iftar: { id: 'suhoor-iftar', name: 'Iftar Time' },
   iftarReminder: { id: 'suhoor-iftar-reminder', name: 'Iftar Reminder' },
+  general: { id: 'suhoor-general', name: 'Announcements & Updates' },
 }
 
 let pushNotification = null
@@ -236,6 +237,35 @@ export const getScheduledNotifications = () =>
     )
   })
 
+export const presentNotification = async ({
+  title,
+  message,
+  channel = CHANNELS.general,
+  data = {},
+}) => {
+  const Push = getModule()
+  if (!Push) return null
+
+  await ensureChannel(channel)
+  try {
+    Push.localNotification({
+      channelId: channel.id,
+      title,
+      message,
+      playSound: true,
+      soundName: 'default',
+      vibrate: true,
+      importance: 'high',
+      priority: 'high',
+      userInfo: data,
+    })
+    return true
+  } catch (error) {
+    console.error('Failed to present notification:', error)
+    return null
+  }
+}
+
 export default {
   CHANNELS,
   isAvailable,
@@ -245,6 +275,7 @@ export default {
   checkPermissions,
   requestPermissions,
   scheduleNotification,
+  presentNotification,
   cancelNotification,
   getScheduledNotifications,
   notificationIdFor,

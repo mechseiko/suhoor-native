@@ -169,9 +169,10 @@ export const SignupScreen = ({ navigation }) => {
         city: locationDetails.city || "",
         pin: alarmPin, // Save the alarm PIN from onboarding
         createdAt: serverTimestamp(),
+        signupSource: 'mobile',
+        platform: 'mobile',
         fastingDefaults,
         preferences: {
-          buzzNotifications: true,
           soundEnabled: true,
           alarmSound: "default",
         },

@@ -30,6 +30,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
 
   const [group, setGroup] = useState(null);
   const [isAdmin, setIsAdmin] = useState(initialIsAdmin || false);
+  const [adminList, setAdminList] = useState(Array.isArray(admins) ? admins : []);
   const [loading, setLoading] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [isUpdatingSetting, setIsUpdatingSetting] = useState(false);
@@ -205,10 +206,15 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
   };
 
   const handleContactAdmin = () => {
-    const adminNames = admins.map((a) => a?.profiles?.display_name || a?.profiles?.email || 'Admin').join(', ');
+    const listToUse = adminList.length > 0 ? adminList : admins;
+    const adminNames = listToUse
+      .map((a) => a?.profiles?.display_name || a?.profiles?.email || 'Admin')
+      .filter(Boolean)
+      .join('\n• ');
+
     Alert.alert(
       t('groups.groupAdmins', 'Group Admins'),
-      adminNames ? `Admins: ${adminNames}` : t('groups.noAdminFound', 'No admin found'),
+      adminNames ? `Group Admin(s):\n• ${adminNames}` : t('groups.noAdminFound', 'No admin found for this group'),
       [{ text: t('common.ok', 'OK') }]
     );
   };
@@ -290,6 +296,37 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     fetchGroupDetails();
+
+    const fetchAdmins = async () => {
+      if (!groupId) return;
+      try {
+        const q = query(
+          collection(db, COLLECTIONS.groupMembers),
+          where('group_id', '==', groupId),
+          where('role', '==', 'admin')
+        );
+        const snap = await getDocs(q);
+        const list = [];
+        for (const docSnap of snap.docs) {
+          const mData = docSnap.data();
+          if (mData.user_id) {
+            const pSnap = await getDoc(doc(db, COLLECTIONS.profiles, mData.user_id));
+            list.push({
+              id: docSnap.id,
+              ...mData,
+              profiles: pSnap.exists() ? pSnap.data() : { display_name: 'Admin' },
+            });
+          }
+        }
+        if (list.length > 0) {
+          setAdminList(list);
+        }
+      } catch (adminErr) {
+        console.error('Error fetching group admins:', adminErr);
+      }
+    };
+
+    fetchAdmins();
   }, [groupId]);
 
   if (loading) {

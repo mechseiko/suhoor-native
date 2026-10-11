@@ -67,13 +67,16 @@ if (Platform.OS === "web" && typeof document !== "undefined") {
 
 export default function App() {
   const [fontsLoaded] = useFonts(fontAssets);
+  const [fontTimeout, setFontTimeout] = useState(false);
 
   // Configure push notifications on app start
   useEffect(() => {
     configureNotifications();
+    const t = setTimeout(() => setFontTimeout(true), 2500);
+    return () => clearTimeout(t);
   }, []);
 
-  if (!fontsLoaded && Platform.OS === "web") {
+  if (!fontsLoaded && !fontTimeout && Platform.OS === "web") {
     return <LogoLoader />;
   }
 

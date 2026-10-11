@@ -67,6 +67,16 @@ const TOPICS = [
     isInteractiveDuas: true,
   },
   {
+    id: "books",
+    icon: "book",
+    color: "#8B5CF6",
+    titleKey: "learn.topic.books",
+    titleDefault: "Books",
+    subtitleKey: "learn.topic.booksSub",
+    subtitleDefault: "Authentic books on fasting and spirituality",
+    isBooks: true,
+  },
+  {
     id: "sunnah",
     icon: "sunny",
     color: "#F59E0B",
@@ -100,7 +110,7 @@ const TOPICS = [
       {
         heading: "5. Increasing Acts of Charity",
         body: "Those who fast should strive to increase acts of charity towards others, especially by providing food or drinks for breaking the fast:",
-        arabic: "مَنْ فَطَّرَ صَائِمًا، كُتِبَ لَهُ مِثْلُ أَجْرِهِ، إِلَّا أَنَّهُ لَا يَنْقُصُ مِنْ أَجْرِ الصَّائِمِ شَيْءٌ",
+        arabic: "مَنْ فَطَّرَ صَائِمًا، كُتِبَ لَهُ مِثْلُ أَجْرِهِ، إِلَّا أَنَّهُ لَا يَنْقَصُ مِنْ أَجْرِ الصَّائِمِ شَيْءٌ",
         arabicTrans: '"Whoever feeds a fasting person will have a reward like that of the fasting person, without any reduction in his reward." (Narrated by Ahmad)',
       },
       {
@@ -250,6 +260,8 @@ export const LearnScreen = ({ navigation }) => {
   const handleCardPress = (topic) => {
     if (topic.isInteractiveDuas) {
       navigation.navigate("Duas");
+    } else if (topic.isBooks) {
+      navigation.navigate("Books");
     } else {
       setSelectedTopic(topic);
     }
@@ -268,66 +280,48 @@ export const LearnScreen = ({ navigation }) => {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       >
-        {TOPICS.map((topic) => {
-          const title = t(topic.titleKey, topic.titleDefault);
-          const subtitle = t(topic.subtitleKey, topic.subtitleDefault);
+        <View style={styles.gridContainer}>
+          {TOPICS.map((topic) => {
+            const title = t(topic.titleKey, topic.titleDefault);
+            const subtitle = t(topic.subtitleKey, topic.subtitleDefault);
 
-          return (
-            <TouchableOpacity
-              key={topic.id}
-              activeOpacity={0.75}
-              onPress={() => handleCardPress(topic)}
-              style={[
-                styles.card,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                },
-              ]}
-            >
-              <View
+            return (
+              <TouchableOpacity
+                key={topic.id}
+                activeOpacity={0.75}
+                onPress={() => handleCardPress(topic)}
                 style={[
-                  styles.iconWrap,
-                  { backgroundColor: topic.color + "18" },
+                  styles.gridCard,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
                 ]}
               >
-                <Ionicons name={topic.icon} size={22} color={topic.color} />
-              </View>
+                <View
+                  style={[
+                    styles.gridIconWrap,
+                    { backgroundColor: topic.color + "18" },
+                  ]}
+                >
+                  <Ionicons name={topic.icon} size={26} color={topic.color} />
+                </View>
 
-              <View style={styles.cardTitleWrap}>
-                <View style={styles.titleRow}>
-                  <Text style={[styles.cardTitle, { color: colors.text }]}>
+                <View style={{ flex: 1, justifyContent: "space-between" }}>
+                  <Text style={[styles.gridCardTitle, { color: colors.text }]} numberOfLines={2}>
                     {title}
                   </Text>
-                  {topic.isInteractiveDuas && (
-                    <View
-                      style={[
-                        styles.badge,
-                        { backgroundColor: topic.color + "18" },
-                      ]}
-                    >
-                      <Text style={[styles.badgeText, { color: topic.color }]}>
-                        Interactive
-                      </Text>
-                    </View>
-                  )}
+                  <Text
+                    style={[styles.gridCardSub, { color: colors.textSecondary }]}
+                    numberOfLines={2}
+                  >
+                    {subtitle}
+                  </Text>
                 </View>
-                <Text
-                  style={[styles.cardSub, { color: colors.textSecondary }]}
-                  numberOfLines={2}
-                >
-                  {subtitle}
-                </Text>
-              </View>
-
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={colors.textSecondary}
-              />
-            </TouchableOpacity>
-          );
-        })}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
         <View style={{ height: 32 }} />
       </ScrollView>
 
@@ -410,57 +404,26 @@ export const LearnScreen = ({ navigation }) => {
               {selectedTopic?.sections?.map((sec, i) => (
                 <View
                   key={i}
-                  style={[
-                    styles.sectionItem,
-                    { borderLeftColor: (selectedTopic.color || colors.primary) + "66" },
-                  ]}
+                  style={styles.sectionBlock}
                 >
-                  {sec.heading ? (
-                    <Text
-                      style={[
-                        styles.sectionHeading,
-                        { color: selectedTopic.color || colors.primary },
-                      ]}
-                    >
-                      {sec.heading}
+                  <Text style={[styles.sectionHeading, { color: colors.text }]}>
+                    {sec.heading}
+                  </Text>
+                  <Text style={[styles.sectionBody, { color: colors.textSecondary }]}>
+                    {sec.body}
+                  </Text>
+                  {sec.arabic && (
+                    <Text style={[styles.arabicText, { color: colors.text }]}>
+                      {sec.arabic}
                     </Text>
-                  ) : null}
-
-                  {sec.arabic ? (
-                    <View
-                      style={[
-                        styles.arabicBox,
-                        { backgroundColor: colors.surfaceVariant || "#F9FAFB" },
-                      ]}
-                    >
-                      <Text
-                        style={[styles.arabicText, { color: colors.text }]}
-                      >
-                        {sec.arabic}
-                      </Text>
-                      {sec.arabicTrans ? (
-                        <Text
-                          style={[
-                            styles.arabicTrans,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          {sec.arabicTrans}
-                        </Text>
-                      ) : null}
-                    </View>
-                  ) : null}
-
-                  {sec.body ? (
-                    <Text
-                      style={[styles.sectionBody, { color: colors.text }]}
-                    >
-                      {sec.body}
+                  )}
+                  {sec.arabicTrans && (
+                    <Text style={[styles.arabicTrans, { color: colors.textSecondary }]}>
+                      {sec.arabicTrans}
                     </Text>
-                  ) : null}
+                  )}
                 </View>
               ))}
-              <View style={{ height: 20 }} />
             </ScrollView>
           </View>
         </View>
@@ -470,135 +433,166 @@ export const LearnScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
-  intro: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 10 },
-  introText: { fontSize: 13.5, lineHeight: 19 },
-  listContent: { paddingHorizontal: 14, paddingVertical: 6 },
+  screen: {
+    flex: 1,
+  },
+  intro: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  introText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  listContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
   card: {
     flexDirection: "row",
     alignItems: "center",
     padding: 16,
     borderRadius: 16,
-    marginBottom: 12,
     borderWidth: 1,
-    columnGap: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 1,
+    marginBottom: 12,
+  },
+  gridContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: 14,
+  },
+  gridCard: {
+    width: "48%",
+    padding: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    minHeight: 160,
+  },
+  gridIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  gridCardTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 6,
+    letterSpacing: -0.2,
+  },
+  gridCardSub: {
+    fontSize: 12,
+    lineHeight: 16,
   },
   iconWrap: {
     width: 44,
     height: 44,
-    borderRadius: 14,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
+    marginRight: 14,
   },
-  cardTitleWrap: { flex: 1 },
+  cardTitleWrap: {
+    flex: 1,
+  },
   titleRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 3,
+    marginBottom: 4,
   },
-  cardTitle: { fontSize: 15, fontWeight: "700" },
-  cardSub: { fontSize: 12, lineHeight: 16 },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginRight: 8,
+  },
   badge: {
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-    marginLeft: 6,
+    paddingVertical: 3,
+    borderRadius: 12,
   },
   badgeText: {
-    fontSize: 10,
-    fontWeight: "700",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  cardSub: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
     justifyContent: "flex-end",
   },
   modalSheet: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: "85%",
-    paddingBottom: 24,
+    height: "85%",
+    overflow: "hidden",
   },
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    padding: 16,
     borderBottomWidth: 1,
   },
   modalHeaderLeft: {
     flexDirection: "row",
     alignItems: "center",
-    columnGap: 12,
     flex: 1,
-    marginRight: 10,
   },
   modalIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
+    marginRight: 12,
   },
   modalTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 2,
+    fontSize: 17,
+    fontWeight: "600",
   },
   modalSub: {
-    fontSize: 11.5,
+    fontSize: 13,
+    marginTop: 2,
   },
   closeBtn: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
   },
   modalBody: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
+    padding: 20,
   },
-  sectionItem: {
-    borderLeftWidth: 3,
-    paddingLeft: 14,
-    marginTop: 18,
+  sectionBlock: {
+    marginBottom: 24,
   },
   sectionHeading: {
-    fontSize: 14.5,
-    fontWeight: "700",
+    fontSize: 16,
+    fontWeight: "600",
     marginBottom: 8,
   },
   sectionBody: {
-    fontSize: 13.5,
-    lineHeight: 21,
-  },
-  arabicBox: {
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.04)",
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 8,
   },
   arabicText: {
-    fontSize: 19,
-    lineHeight: 34,
+    fontSize: 18,
     textAlign: "right",
-    fontWeight: "600",
+    marginBottom: 6,
+    fontFamily: "System",
   },
   arabicTrans: {
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 20,
     fontStyle: "italic",
-    textAlign: "left",
-    marginTop: 8,
   },
 });
 
