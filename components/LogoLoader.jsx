@@ -5,7 +5,7 @@ import Animated, { FadeIn } from 'react-native-reanimated'
 export const LogoLoader = () => {
   const [messageIndex, setMessageIndex] = useState(0)
   const loadingMessages = [
-    'Setting your alarms...',    
+    'Checking your alarms...',    
     'Pulling your fasting times...',
     'Bundling your experience...',
     'Loading your groups...',

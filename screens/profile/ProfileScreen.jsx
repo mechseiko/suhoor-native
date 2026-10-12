@@ -41,7 +41,7 @@ import { getCurrentVersion, getLatestPlayStoreVersion, compareVersions } from ".
 import { Audio } from "expo-av";
 import { ALARM_SOUND_OPTIONS, getAlarmSoundUri } from "../../utils/soundGenerator";
 
-const ProfileScreen = () => {
+const ProfileScreen = ({ route }) => {
   const { currentUser, userProfile, logout, deleteAccount } = useAuth();
   const { colors, themeMode, setThemeMode, isDark } = useTheme();
   const { t, isRTL } = useLanguage();
@@ -56,7 +56,54 @@ const ProfileScreen = () => {
     }).catch(() => {});
   }, []);
 
-  const [activeTab, setActiveTab] = useState("profile"); // 'profile' | 'security' | 'preferences' | 'about'
+  const getInitialTab = () => {
+    const fromRoute = route?.params?.tab || route?.params?.initialTab;
+    if (fromRoute) return fromRoute;
+    if (Platform.OS === "web" && typeof window !== "undefined" && window.location) {
+      try {
+        const searchParams = new URLSearchParams(window.location.search);
+        const urlTab = searchParams.get("tab");
+        if (urlTab) return urlTab;
+      } catch (_) {}
+    }
+    return "profile";
+  };
+
+  const [activeTab, setActiveTab] = useState(getInitialTab);
+
+  React.useEffect(() => {
+    const targetTab = route?.params?.tab || route?.params?.initialTab;
+    if (targetTab) {
+      setActiveTab(targetTab);
+    }
+  }, [route?.params?.tab, route?.params?.initialTab]);
+
+  React.useEffect(() => {
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      const handlePopState = () => {
+        try {
+          const searchParams = new URLSearchParams(window.location.search);
+          const urlTab = searchParams.get("tab");
+          if (urlTab) {
+            setActiveTab(urlTab);
+          }
+        } catch (_) {}
+      };
+      window.addEventListener("popstate", handlePopState);
+      return () => window.removeEventListener("popstate", handlePopState);
+    }
+  }, []);
+
+  const changeTab = (tabKey) => {
+    setActiveTab(tabKey);
+    if (Platform.OS === "web" && typeof window !== "undefined" && window.history) {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set("tab", tabKey);
+        window.history.replaceState({}, "", url.toString());
+      } catch (_) {}
+    }
+  };
   const [displayName, setDisplayName] = useState(
     userProfile?.display_name || ""
   );
@@ -137,12 +184,16 @@ const ProfileScreen = () => {
     }
     await stopAudioPreview();
     try {
-      await Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: true,
-      });
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+        });
+      } catch (_) {}
+
       const synthUri = getAlarmSoundUri(soundId);
       let soundObj = null;
+
       if (synthUri) {
         const { sound } = await Audio.Sound.createAsync(
           { uri: synthUri },
@@ -150,12 +201,23 @@ const ProfileScreen = () => {
         );
         soundObj = sound;
       } else {
-        const { sound } = await Audio.Sound.createAsync(
-          { uri: "android.resource://com.mechseiko.suhoor/raw/alarm_sound" },
-          { shouldPlay: true, isLooping: true, volume: 1.0 }
-        );
-        soundObj = sound;
+        // Fallback for native Android raw resource or synthesized default
+        try {
+          const { sound } = await Audio.Sound.createAsync(
+            { uri: "android.resource://com.mechseiko.suhoor/raw/alarm_sound" },
+            { shouldPlay: true, isLooping: true, volume: 1.0 }
+          );
+          soundObj = sound;
+        } catch (_) {
+          const fallbackUri = getAlarmSoundUri("default");
+          const { sound } = await Audio.Sound.createAsync(
+            { uri: fallbackUri },
+            { shouldPlay: true, isLooping: true, volume: 1.0 }
+          );
+          soundObj = sound;
+        }
       }
+
       previewSoundRef.current = soundObj;
       setPlayingPreview(soundId);
     } catch (err) {
@@ -691,7 +753,7 @@ const ProfileScreen = () => {
                 ? [styles.segmentBtnActive, { backgroundColor: colors.primary }]
                 : styles.segmentBtnInactive,
             ]}
-            onPress={() => setActiveTab("profile")}
+            onPress={() => changeTab("profile")}
             activeOpacity={0.8}
           >
             <Ionicons
@@ -729,7 +791,7 @@ const ProfileScreen = () => {
                 ? [styles.segmentBtnActive, { backgroundColor: colors.primary }]
                 : styles.segmentBtnInactive,
             ]}
-            onPress={() => setActiveTab("security")}
+            onPress={() => changeTab("security")}
             activeOpacity={0.8}
           >
             <Ionicons
@@ -767,7 +829,7 @@ const ProfileScreen = () => {
                 ? [styles.segmentBtnActive, { backgroundColor: colors.primary }]
                 : styles.segmentBtnInactive,
             ]}
-            onPress={() => setActiveTab("preferences")}
+            onPress={() => changeTab("preferences")}
             activeOpacity={0.8}
           >
             <Ionicons
@@ -805,7 +867,7 @@ const ProfileScreen = () => {
                 ? [styles.segmentBtnActive, { backgroundColor: colors.primary }]
                 : styles.segmentBtnInactive,
             ]}
-            onPress={() => setActiveTab("about")}
+            onPress={() => changeTab("about")}
             activeOpacity={0.8}
           >
             <Ionicons
@@ -1597,7 +1659,7 @@ const ProfileScreen = () => {
                   <Text
                     style={[styles.supportLabel, themedStyles.supportLabel]}
                   >
-                    {t("profile.sendFeedback", "Send us a feedback")}
+                    {t("profile.contactSupport", "Contact Support")}
                   </Text>
                 </View>
                 <Ionicons

@@ -6,9 +6,14 @@ import {
   onAuthStateChanged,
   deleteUser,
   reload,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from "firebase/auth";
 import { auth, db } from "../config/firebase";
-import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { detectUserLocationDetails } from "../utils/country";
 
 const AuthContext = createContext({});
 
@@ -26,6 +31,104 @@ export const AuthProvider = ({ children }) => {
 
   const login = (email, password) => {
     return signInWithEmailAndPassword(auth, email, password);
+  };
+
+  const signInWithGoogle = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.addScope("profile");
+      provider.addScope("email");
+
+      const userCredential = await signInWithPopup(auth, provider);
+      const user = userCredential.user;
+
+      // Check if user profile exists in Firestore, if not create it
+      const profileDoc = await getDoc(doc(db, "profiles", user.uid));
+      if (!profileDoc.exists()) {
+        let alarmPin = "";
+        let fastingDefaults = {
+          sunnah: true,
+          whiteDays: true,
+          ramadan: true,
+        };
+
+        try {
+          alarmPin = (await AsyncStorage.getItem("suhoor_alarm_pin")) || "";
+          const storedDefaults = await AsyncStorage.getItem(
+            "onboarding_fasting_defaults"
+          );
+          if (storedDefaults) {
+            fastingDefaults = JSON.parse(storedDefaults);
+          }
+        } catch (storageErr) {
+          console.log(
+            "Error reading AsyncStorage during Google sign-in:",
+            storageErr
+          );
+        }
+
+        let userCountry = "Unknown";
+        let state = "";
+        let city = "";
+        try {
+          const locationDetails = await detectUserLocationDetails();
+          userCountry = locationDetails.locationString || "Unknown";
+          state = locationDetails.state || "";
+          city = locationDetails.city || "";
+        } catch (locErr) {
+          console.log("Error detecting location during Google sign-in:", locErr);
+        }
+
+        await setDoc(doc(db, "profiles", user.uid), {
+          uid: user.uid,
+          email: user.email,
+          display_name:
+            user.displayName ||
+            (user.email ? user.email.split("@")[0] : "User"),
+          isVerified: user.emailVerified ?? true,
+          country: userCountry,
+          state,
+          city,
+          pin: alarmPin,
+          createdAt: serverTimestamp(),
+          signupSource: Platform.OS === "web" ? "web" : "mobile",
+          platform: Platform.OS === "web" ? "web" : "mobile",
+          fastingDefaults,
+          preferences: {
+            soundEnabled: true,
+            alarmSound: "default",
+          },
+        });
+
+        try {
+          await AsyncStorage.setItem("suhoor-tab-tour-pending", "true");
+        } catch (tourErr) {
+          console.log("Error setting tab tour flag:", tourErr);
+        }
+      } else {
+        // Sync alarm pin if set in local storage
+        try {
+          const alarmPin = await AsyncStorage.getItem("suhoor_alarm_pin");
+          if (alarmPin && !profileDoc.data()?.pin) {
+            await updateDoc(doc(db, "profiles", user.uid), { pin: alarmPin });
+          }
+        } catch (pinErr) {
+          console.log("Error syncing alarm PIN during Google sign-in:", pinErr);
+        }
+
+        // Sync verification status if needed
+        if (user.emailVerified && !profileDoc.data()?.isVerified) {
+          await updateDoc(doc(db, "profiles", user.uid), {
+            isVerified: true,
+          }).catch(() => {});
+        }
+      }
+
+      return userCredential;
+    } catch (error) {
+      console.error("signInWithGoogle error:", error);
+      throw error;
+    }
   };
 
   const logout = async () => {
@@ -88,7 +191,12 @@ export const AuthProvider = ({ children }) => {
   const reloadUser = async () => {
     if (auth.currentUser) {
       await reload(auth.currentUser);
-      setCurrentUser(Object.assign(Object.create(Object.getPrototypeOf(auth.currentUser)), auth.currentUser));
+      setCurrentUser(
+        Object.assign(
+          Object.create(Object.getPrototypeOf(auth.currentUser)),
+          auth.currentUser
+        )
+      );
       return auth.currentUser;
     }
   };
@@ -100,6 +208,7 @@ export const AuthProvider = ({ children }) => {
     profileLoading,
     signup,
     login,
+    signInWithGoogle,
     logout,
     deleteAccount,
     reloadUser,

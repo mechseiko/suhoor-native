@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
-import { TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, Pressable, TouchableOpacity, View } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAuth } from '../../context/AuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useTheme } from '../../context/ThemeContext'
 import AuthWrapper from '../../components/AuthWrapper'
 import { Button, Input, Text } from '../../components/ui'
+import { GoogleIcon } from '../../components/GoogleIcon'
 import { db } from '../../config/firebase'
 import { COLLECTIONS } from '../../config/firestoreSchema'
 import { doc, updateDoc, getDoc } from 'firebase/firestore'
@@ -17,7 +18,8 @@ export const LoginScreen = ({ navigation }) => {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { login, logout } = useAuth()
+  const [googleLoading, setGoogleLoading] = useState(false)
+  const { login, logout, signInWithGoogle } = useAuth()
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -97,6 +99,53 @@ export const LoginScreen = ({ navigation }) => {
     }
   }
 
+  const handleGoogleSignIn = async () => {
+    setError('')
+    setGoogleLoading(true)
+
+    try {
+      const userCredential = await signInWithGoogle()
+      const user = userCredential.user
+
+      // Sync alarm PIN from AsyncStorage to profile if it exists
+      try {
+        const alarmPin = await AsyncStorage.getItem('suhoor_alarm_pin')
+        if (alarmPin) {
+          const profileRef = doc(db, COLLECTIONS.profiles, user.uid)
+          await updateDoc(profileRef, { pin: alarmPin })
+        }
+      } catch (syncErr) {
+        console.log('Error syncing alarm PIN on Google sign-in:', syncErr)
+      }
+
+      // Navigate to main app on successful Google login
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'MainTabs' }],
+      })
+    } catch (err) {
+      console.error('Google sign-in error:', err)
+      let errorMessage = t('auth.googleSignInError', 'Failed to sign in with Google')
+
+      if (
+        err.code === 'auth/popup-closed-by-user' ||
+        err.code === 'auth/cancelled-popup-request'
+      ) {
+        errorMessage = t('auth.googleSignInCancelled', 'Sign-in cancelled')
+      } else if (err.code === 'auth/popup-blocked') {
+        errorMessage = t('auth.popupBlocked', 'Sign-in popup was blocked. Please allow popups.')
+      } else if (err.code === 'auth/network-request-failed') {
+        errorMessage = t('auth.networkError')
+      } else if (err.message) {
+        errorMessage = err.message
+      }
+
+      setError(errorMessage)
+    } finally {
+      setGoogleLoading(false)
+    }
+  }
+
   return (
     <AuthWrapper
       title={t('auth.welcomeBack')}
@@ -146,9 +195,80 @@ export const LoginScreen = ({ navigation }) => {
         title={t('auth.login')}
         onPress={handleLogin}
         loading={loading}
+        disabled={googleLoading}
         variant="primary"
         style={{ borderRadius: 8 }}
       />
+
+      {/* Divider */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          marginVertical: 24,
+        }}
+      >
+        <View
+          style={{
+            flex: 1,
+            height: 1,
+            backgroundColor: colors.border || '#E5E7EB',
+          }}
+        />
+        <Text
+          style={{
+            marginHorizontal: 16,
+            color: colors.textTertiary || '#6B7280',
+            fontSize: 14,
+            fontWeight: '400',
+          }}
+        >
+          {t('auth.or', 'or')}
+        </Text>
+        <View
+          style={{
+            flex: 1,
+            height: 1,
+            backgroundColor: colors.border || '#E5E7EB',
+          }}
+        />
+      </View>
+
+      {/* Google Sign In Button */}
+      <Pressable
+        onPress={handleGoogleSignIn}
+        disabled={googleLoading || loading}
+        accessibilityRole="button"
+        style={({ pressed }) => ({
+          height: 50,
+          borderRadius: 8,
+          borderWidth: 1,
+          borderColor: colors.border || '#D1D5DB',
+          backgroundColor: colors.card || '#FFFFFF',
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          columnGap: 10,
+          opacity: (googleLoading || loading) ? 0.5 : pressed ? 0.85 : 1,
+        })}
+      >
+        {googleLoading ? (
+          <ActivityIndicator size="small" color={colors.text || '#374151'} />
+        ) : (
+          <>
+            <GoogleIcon size={20} />
+            <Text
+              style={{
+                color: colors.text || '#374151',
+                fontWeight: '500',
+                fontSize: 15,
+              }}
+            >
+              {t('auth.signInWithGoogle', 'Sign in with Google')}
+            </Text>
+          </>
+        )}
+      </Pressable>
     </AuthWrapper>
   )
 }

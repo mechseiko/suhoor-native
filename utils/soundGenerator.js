@@ -202,6 +202,48 @@ export const generatePulseSoundUri = () => {
 };
 
 /**
+ * Generates "Default Suhoor" alarm:
+ * A classic, energetic, loud wake-up electronic tone with an alternating dual-frequency cadence.
+ */
+export const generateDefaultSoundUri = () => {
+  if (soundCache.default) return soundCache.default;
+
+  const sampleRate = 22050;
+  const duration = 2.4; // seconds
+  const totalSamples = Math.floor(sampleRate * duration);
+  const samples = new Float32Array(totalSamples);
+
+  for (let i = 0; i < totalSamples; i++) {
+    const t = i / sampleRate;
+    const cycle = t % 1.2;
+    const isBeep1 = cycle < 0.12;
+    const isBeep2 = cycle > 0.18 && cycle < 0.30;
+    const isBeep3 = cycle > 0.36 && cycle < 0.48;
+    const isBeep4 = cycle > 0.54 && cycle < 0.66;
+
+    if (isBeep1 || isBeep2 || isBeep3 || isBeep4) {
+      let subT;
+      if (isBeep1) subT = cycle / 0.12;
+      else if (isBeep2) subT = (cycle - 0.18) / 0.12;
+      else if (isBeep3) subT = (cycle - 0.36) / 0.12;
+      else subT = (cycle - 0.54) / 0.12;
+
+      const env = Math.sin(Math.PI * subT);
+      const freq = (isBeep1 || isBeep3) ? 880 : 1046.5; // A5 / C6
+      const s1 = Math.sin(2 * Math.PI * freq * t);
+      const s2 = 0.3 * Math.sin(2 * Math.PI * freq * 2 * t);
+      const s3 = 0.15 * Math.sin(2 * Math.PI * freq * 3 * t);
+      samples[i] = (s1 + s2 + s3) * env * 0.85;
+    } else {
+      samples[i] = 0;
+    }
+  }
+
+  soundCache.default = createWavDataUri(samples, sampleRate);
+  return soundCache.default;
+};
+
+/**
  * Returns sound URI or identifier for a given sound key.
  */
 export const getAlarmSoundUri = (soundKey) => {
@@ -214,7 +256,7 @@ export const getAlarmSoundUri = (soundKey) => {
       return generatePulseSoundUri();
     case 'default':
     default:
-      return null; // Signals to use native default alarm sound
+      return generateDefaultSoundUri();
   }
 };
 

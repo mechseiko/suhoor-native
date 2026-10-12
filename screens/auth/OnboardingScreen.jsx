@@ -1210,6 +1210,7 @@ export const OnboardingScreen = ({ onComplete }) => {
     }
     // Location and battery optimization are now optional - remove mandatory checks
     setRequirementError("");
+    
 
     // Validate PIN before advancing past the PIN step
     if (current.isPin) {
@@ -1286,26 +1287,6 @@ export const OnboardingScreen = ({ onComplete }) => {
               Suhoor
             </Text>
           </View>
-
-          {/* {!isLastStep ? (
-            <TouchableOpacity
-              onPress={onComplete}
-              hitSlop={12}
-              accessibilityRole="button"
-              accessibilityLabel="Skip onboarding"
-              style={{ paddingVertical: 4, paddingHorizontal: 8 }}
-            >
-              <Text variant="label" tone="secondary" style={{
-                fontFamily: 'Quicksand-Regular',
-                fontSize: 14,
-                fontWeight: '600'
-              }}>
-                {t('onboarding.skip', 'Skip')}
-              </Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={{ width: 48 }} />
-          )} */}
         </View>
 
         {/* Center Content */}

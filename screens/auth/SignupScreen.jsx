@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, TouchableOpacity, Linking } from "react-native";
+import { View, TouchableOpacity, Linking, ActivityIndicator, Pressable } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../../context/AuthContext";
@@ -7,11 +7,12 @@ import { useTheme } from "../../context/ThemeContext";
 import { useLanguage } from "../../context/LanguageContext";
 import AuthWrapper from "../../components/AuthWrapper";
 import { Button, Input, Text } from "../../components/ui";
+import { GoogleIcon } from "../../components/GoogleIcon";
 import { db, auth } from "../../config/firebase";
 import { doc, setDoc, serverTimestamp, updateDoc, getDoc } from "firebase/firestore";
 import { reload, sendEmailVerification } from "firebase/auth";
 import { validatePassword } from "../../utils/passwordUtils";
-import { detectUserCountry, detectUserLocationDetails } from "../../utils/country";
+import { detectUserLocationDetails } from "../../utils/country";
 
 export const SignupScreen = ({ navigation }) => {
   const { colors } = useTheme();
@@ -22,12 +23,13 @@ export const SignupScreen = ({ navigation }) => {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [showVerificationScreen, setShowVerificationScreen] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
   const [verificationChecking, setVerificationChecking] = useState(false);
   const [notice, setNotice] = useState("");
-  const { signup, reloadUser } = useAuth();
+  const { signup, reloadUser, signInWithGoogle } = useAuth();
 
   useEffect(() => {
     if (resendCooldown <= 0) return undefined;
@@ -185,7 +187,7 @@ export const SignupScreen = ({ navigation }) => {
         console.log("Error setting tab tour flag:", tourFlagErr);
       }
 
-      // 3. Send Firebase email verification (built-in Firebase syntax)
+      // 4. Send Firebase email verification (built-in Firebase syntax)
       try {
         await sendEmailVerification(user, {
           url: "https://suhoor-group.web.app/login",
@@ -211,6 +213,47 @@ export const SignupScreen = ({ navigation }) => {
     }
   };
 
+  const handleGoogleSignUp = async () => {
+    setError("");
+    setNotice("");
+
+    if (!acceptedTerms) {
+      setError(t("auth.agreeTermsError"));
+      return;
+    }
+
+    setGoogleLoading(true);
+
+    try {
+      await signInWithGoogle();
+      // Google accounts are pre-verified, navigate straight to main app
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "MainTabs" }],
+      });
+    } catch (err) {
+      console.error("Google sign-up error:", err);
+      let errorMessage = t("auth.googleSignUpError", "Failed to sign up with Google");
+
+      if (
+        err.code === "auth/popup-closed-by-user" ||
+        err.code === "auth/cancelled-popup-request"
+      ) {
+        errorMessage = t("auth.googleSignInCancelled", "Sign-in cancelled");
+      } else if (err.code === "auth/popup-blocked") {
+        errorMessage = t("auth.popupBlocked", "Sign-in popup was blocked. Please allow popups.");
+      } else if (err.code === "auth/network-request-failed") {
+        errorMessage = t("auth.networkError");
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
+      setError(errorMessage);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   return (
     <AuthWrapper
       title={
@@ -220,7 +263,7 @@ export const SignupScreen = ({ navigation }) => {
       }
       subtitle={
         showVerificationScreen
-          ? t("auth.verificationEmailSent")
+          ? ""
           : t("auth.signupSubtitle")
       }
       error={error}
@@ -241,78 +284,79 @@ export const SignupScreen = ({ navigation }) => {
     >
       {showVerificationScreen ? (
         <>
-        <View
-          style={{
-            backgroundColor: "#ECFDF5",
-            borderColor: "#A7F3D0",
-            borderWidth: 1,
-            borderRadius: 8,
-            padding: 16,
-            marginBottom: 20,
-            alignItems: "center",
-          }}
-        >
-          <Ionicons
-            name="mail-outline"
-            size={48}
-            color="#059669"
-            style={{ marginBottom: 12 }}
+          <View
+            style={{
+              backgroundColor: "#ECFDF5",
+              borderColor: "#A7F3D0",
+              borderWidth: 1,
+              borderRadius: 8,
+              padding: 16,
+              marginBottom: 20,
+            }}
+          >
+            <Text
+              style={{
+                color: "#065F46",
+                fontSize: 16,
+                fontWeight: "700",
+                marginBottom: 8,
+              }}
+            >
+              {t("auth.verificationEmailSent")}
+            </Text>
+            <Text
+              style={{
+                color: "#047857",
+                fontSize: 14,
+                lineHeight: 20,
+                marginBottom: 8,
+              }}
+            >
+              {t("auth.verificationEmailSentTo")}:
+            </Text>
+            <Text
+              style={{
+                color: "#065F46",
+                fontSize: 14,
+                fontWeight: "700",
+              }}
+            >
+              {userEmail}
+            </Text>
+          </View>
+
+          {notice ? (
+            <Text
+              style={{
+                color: "#059669",
+                fontSize: 14,
+                fontWeight: "600",
+                textAlign: "center",
+                marginBottom: 16,
+              }}
+            >
+              {notice}
+            </Text>
+          ) : null}
+
+          <Button
+            title={
+              resendCooldown > 0
+                ? t("auth.resendIn", { seconds: resendCooldown })
+                : t("auth.resendVerification")
+            }
+            onPress={resendVerification}
+            disabled={resendCooldown > 0}
+            variant="outline"
           />
-          <Text
-            style={{
-              color: "#065F46",
-              fontSize: 16,
-              fontWeight: "600",
-              textAlign: "center",
-              marginBottom: 8,
-            }}
-          >
-            {t("auth.verificationEmailSentTo")}
-          </Text>
-          <Text
-            style={{
-              color: "#065F46",
-              fontSize: 18,
-              fontWeight: "700",
-              textAlign: "center",
-            }}
-          >
-            {userEmail}
-          </Text>
-        </View>
 
-        {notice ? (
-          <Text
-            style={{
-              color: "#059669",
-              fontSize: 14,
-              fontWeight: "600",
-              textAlign: "center",
-              marginBottom: 16,
-            }}
-          >
-            {notice}
-          </Text>
-        ) : null}
-
-        <Button
-          title={
-            resendCooldown > 0
-              ? t("auth.resendIn", { seconds: resendCooldown })
-              : t("auth.resendVerification")
-          }
-          onPress={resendVerification}
-          disabled={resendCooldown > 0}
-          variant="outline"
-        />
-
-        <Button
-          title={t("auth.checkVerification")}
-          onPress={checkVerification}
-          loading={verificationChecking}
-          variant="primary"
-          style={{ marginTop: 12, borderRadius: 8 }}
-        />
+          <Button
+            title={t("auth.checkVerification")}
+            onPress={checkVerification}
+            loading={verificationChecking}
+            variant="primary"
+            style={{ marginTop: 6, borderRadius: 8 }}
+          />
         </>
       ) : (
         <>
@@ -419,9 +463,80 @@ export const SignupScreen = ({ navigation }) => {
             title={t("auth.signup")}
             onPress={handleSignup}
             loading={loading}
+            disabled={googleLoading}
             variant="primary"
             style={{ borderRadius: 8 }}
           />
+
+          {/* Divider */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginVertical: 24,
+            }}
+          >
+            <View
+              style={{
+                flex: 1,
+                height: 1,
+                backgroundColor: colors.border || "#E5E7EB",
+              }}
+            />
+            <Text
+              style={{
+                marginHorizontal: 16,
+                color: colors.textTertiary || "#6B7280",
+                fontSize: 14,
+                fontWeight: "400",
+              }}
+            >
+              {t("auth.or", "or")}
+            </Text>
+            <View
+              style={{
+                flex: 1,
+                height: 1,
+                backgroundColor: colors.border || "#E5E7EB",
+              }}
+            />
+          </View>
+
+          {/* Google Sign Up Button */}
+          <Pressable
+            onPress={handleGoogleSignUp}
+            disabled={googleLoading || loading}
+            accessibilityRole="button"
+            style={({ pressed }) => ({
+              height: 50,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: colors.border || "#D1D5DB",
+              backgroundColor: colors.card || "#FFFFFF",
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              columnGap: 10,
+              opacity: (googleLoading || loading) ? 0.5 : pressed ? 0.85 : 1,
+            })}
+          >
+            {googleLoading ? (
+              <ActivityIndicator size="small" color={colors.text || "#374151"} />
+            ) : (
+              <>
+                <GoogleIcon size={20} />
+                <Text
+                  style={{
+                    color: colors.text || "#374151",
+                    fontWeight: "500",
+                    fontSize: 15,
+                  }}
+                >
+                  {t("auth.signUpWithGoogle", "Sign up with Google")}
+                </Text>
+              </>
+            )}
+          </Pressable>
         </>
       )}
     </AuthWrapper>

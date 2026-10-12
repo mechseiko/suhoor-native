@@ -12,6 +12,7 @@ import {
   Dimensions,
   RefreshControl,
   Animated,
+  Platform,
 } from 'react-native';
 
 import { useFastingTimes } from '../../hooks/useFastingTimes';
@@ -671,7 +672,17 @@ export const FastingTimesScreen = ({ navigation }) => {
               <Text style={{ fontSize: 12, color: colors.textSecondary }}>{t('fastingTimes.defaultAlarmSub')}</Text>
             </View>
             <TouchableOpacity
-              onPress={() => navigation?.navigate?.('ProfileTab') || navigation?.navigate?.('Profile')}
+              onPress={() => {
+                if (Platform.OS === 'web' && typeof window !== 'undefined' && window.history) {
+                  try {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('tab', 'preferences');
+                    window.history.pushState({}, '', url.toString());
+                  } catch (_) {}
+                }
+                navigation?.navigate?.('ProfileTab', { tab: 'preferences', screen: 'ProfileTab', params: { tab: 'preferences' } }) ||
+                navigation?.navigate?.('Profile', { tab: 'preferences' });
+              }}
               style={{ backgroundColor: colors.primary + '15', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 }}
             >
               <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary }}>Change Sound</Text>
@@ -679,7 +690,17 @@ export const FastingTimesScreen = ({ navigation }) => {
           </View>
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => navigation?.navigate?.('ProfileTab') || navigation?.navigate?.('Profile')}
+            onPress={() => {
+              if (Platform.OS === 'web' && typeof window !== 'undefined' && window.history) {
+                try {
+                  const url = new URL(window.location.href);
+                  url.searchParams.set('tab', 'preferences');
+                  window.history.pushState({}, '', url.toString());
+                } catch (_) {}
+              }
+              navigation?.navigate?.('ProfileTab', { tab: 'preferences', screen: 'ProfileTab', params: { tab: 'preferences' } }) ||
+              navigation?.navigate?.('Profile', { tab: 'preferences' });
+            }}
             style={{
               flexDirection: 'row', alignItems: 'center', columnGap: 12,
               paddingVertical: 14, paddingHorizontal: 14,

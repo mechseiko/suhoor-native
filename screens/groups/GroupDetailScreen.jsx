@@ -183,6 +183,14 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     fetchGroupAndMembers();
   }, [groupId, currentUser]);
 
+  const isOnline = (userId) => {
+    return Array.isArray(onlineMembers) && onlineMembers.includes(userId);
+  };
+
+  const getWakeUpStatus = (userId) => {
+    return wakeUpLogs.some((log) => log.user_id === userId);
+  };
+
   // Helper to determine member status based on time and check-in
   const getMemberStatus = (member) => {
     if (!member?.profiles) return "sleeping";
@@ -533,7 +541,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
 
   const handleCopyInviteLink = async () => {
     if (!group) return;
-    const link = `https://suhoorapp.cv/groups?groupKey=${group.group_key}`;
+    const link = `https://suhoor-group.web.app/groups?groupKey=${group.group_key}`;
     await copyToClipboard(link);
     triggerToast(t('groups.inviteLinkCopied'), "success");
   };
@@ -973,14 +981,6 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     }
   };
 
-  const getWakeUpStatus = (userId) => {
-    return wakeUpLogs.some((log) => log.user_id === userId);
-  };
-
-  const isOnline = (userId) => {
-    return onlineMembers.includes(userId);
-  };
-
   // Render member rows
   const renderMemberItem = ({ item }) => {
     if (!item?.profiles) return null;
@@ -1249,7 +1249,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       {/* Group Info Card */}
       <View style={[styles.groupHeaderCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.groupTitleRow}>
-          {isEditingName ? (
+          {/* {isEditingName ? (
             <View style={styles.editRow}>
               <TextInput
                 style={[styles.editInput, { borderColor: colors.primary, color: colors.text }]}
@@ -1287,7 +1287,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                 </TouchableOpacity>
               )}
             </View>
-          )}
+          )} */}
 
           {isNetworkConnected && (
             <View style={[styles.liveBadge, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.12)' }]}>
