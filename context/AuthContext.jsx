@@ -85,6 +85,8 @@ export const AuthProvider = ({ children }) => {
           display_name:
             user.displayName ||
             (user.email ? user.email.split("@")[0] : "User"),
+          avatar_url: user.photoURL || null,
+          photoURL: user.photoURL || null,
           isVerified: user.emailVerified ?? true,
           country: userCountry,
           state,
@@ -106,6 +108,14 @@ export const AuthProvider = ({ children }) => {
           console.log("Error setting tab tour flag:", tourErr);
         }
       } else {
+        // Sync avatar from Google if not yet set in profile
+        if (user.photoURL && !profileDoc.data()?.avatar_url && !profileDoc.data()?.photoURL) {
+          await updateDoc(doc(db, "profiles", user.uid), {
+            avatar_url: user.photoURL,
+            photoURL: user.photoURL,
+          }).catch(() => {});
+        }
+
         // Sync alarm pin if set in local storage
         try {
           const alarmPin = await AsyncStorage.getItem("suhoor_alarm_pin");

@@ -12,7 +12,12 @@ import {
   Linking,
   Modal,
   Pressable,
+  Image,
 } from "react-native";
+import {
+  uploadProfilePicture,
+  deleteProfilePicture,
+} from "../../services/cloudinary";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Text } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
@@ -594,6 +599,108 @@ const ProfileScreen = ({ route }) => {
   const initial = (displayName || currentUser?.email || "U")
     .charAt(0)
     .toUpperCase();
+  const avatarUrl = userProfile?.avatar_url || userProfile?.photoURL || currentUser?.photoURL;
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
+  const pickImage = async () => {
+    if (Platform.OS === "web") {
+      return new Promise((resolve) => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+        input.onchange = (e) => {
+          const file = e.target.files?.[0];
+          if (file) resolve(file);
+          else resolve(null);
+        };
+        input.click();
+      });
+    } else {
+      try {
+        const DocumentPicker =
+          require("react-native-document-picker").default ||
+          require("react-native-document-picker");
+        const res = await DocumentPicker.pickSingle({
+          type: [DocumentPicker.types.images],
+          copyTo: "cachesDirectory",
+        });
+        return {
+          uri: res.fileCopyUri || res.uri,
+          type: res.type || "image/jpeg",
+          name: res.name || "avatar.jpg",
+        };
+      } catch (err) {
+        if (err?.code !== "DOCUMENT_PICKER_CANCELED") {
+          console.error("Image pick error:", err);
+        }
+        return null;
+      }
+    }
+  };
+
+  const handleUploadAvatar = async () => {
+    if (!currentUser) return;
+    try {
+      const file = await pickImage();
+      if (!file) return;
+
+      setIsUploadingAvatar(true);
+      const { url, publicId } = await uploadProfilePicture(file, currentUser.uid);
+
+      await updateDoc(doc(db, COLLECTIONS.profiles, currentUser.uid), {
+        avatar_url: url,
+        photoURL: url,
+        avatar_public_id: publicId,
+      });
+
+      if (currentUser) {
+        await updateProfile(currentUser, { photoURL: url }).catch(() => {});
+      }
+
+      setToastMessage(t("profile.photoUpdated", "Profile picture updated successfully!"));
+      setToastType("success");
+      setToastVisible(true);
+    } catch (error) {
+      console.error("Avatar upload failed:", error);
+      setToastMessage(error.message || t("profile.uploadFailed", "Failed to upload profile picture"));
+      setToastType("error");
+      setToastVisible(true);
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    if (!currentUser) return;
+    try {
+      setIsUploadingAvatar(true);
+      const publicId = userProfile?.avatar_public_id;
+      if (publicId) {
+        await deleteProfilePicture(publicId).catch(() => {});
+      }
+
+      await updateDoc(doc(db, COLLECTIONS.profiles, currentUser.uid), {
+        avatar_url: null,
+        photoURL: null,
+        avatar_public_id: null,
+      });
+
+      if (currentUser) {
+        await updateProfile(currentUser, { photoURL: null }).catch(() => {});
+      }
+
+      setToastMessage(t("profile.photoRemoved", "Profile picture removed"));
+      setToastType("info");
+      setToastVisible(true);
+    } catch (error) {
+      console.error("Avatar delete failed:", error);
+      setToastMessage(t("profile.removeFailed", "Failed to remove profile picture"));
+      setToastType("error");
+      setToastVisible(true);
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
 
   // Check if PIN has actually changed
   const hasPinChanged = alarmPin.join("") !== originalPin.join("");
@@ -686,8 +793,12 @@ const ProfileScreen = ({ route }) => {
       >
         {/* Profile Avatar Header Banner */}
         <View style={styles.headerBanner}>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarInitial}>{initial}</Text>
+          <View style={[styles.avatarCircle, { overflow: 'hidden' }]}>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.avatarBannerImage} />
+            ) : (
+              <Text style={styles.avatarInitial}>{initial}</Text>
+            )}
           </View>
           <View style={styles.headerInfo}>
             <View style={styles.nameRow}>
@@ -902,6 +1013,103 @@ const ProfileScreen = ({ route }) => {
         {/* Tab 1: Profile */}
         {activeTab === "profile" && (
           <View>
+            {/* Profile Picture Card */}
+            <View style={[styles.card, themedStyles.card]}>
+              <View style={styles.cardHeader}>
+                <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
+                  {t("profile.profilePicture", "Profile Picture")}
+                </Text>
+              </View>
+
+              <View style={styles.avatarUploadRow}>
+                <View
+                  style={[
+                    styles.avatarUploadCircle,
+                    {
+                      backgroundColor: isDark
+                        ? colors.surfaceVariant
+                        : "rgba(61, 31, 148, 0.08)",
+                    },
+                  ]}
+                >
+                  {avatarUrl ? (
+                    <Image
+                      source={{ uri: avatarUrl }}
+                      style={styles.avatarUploadImage}
+                    />
+                  ) : (
+                    <Text
+                      style={[
+                        styles.avatarUploadInitial,
+                        { color: colors.primary },
+                      ]}
+                    >
+                      {initial}
+                    </Text>
+                  )}
+                  {isUploadingAvatar && (
+                    <View style={styles.avatarLoadingOverlay}>
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    </View>
+                  )}
+                </View>
+
+                <View style={styles.avatarUploadActions}>
+                  <TouchableOpacity
+                    style={[
+                      styles.avatarChangeBtn,
+                      { backgroundColor: colors.primary },
+                    ]}
+                    onPress={handleUploadAvatar}
+                    disabled={isUploadingAvatar}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name="camera-outline"
+                      size={16}
+                      color={colors.onPrimaryFill || "#FFFFFF"}
+                    />
+                    <Text
+                      style={[
+                        styles.avatarChangeBtnText,
+                        { color: colors.onPrimaryFill || "#FFFFFF" },
+                      ]}
+                    >
+                      {avatarUrl
+                        ? t("profile.changePhoto", "Change Photo")
+                        : t("profile.uploadPhoto", "Upload Photo")}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {avatarUrl ? (
+                    <TouchableOpacity
+                      style={[
+                        styles.avatarRemoveBtn,
+                        { borderColor: colors.border },
+                      ]}
+                      onPress={handleRemoveAvatar}
+                      disabled={isUploadingAvatar}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons
+                        name="trash-outline"
+                        size={15}
+                        color={colors.error || "#EF4444"}
+                      />
+                      <Text
+                        style={[
+                          styles.avatarRemoveBtnText,
+                          { color: colors.error || "#EF4444" },
+                        ]}
+                      >
+                        {t("common.remove", "Remove")}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              </View>
+            </View>
+
             <View style={[styles.card, themedStyles.card]}>
               <View style={styles.cardHeader}>
                 <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
@@ -1877,6 +2085,74 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "bold",
     color: Colors.white,
+  },
+  avatarBannerImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  avatarUploadRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    columnGap: 16,
+    paddingVertical: 4,
+  },
+  avatarUploadCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    position: "relative",
+    borderWidth: 2,
+    borderColor: "rgba(61, 31, 148, 0.15)",
+  },
+  avatarUploadImage: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+  },
+  avatarUploadInitial: {
+    fontSize: 26,
+    fontWeight: "800",
+  },
+  avatarLoadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarUploadActions: {
+    flex: 1,
+    rowGap: 8,
+  },
+  avatarChangeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    columnGap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+  },
+  avatarChangeBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  avatarRemoveBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    columnGap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  avatarRemoveBtnText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
   headerInfo: {
     flex: 1,

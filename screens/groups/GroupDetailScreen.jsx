@@ -1027,14 +1027,21 @@ export const GroupDetailScreen = ({ route, navigation }) => {
             <View
               style={[
                 styles.memberAvatar,
-                { backgroundColor: isDark ? 'rgba(251, 191, 36, 0.15)' : 'rgba(61, 31, 148, 0.1)' },
+                { backgroundColor: isDark ? 'rgba(251, 191, 36, 0.15)' : 'rgba(61, 31, 148, 0.1)', overflow: 'hidden' },
                 item.role === "admin" && styles.adminAvatar,
               ]}
             >
-              <Text style={[styles.memberAvatarText, { color: isDark ? colors.secondary : colors.primary }]}>
-                {item.profiles.display_name?.charAt(0).toUpperCase() ||
-                  item.profiles.email?.charAt(0).toUpperCase()}
-              </Text>
+              {(item.profiles?.avatar_url || item.profiles?.photoURL) ? (
+                <Image
+                  source={{ uri: item.profiles.avatar_url || item.profiles.photoURL }}
+                  style={styles.memberAvatarImage}
+                />
+              ) : (
+                <Text style={[styles.memberAvatarText, { color: isDark ? colors.secondary : colors.primary }]}>
+                  {item.profiles?.display_name?.charAt(0).toUpperCase() ||
+                    item.profiles?.email?.charAt(0).toUpperCase() || "U"}
+                </Text>
+              )}
             </View>
             {isOnline(item.profiles.id) && (
               <View style={[styles.onlineDot, { backgroundColor: colors.success, borderColor: colors.surface }]} />
@@ -1515,16 +1522,23 @@ export const GroupDetailScreen = ({ route, navigation }) => {
           >
             <View style={[styles.actionModalHandle, { backgroundColor: colors.border }]} />
             <View style={[styles.actionModalHeader, { borderBottomColor: colors.border }]}>
-              <View style={[styles.actionModalAvatar, { backgroundColor: colors.primary }]}>
-                <Text style={[styles.actionModalAvatarText, { color: colors.onPrimaryFill }]}>
-                  {selectedMemberForAction?.profiles?.display_name
-                    ?.charAt(0)
-                    .toUpperCase() ||
-                    selectedMemberForAction?.profiles?.email
+              <View style={[styles.actionModalAvatar, { backgroundColor: colors.primary, overflow: 'hidden' }]}>
+                {(selectedMemberForAction?.profiles?.avatar_url || selectedMemberForAction?.profiles?.photoURL) ? (
+                  <Image
+                    source={{ uri: selectedMemberForAction.profiles.avatar_url || selectedMemberForAction.profiles.photoURL }}
+                    style={styles.actionModalAvatarImage}
+                  />
+                ) : (
+                  <Text style={[styles.actionModalAvatarText, { color: colors.onPrimaryFill }]}>
+                    {selectedMemberForAction?.profiles?.display_name
                       ?.charAt(0)
                       .toUpperCase() ||
-                    "U"}
-                </Text>
+                      selectedMemberForAction?.profiles?.email
+                        ?.charAt(0)
+                        .toUpperCase() ||
+                      "U"}
+                  </Text>
+                )}
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.actionModalName, { color: colors.text }]} numberOfLines={1}>
@@ -1895,6 +1909,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  memberAvatarImage: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+  },
   adminAvatar: {
   },
   memberAvatarText: {
@@ -2197,6 +2216,11 @@ const styles = StyleSheet.create({
     borderRadius: 23,
     alignItems: "center",
     justifyContent: "center",
+  },
+  actionModalAvatarImage: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
   },
   actionModalAvatarText: {
     fontSize: 18,

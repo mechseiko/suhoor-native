@@ -4,6 +4,7 @@ import {
   Alert,
   Animated,
   Dimensions,
+  Image,
   Linking,
   Modal,
   Platform,
@@ -118,6 +119,7 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
     currentUser?.email?.split('@')[0] ||
     'User'
   const userInitial = displayName.charAt(0).toUpperCase()
+  const avatarUrl = userProfile?.avatar_url || userProfile?.photoURL || currentUser?.photoURL
   const email = currentUser?.email || ''
 
   const handleLogout = () => {
@@ -181,8 +183,12 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
           {/* Drawer Header */}
           <View style={[styles.header, { borderBottomColor: colors.border || '#E5E7EB' }]}>
             <View style={styles.userRow}>
-              <View style={[styles.avatarCircle, { backgroundColor: brand.primary }]}>
-                <Text style={styles.avatarInitial}>{userInitial}</Text>
+              <View style={[styles.avatarCircle, { backgroundColor: brand.primary, overflow: 'hidden' }]}>
+                {avatarUrl ? (
+                  <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+                ) : (
+                  <Text style={styles.avatarInitial}>{userInitial}</Text>
+                )}
               </View>
               <View style={styles.userMeta}>
                 <Text variant="h3" numberOfLines={1} style={{ color: colors.text || '#111827' }}>
@@ -456,6 +462,11 @@ const styles = StyleSheet.create({
     borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarImage: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
   },
   avatarInitial: {
     color: '#FFFFFF',
