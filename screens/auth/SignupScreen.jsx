@@ -15,7 +15,7 @@ import { validatePassword } from "../../utils/passwordUtils";
 import { detectUserLocationDetails } from "../../utils/country";
 
 export const SignupScreen = ({ navigation }) => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -511,8 +511,8 @@ export const SignupScreen = ({ navigation }) => {
               height: 50,
               borderRadius: 8,
               borderWidth: 1,
-              borderColor: colors.border || "#D1D5DB",
-              backgroundColor: colors.card || "#FFFFFF",
+              borderColor: isDark ? colors.border : "#D1D5DB",
+              backgroundColor: isDark ? colors.surface : "#FFFFFF",
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "center",
@@ -521,13 +521,13 @@ export const SignupScreen = ({ navigation }) => {
             })}
           >
             {googleLoading ? (
-              <ActivityIndicator size="small" color={colors.text || "#374151"} />
+              <ActivityIndicator size="small" color={isDark ? colors.text : "#374151"} />
             ) : (
               <>
                 <GoogleIcon size={20} />
                 <Text
                   style={{
-                    color: colors.text || "#374151",
+                    color: isDark ? colors.text : "#374151",
                     fontWeight: "500",
                     fontSize: 15,
                   }}

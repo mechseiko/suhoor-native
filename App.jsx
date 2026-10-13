@@ -76,9 +76,6 @@ export default function App() {
     return () => clearTimeout(t);
   }, []);
 
-  if (!fontsLoaded && !fontTimeout && Platform.OS === "web") {
-    return <LogoLoader />;
-  }
 
   // On web, skip SafeAreaProvider to avoid layout issues
   if (Platform.OS === "web") {

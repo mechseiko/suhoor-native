@@ -395,7 +395,6 @@ export const GroupsScreen = ({ navigation }) => {
       await setDoc(groupRef, {
         name: newGroupName.trim(),
         group_key: key,
-        show_on_leaderboard: false,
         key_generated_at: serverTimestamp(),
         created_by: currentUser.uid,
         created_at: serverTimestamp(),

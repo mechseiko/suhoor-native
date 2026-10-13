@@ -118,10 +118,12 @@ export const ensureChannel = async ({ id, name }) => {
       {
         channelId: id,
         channelName: name,
-        importance: 4, // IMPORTANCE_HIGH — a wake-up alarm must break through
+        importance: 5, // IMPORTANCE_HIGH (max) — alarm must wake device
         vibrate: true,
         playSound: true,
         soundName: 'default',
+        // On Android 8+ channels control the sound; use 'default' which maps to
+        // the device's default alarm tone (typically loud).
       },
       created => {
         createdChannels.add(id)
@@ -193,13 +195,20 @@ export const scheduleNotification = async ({
       title,
       message,
       date: date instanceof Date ? date : new Date(date),
-      allowWhileIdle: true, // survives Doze — the whole point of a suhoor alarm
+      allowWhileIdle: true,   // survives Doze — the whole point of a suhoor alarm
       playSound: true,
-      soundName,
+      soundName: 'default',
       vibrate: true,
-      vibration: 1000,
-      importance: 'high',
-      priority: 'high',
+      // Repeating vibration pattern: [wait, vibrate, wait, vibrate, ...] in ms
+      vibration: 500,
+      // Wake the screen and show on lock screen even in DND
+      importance: 'max',
+      priority: 'max',
+      visibility: 'public',
+      ignoreInForeground: false,
+      // Full-screen intent: pops the alarm over the lock screen (requires
+      // USE_FULL_SCREEN_INTENT permission in AndroidManifest.xml)
+      fullScreenIntent: true,
       userInfo: { ...data, semanticId },
     })
     return id

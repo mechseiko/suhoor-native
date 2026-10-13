@@ -6,8 +6,9 @@ import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import AuthStack from './AuthStack'
 import TabNavigator from './TabNavigator'
-import { AppTour } from '../components/AppTour'
+import AppTour from '../components/AppTour'
 import LogoLoader from '../components/LogoLoader'
+import NewUserSplash from '../components/NewUserSplash'
 import { db } from '../config/firebase'
 import { COLLECTIONS } from '../config/firestoreSchema'
 import { doc, getDoc } from 'firebase/firestore'
@@ -29,21 +30,33 @@ export const RootNavigator = () => {
   const [isVerified, setIsVerified] = useState(false)
   const [checkingVerification, setCheckingVerification] = useState(false)
   const [loadTimedOut, setLoadTimedOut] = useState(false)
+  const [showNewUserSplash, setShowNewUserSplash] = useState(null) // null = not yet determined
   const tabBarRef = useRef(null)
 
   useEffect(() => {
     let active = true
     AsyncStorage.getItem('suhoor-onboarding-complete')
       .then(value => {
-        if (active) setOnboardingComplete(value === 'true')
+        const completed = value === 'true'
+        if (active) {
+          setOnboardingComplete(completed)
+          // Show the brand-new-user splash only when:
+          //  1. Onboarding was never completed (fresh install)
+          //  2. There is no currently signed-in user
+          setShowNewUserSplash(!completed && !currentUser ? true : false)
+        }
       })
       .catch(() => {
-        if (active) setOnboardingComplete(false)
+        if (active) {
+          setOnboardingComplete(false)
+          setShowNewUserSplash(!currentUser ? true : false)
+        }
       })
 
     const timer = setTimeout(() => {
       if (active) {
         setOnboardingComplete(prev => (prev === null ? false : prev))
+        setShowNewUserSplash(prev => (prev === null ? false : prev))
         setLoadTimedOut(true)
       }
     }, 4000)
@@ -124,6 +137,11 @@ export const RootNavigator = () => {
       isMounted = false
     }
   }, [currentUser, userProfile])
+
+  // Brand-new user: show the splash once, then dismiss into onboarding
+  if (showNewUserSplash === true || (showNewUserSplash === null && !currentUser)) {
+    return <NewUserSplash onFinish={() => setShowNewUserSplash(false)} />
+  }
 
   if (!loadTimedOut && (loading || onboardingComplete === null || checkingVerification)) {
     return <LogoLoader />

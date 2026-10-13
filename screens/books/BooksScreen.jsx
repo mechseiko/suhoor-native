@@ -135,10 +135,8 @@ export const BooksScreen = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
       >
         {filteredBooks.map((book, idx) => (
-          <TouchableOpacity
+          <View
             key={idx}
-            activeOpacity={0.8}
-            onPress={() => openBook(book.file)}
             style={[
               styles.bookCard,
               {
@@ -193,7 +191,7 @@ export const BooksScreen = ({ navigation }) => {
                 <Text style={styles.readButtonText}>Read PDF</Text>
               </TouchableOpacity>
             </View>
-          </TouchableOpacity>
+          </View>
         ))}
 
         {filteredBooks.length === 0 && (

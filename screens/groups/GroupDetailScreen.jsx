@@ -64,8 +64,6 @@ export const GroupDetailScreen = ({ route, navigation }) => {
   const { todayData } = useFastingTimes();
   const { recordActivity, celebration, dismissCelebration } = useGamification();
 
-  // Tab state: 'tracker' | 'members'
-  const [activeTab, setActiveTab] = useState("tracker");
 
   // Group metadata
   const [group, setGroup] = useState(null);
@@ -78,7 +76,6 @@ export const GroupDetailScreen = ({ route, navigation }) => {
   const [newGroupName, setNewGroupName] = useState(groupName);
   const [savingName, setSavingName] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [showLeaderboard, setShowLeaderboard] = useState(false); // Leaderboard visibility toggle
 
   // Wake up logs and intentions
   const [wakeUpLogs, setWakeUpLogs] = useState([]);
@@ -135,8 +132,6 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       if (groupSnap.exists()) {
         const groupData = { id: groupSnap.id, ...groupSnap.data() };
         setGroup(groupData);
-        // Set leaderboard visibility from group data (default to false)
-        setShowLeaderboard(groupData.show_on_leaderboard || false);
       }
 
       // Set members loading state
@@ -511,23 +506,6 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     }
   };
 
-  const handleToggleLeaderboard = async () => {
-    if (!groupId) return;
-    try {
-      const groupRef = doc(db, COLLECTIONS.groups, groupId);
-      await updateDoc(groupRef, { show_on_leaderboard: !showLeaderboard });
-      setShowLeaderboard(!showLeaderboard);
-      setGroup((prev) => ({ ...prev, show_on_leaderboard: !showLeaderboard }));
-      triggerToast(
-        `Group ${!showLeaderboard ? "added to" : "removed from"} leaderboard.`,
-        "success"
-      );
-    } catch (err) {
-      console.error(err);
-      triggerToast(t('groups.leaderboardUpdateError'), "error");
-    }
-  };
-
   const handleShareKey = async () => {
     if (!group) return;
     if (group?.only_admins_invite && !isCurrentUserAdmin) {
@@ -871,8 +849,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     const targetUserId = member.profiles?.id || member.user_id;
     Alert.alert(
       "Remove Member",
-      `Are you sure you want to remove ${
-        member.profiles.display_name || member.profiles.email
+      `Are you sure you want to remove ${member.profiles.display_name || member.profiles.email
       } from the group? They will be permanently barred from re-entering.`,
       [
         { text: t('common.cancel'), style: "cancel" },
@@ -952,7 +929,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     let savedPin = "";
     try {
       savedPin = (await AsyncStorage.getItem("suhoor_alarm_pin")) || "";
-    } catch {}
+    } catch { }
     if (savedPin && entered !== savedPin) {
       setPinError("Incorrect PIN. Try again.");
       setPinDigits(["", "", "", ""]);
@@ -1096,11 +1073,11 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                       Awake
                       {wakeUpLog
                         ? ` (${new Date(
-                            wakeUpLog.woke_up_at
-                          ).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })})`
+                          wakeUpLog.woke_up_at
+                        ).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })})`
                         : ""}
                     </Text>
                   </View>
@@ -1269,56 +1246,14 @@ export const GroupDetailScreen = ({ route, navigation }) => {
 
       {/* Group Info Card */}
       <View style={[styles.groupHeaderCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <View style={styles.groupTitleRow}>
-          {/* {isEditingName ? (
-            <View style={styles.editRow}>
-              <TextInput
-                style={[styles.editInput, { borderColor: colors.primary, color: colors.text }]}
-                value={newGroupName}
-                onChangeText={setNewGroupName}
-                autoFocus
-              />
-              <TouchableOpacity
-                style={[styles.editSaveBtn, { backgroundColor: colors.primary }]}
-                onPress={handleSaveGroupName}
-                disabled={savingName}
-              >
-                {savingName ? (
-                  <ActivityIndicator color={colors.onPrimaryFill} size="small" />
-                ) : (
-                  <Text style={[styles.editSaveText, { color: colors.onPrimaryFill }]}>Save</Text>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.editCancelBtn, { backgroundColor: colors.surfaceVariant }]}
-                onPress={() => setIsEditingName(false)}
-              >
-                <Text style={[styles.editCancelText, { color: colors.text }]}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.titleDisplayRow}>
-              <Text style={[styles.groupTitleText, { color: colors.text }]}>{group?.name}</Text>
-              {isCurrentUserAdmin && (
-                <TouchableOpacity
-                  onPress={() => setIsEditingName(true)}
-                  style={styles.editIconBtn}
-                >
-                  <Ionicons name="pencil" size={16} color={colors.primary} />
-                </TouchableOpacity>
-              )}
-            </View>
-          )} */}
-
+        <View style={styles.groupDetailsRow}>
           {isNetworkConnected && (
             <View style={[styles.liveBadge, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.12)' }]}>
               <View style={[styles.liveDot, { backgroundColor: colors.success }]} />
               <Text style={[styles.liveText, { color: colors.success }]}>Live</Text>
             </View>
           )}
-        </View>
 
-        <View style={styles.groupDetailsRow}>
           <View style={[styles.keyBadge, { backgroundColor: colors.surfaceVariant }]}>
             <Ionicons
               name="key"
@@ -1331,6 +1266,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
               <Ionicons name="copy-outline" size={12} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
+
           <Text style={[styles.membersCountText, { color: colors.textSecondary }]}>
             {members.length} {members.length === 1 ? "member" : "members"}
           </Text>
@@ -1340,14 +1276,14 @@ export const GroupDetailScreen = ({ route, navigation }) => {
           {(!group?.only_admins_invite || isCurrentUserAdmin) && (
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-              onPress={handleShareKey}
+              onPress={handleCopyInviteLink}
             >
               <Ionicons
-                name="share-social-outline"
+                name="link-outline"
                 size={16}
                 color={colors.primary}
               />
-              <Text style={[styles.shareBtnText, { color: colors.primary }]}>Invite Link</Text>
+              <Text style={[styles.shareBtnText, { color: colors.primary }]}>Copy Invite</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -1364,127 +1300,48 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         </View>
       </View>
 
-      {/* Segmented Tab Bar */}
-      <View style={[styles.segmentContainer, { backgroundColor: isDark ? 'rgba(251, 191, 36, 0.08)' : 'rgba(61, 31, 148, 0.08)' }]}>
-        <TouchableOpacity
-          style={[
-            styles.segmentBtn,
-            activeTab === "tracker" && [styles.segmentBtnActive, { backgroundColor: colors.primary }],
-          ]}
-          onPress={() => setActiveTab("tracker")}
-          activeOpacity={0.8}
-        >
-          <Ionicons
-            name="alarm-outline"
-            size={16}
-            color={activeTab === "tracker" ? colors.onPrimaryFill : colors.text}
-          />
-          <Text
-            style={[
-              styles.segmentText,
-              { color: colors.text },
-              activeTab === "tracker" && [styles.segmentTextActive, { color: colors.onPrimaryFill }],
-            ]}
-          >
-            Wake Tracker
-          </Text>
-        </TouchableOpacity>
+      {/* Wake Up Tracker Card */}
+      <View style={[styles.trackerCard, { backgroundColor: colors.surface }]}>
+        <View style={[styles.trackerHeader, { borderBottomColor: colors.border }]}>
+          <View style={styles.trackerTitleLeft}>
+            <Text style={[styles.trackerTitle, { color: colors.text }]}>{t('groups.wakeUpTracker')}</Text>
+          </View>
 
-        <TouchableOpacity
-          style={[
-            styles.segmentBtn,
-            activeTab === "members" && [styles.segmentBtnActive, { backgroundColor: colors.primary }],
-          ]}
-          onPress={() => setActiveTab("members")}
-          activeOpacity={0.8}
-        >
-          <Ionicons
-            name="people-outline"
-            size={16}
-            color={activeTab === "members" ? colors.onPrimaryFill : colors.text}
+          {hasWokenUp ? (
+            <View style={styles.awakeSuccess}>
+              <Ionicons
+                name="checkmark-circle"
+                size={16}
+                color={colors.secondary}
+              />
+              <Text style={[styles.awakeSuccessText, { color: colors.secondary }]}>Awake</Text>
+            </View>
+          ) : wantsToFast ? (
+            <View style={[styles.sleepingBadge, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}>
+              <Text style={[styles.sleepingBadgeText, { color: isDark ? '#60A5FA' : '#3B82F6' }]}>Asleep</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {renderBulkBar()}
+
+        {membersLoading ? (
+          <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+            <ActivityIndicator color={colors.primary} size="large" />
+            <Text style={{ marginTop: 12, color: colors.textSecondary, fontSize: 14 }}>
+              {t('groups.fetchingMembers', 'Fetching members...')}
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={members}
+            keyExtractor={(item) => item.id}
+            renderItem={renderMemberItem}
+            contentContainerStyle={styles.membersList}
+            showsVerticalScrollIndicator={false}
           />
-          <Text
-            style={[
-              styles.segmentText,
-              { color: colors.text },
-              activeTab === "members" && [styles.segmentTextActive, { color: colors.onPrimaryFill }],
-            ]}
-          >
-            Group Info
-          </Text>
-        </TouchableOpacity>
+        )}
       </View>
-
-      {activeTab === "tracker" ? (
-        /* Tracker Card */
-        <View style={[styles.trackerCard, { backgroundColor: colors.surface }]}>
-          <View style={[styles.trackerHeader, { borderBottomColor: colors.border }]}>
-            <View style={styles.trackerTitleLeft}>
-              <Text style={[styles.trackerTitle, { color: colors.text }]}>{t('groups.wakeUpTracker')}</Text>
-            </View>
-
-            {hasWokenUp ? (
-              <View style={styles.awakeSuccess}>
-                <Ionicons
-                  name="checkmark-circle"
-                  size={16}
-                  color={colors.secondary}
-                />
-                <Text style={[styles.awakeSuccessText, { color: colors.secondary }]}>Awake</Text>
-              </View>
-            ) : wantsToFast ? (
-              <View style={[styles.sleepingBadge, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}>
-                <Text style={[styles.sleepingBadgeText, { color: isDark ? '#60A5FA' : '#3B82F6' }]}>Asleep</Text>
-              </View>
-            ) : null}
-          </View>
-
-          {renderBulkBar()}
-
-          {membersLoading ? (
-            <View style={{ alignItems: 'center', paddingVertical: 32 }}>
-              <ActivityIndicator color={colors.primary} size="large" />
-              <Text style={{ marginTop: 12, color: colors.textSecondary, fontSize: 14 }}>
-                {t('groups.fetchingMembers', 'Fetching members...')}
-              </Text>
-            </View>
-          ) : (
-            <FlatList
-              data={members}
-              keyExtractor={(item) => item.id}
-              renderItem={renderMemberItem}
-              contentContainerStyle={styles.membersList}
-              showsVerticalScrollIndicator={false}
-            />
-          )}
-        </View>
-      ) : (
-        /* Group Info Card */
-        <View style={[styles.trackerCard, { backgroundColor: colors.surface }]}>
-          <View style={[styles.trackerHeader, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.trackerTitle, { color: colors.text }]}>{t('groups.groupMembers')}</Text>
-          </View>
-
-          {renderBulkBar()}
-
-          {membersLoading ? (
-            <View style={{ alignItems: 'center', paddingVertical: 32 }}>
-              <ActivityIndicator color={colors.primary} size="large" />
-              <Text style={{ marginTop: 12, color: colors.textSecondary, fontSize: 14 }}>
-                {t('groups.fetchingMembers', 'Fetching members...')}
-              </Text>
-            </View>
-          ) : (
-            <FlatList
-              data={members}
-              keyExtractor={(item) => item.id}
-              renderItem={renderMemberItem}
-              contentContainerStyle={styles.membersList}
-              showsVerticalScrollIndicator={false}
-            />
-          )}
-        </View>
-      )}
 
       {/* Buzz Alarm Overlay Modal - Similar to main AlarmOverlay */}
       <Modal visible={isBuzzing} animationType="fade" transparent={false}>
@@ -1694,7 +1551,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
               {/* Buzz Option if eligible */}
               {getMemberStatus(selectedMemberForAction) === "sleeping" &&
                 memberIntentions[selectedMemberForAction?.profiles?.id] !==
-                  false &&
+                false &&
                 selectedMemberForAction?.profiles?.id !== currentUser?.uid &&
                 isMemberInWakeUpWindow(selectedMemberForAction) && (
                   <TouchableOpacity

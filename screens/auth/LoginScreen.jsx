@@ -13,7 +13,7 @@ import { doc, updateDoc, getDoc } from 'firebase/firestore'
 
 export const LoginScreen = ({ navigation }) => {
   const { t } = useLanguage()
-  const { colors } = useTheme()
+  const { colors, isDark } = useTheme()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -243,8 +243,8 @@ export const LoginScreen = ({ navigation }) => {
           height: 50,
           borderRadius: 8,
           borderWidth: 1,
-          borderColor: colors.border || '#D1D5DB',
-          backgroundColor: colors.card || '#FFFFFF',
+          borderColor: isDark ? colors.border : '#D1D5DB',
+          backgroundColor: isDark ? colors.surface || '#1F2937' : '#FFFFFF',
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
@@ -253,13 +253,13 @@ export const LoginScreen = ({ navigation }) => {
         })}
       >
         {googleLoading ? (
-          <ActivityIndicator size="small" color={colors.text || '#374151'} />
+          <ActivityIndicator size="small" color={isDark ? colors.text : '#374151'} />
         ) : (
           <>
             <GoogleIcon size={20} />
             <Text
               style={{
-                color: colors.text || '#374151',
+                color: isDark ? colors.text : '#374151',
                 fontWeight: '500',
                 fontSize: 15,
               }}
