@@ -30,6 +30,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { getDefaultIntention } from '../../utils/fastingUtils'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import Toast from '../../components/Toast'
 import { useSocket } from '../../context/SocketContext'
@@ -166,6 +167,11 @@ export const GroupsScreen = ({ navigation }) => {
         const docSnap = await getDoc(docRef)
         if (docSnap.exists()) {
           setWantsToFast(docSnap.data().wantsToFast !== false)
+        } else {
+          // No recorded answer for today — apply the same default the prompt
+          // does: special days follow the user's fasting defaults, ordinary
+          // days default to not fasting (so the check-in banner stays hidden).
+          setWantsToFast(getDefaultIntention(new Date(), userProfile))
         }
       } catch (err) {
         console.error('Error fetching fasting intention:', err)

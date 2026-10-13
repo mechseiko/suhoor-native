@@ -339,6 +339,12 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         })
       );
       setMemberIntentions(intentions);
+
+      // The tracker header's Awake/Asleep badge reflects the current user's
+      // own intention for today (the doc fetched just above for every member).
+      if (currentUser && currentUser.uid in intentions) {
+        setWantsToFast(intentions[currentUser.uid] !== false);
+      }
     } catch (err) {
       console.error("Error fetching logs and intentions:", err);
     }
@@ -524,6 +530,10 @@ export const GroupDetailScreen = ({ route, navigation }) => {
 
   const handleShareKey = async () => {
     if (!group) return;
+    if (group?.only_admins_invite && !isCurrentUserAdmin) {
+      triggerToast(t('groups.onlyAdminsCanInvite', 'Only group admins can share the invite link'), "info");
+      return;
+    }
     try {
       await Share.share({
         message: `Join my Suhoor group!\nGroup Name: ${group.name}\nGroup Key: ${group.group_key}\nLink: https://suhoor-group.web.app/groups?groupKey=${group.group_key}`,
@@ -535,6 +545,10 @@ export const GroupDetailScreen = ({ route, navigation }) => {
 
   const handleCopyKey = async () => {
     if (!group) return;
+    if (group?.only_admins_invite && !isCurrentUserAdmin) {
+      triggerToast(t('groups.onlyAdminsCanInvite', 'Only group admins can share the group key'), "info");
+      return;
+    }
     await copyToClipboard(group.group_key);
     triggerToast(t('groups.groupKeyCopied'), "success");
   };
@@ -634,6 +648,10 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       return { ok: false, reason: "not_in_window" };
     }
 
+    if (group?.only_admins_buzz && !isCurrentUserAdmin) {
+      return { ok: false, reason: "admins_only" };
+    }
+
     // 5-minute grace period after wake-up time to prevent immediate buzzing
     const wakeUpStr = getMemberWakeUpTime(member);
     if (wakeUpStr && wakeUpStr !== "--:--") {
@@ -684,6 +702,8 @@ export const GroupDetailScreen = ({ route, navigation }) => {
   const getBuzzRejectionMessage = (member, check) => {
     const name = member?.profiles?.display_name || t('groups.member');
     switch (check.reason) {
+      case "admins_only":
+        return t('groups.onlyAdminsCanBuzz', 'Only group admins can send wake-up buzzes');
       case "self":
         return t('groups.cannotBuzzSelf');
       case "not_fasting":
@@ -806,6 +826,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
   };
 
   const isMemberBuzzable = (member) => {
+    if (group?.only_admins_buzz && !isCurrentUserAdmin) return false;
     if (!isStatusVisibleNow()) return false;
     if (!currentUser || !member?.profiles) return false;
     if (member.profiles.id === currentUser.uid) return false;
@@ -1316,17 +1337,19 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         </View>
 
         <View style={styles.actionButtonsRow}>
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onPress={handleShareKey}
-          >
-            <Ionicons
-              name="share-social-outline"
-              size={16}
-              color={colors.primary}
-            />
-            <Text style={[styles.shareBtnText, { color: colors.primary }]}>Invite Link</Text>
-          </TouchableOpacity>
+          {(!group?.only_admins_invite || isCurrentUserAdmin) && (
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              onPress={handleShareKey}
+            >
+              <Ionicons
+                name="share-social-outline"
+                size={16}
+                color={colors.primary}
+              />
+              <Text style={[styles.shareBtnText, { color: colors.primary }]}>Invite Link</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={handleOpenSettings}
@@ -1400,7 +1423,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
               <Text style={[styles.trackerTitle, { color: colors.text }]}>{t('groups.wakeUpTracker')}</Text>
             </View>
 
-            {hasWokenUp || currentUser ? (
+            {hasWokenUp ? (
               <View style={styles.awakeSuccess}>
                 <Ionicons
                   name="checkmark-circle"

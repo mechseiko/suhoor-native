@@ -85,13 +85,17 @@ export const HomeScreen = ({ navigation }) => {
 
   // Notifications listener (Goal 14)
   useEffect(() => {
+    let lastSeen = 0;
     AsyncStorage.getItem('suhoor_notifications_last_seen').then(val => {
-      if (val) setLastSeenNotifications(Number(val));
+      if (val) {
+        lastSeen = Number(val);
+        setLastSeenNotifications(lastSeen);
+      }
     });
 
     let isFirst = true;
     const q = query(collection(db, 'notifications'), orderBy('created_at', 'desc'), limit(20));
-    const unsub = onSnapshot(q, snap => {
+    const unsub = onSnapshot(q, async snap => {
       const list = [];
       snap.forEach(d => list.push({ id: d.id, ...d.data() }));
       setNotifications(list);
@@ -107,6 +111,26 @@ export const HomeScreen = ({ navigation }) => {
             });
           }
         });
+      } else {
+        try {
+          const storedLastSeen = await AsyncStorage.getItem('suhoor_notifications_last_seen');
+          const effectiveLastSeen = storedLastSeen ? Number(storedLastSeen) : lastSeen;
+          if (effectiveLastSeen > 0) {
+            const now = Date.now();
+            const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+            const newUnseen = list.find(n => {
+              const t = n.created_at?.toMillis ? n.created_at.toMillis() : (n.created_at?.seconds ? n.created_at.seconds * 1000 : 0);
+              return t > effectiveLastSeen && (now - t) < ONE_DAY_MS;
+            });
+            if (newUnseen) {
+              presentNotification({
+                title: `${newUnseen.emoji || '🌙'} ${newUnseen.title}`,
+                message: newUnseen.message || '',
+                data: { id: newUnseen.id, type: 'broadcast' }
+              });
+            }
+          }
+        } catch (_) {}
       }
       isFirst = false;
     }, err => console.log('Error fetching notifications:', err));

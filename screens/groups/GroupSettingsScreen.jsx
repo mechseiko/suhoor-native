@@ -945,35 +945,6 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
               />
             </View>
 
-            {/* Approve New Members */}
-            <View style={[styles.switchRow, { borderBottomColor: colors.border }]}>
-              <View style={styles.switchLabelBlock}>
-                <Text style={[styles.switchTitle, { color: colors.text }]}>
-                  {t('groups.approveNewMembers', 'Approve New Members')}
-                </Text>
-                <Text
-                  style={[styles.switchSub, { color: colors.textSecondary }]}
-                >
-                  {requireApproval
-                    ? t('groups.approvalOn', 'Admins must manually approve new joins')
-                    : t(
-                        'groups.approvalOff',
-                        'Anyone with the invite code joins immediately'
-                      )}
-                </Text>
-              </View>
-              <Switch
-                value={requireApproval}
-                disabled={isUpdatingSetting}
-                onValueChange={(val) => {
-                  setRequireApproval(val);
-                  handleUpdateSetting('require_approval', val);
-                }}
-                trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor={requireApproval ? colors.secondary : '#f4f3f4'}
-              />
-            </View>
-
             {/* Show on Leaderboard */}
             <View style={styles.switchRow}>
               <View style={styles.switchLabelBlock}>

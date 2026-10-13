@@ -257,6 +257,9 @@ export const presentNotification = async ({
       vibrate: true,
       importance: 'high',
       priority: 'high',
+      visibility: 'public',
+      allowWhileIdle: true,
+      showWhen: true,
       userInfo: data,
     })
     return true
