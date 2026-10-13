@@ -526,7 +526,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     if (!group) return;
     try {
       await Share.share({
-        message: `Join my Suhoor group network!\nGroup Name: ${group.name}\nGroup Key: ${group.group_key}\nLink: https://suhoor-group.web.app/groups?groupKey=${group.group_key}`,
+        message: `Join my Suhoor group!\nGroup Name: ${group.name}\nGroup Key: ${group.group_key}\nLink: https://suhoor-group.web.app/groups?groupKey=${group.group_key}`,
       });
     } catch (error) {
       console.error("Error sharing key:", error);

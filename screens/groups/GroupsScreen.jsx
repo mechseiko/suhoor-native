@@ -48,9 +48,7 @@ export const GroupsScreen = ({ navigation }) => {
   
   const loadingMessages = [
     'Loading your groups...',
-    'Fetching your fasting community',
-    'Connecting with fellow fasters',
-    'Preparing your group experience...'
+    'Fetching group members',
   ]
 
   useEffect(() => {

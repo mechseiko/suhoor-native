@@ -950,7 +950,7 @@ const FastingRoutineStep = ({ fastingDefaults, setFastingDefaults }) => {
             fontSize: 13,
           }}
         >
-          Suhoor will know when you like to fast and automatically set your alarm for that day, if you let it.
+          We want to know when you like to fast and automatically set your alarm for that day,
           you can always change this anytime in Settings.
         </Text>
       </View>
