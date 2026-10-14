@@ -14,7 +14,7 @@ import {
   View,
 } from 'react-native'
 import { Audio } from 'expo-av'
-import Ionicons from 'react-native-vector-icons/Ionicons'
+import Ionicons from '@expo/vector-icons/Ionicons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAlarm } from '../hooks/useAlarm'
 import { useAuth } from '../context/AuthContext'

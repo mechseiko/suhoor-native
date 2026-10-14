@@ -1,6 +1,6 @@
 import React from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native'
-import Ionicons from 'react-native-vector-icons/Ionicons'
+import Ionicons from '@expo/vector-icons/Ionicons'
 import { useTheme } from '../../context/ThemeContext'
 import Text from './Text'
 import { alpha, brand, neutral } from '../../theme'

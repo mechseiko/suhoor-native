@@ -10,7 +10,6 @@ import { AlarmProvider } from "./context/AlarmContext";
 import { NetworkProvider } from "./context/NetworkContext";
 import AlarmOverlay from "./components/AlarmOverlay";
 import RootNavigator from "./navigation/RootNavigator";
-import Animated, { FadeIn, ZoomIn } from "react-native-reanimated";
 import { configureNotifications } from "./services/notifications";
 import FastingNotificationsManager from "./components/FastingNotificationsManager";
 import NetworkStatusNotification from "./components/NetworkStatusNotification";

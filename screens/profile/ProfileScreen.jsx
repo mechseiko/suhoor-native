@@ -37,7 +37,7 @@ import {
   EmailAuthProvider,
   sendEmailVerification,
 } from "firebase/auth";
-import Ionicons from "react-native-vector-icons/Ionicons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { Colors } from "../../constants/Colors";
 import { COLLECTIONS } from "../../config/firestoreSchema";
 import Toast from "../../components/Toast";

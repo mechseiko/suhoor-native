@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { TextInput, TouchableOpacity, View, StyleSheet } from 'react-native'
-import Ionicons from 'react-native-vector-icons/Ionicons'
+import Ionicons from '@expo/vector-icons/Ionicons'
 import { useTheme } from '../../context/ThemeContext'
 import { useLanguage } from '../../context/LanguageContext'
 import Text from './Text'

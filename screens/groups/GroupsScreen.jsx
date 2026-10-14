@@ -31,7 +31,7 @@ import {
 } from 'firebase/firestore'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { getDefaultIntention } from '../../utils/fastingUtils'
-import Ionicons from 'react-native-vector-icons/Ionicons'
+import Ionicons from '@expo/vector-icons/Ionicons'
 import Toast from '../../components/Toast'
 import { useSocket } from '../../context/SocketContext'
 

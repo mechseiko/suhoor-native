@@ -7,12 +7,14 @@ const USER_LOCATION_KEY = "suhoor_user_location";
 
 // Use community geolocation on native, fall back to browser API on web
 let Geolocation;
-try {
-  Geolocation = require("@react-native-community/geolocation").default;
-  console.log("Using @react-native-community/geolocation");
-} catch (e) {
-  console.log("Failed to load @react-native-community/geolocation:", e);
-  Geolocation = typeof navigator !== "undefined" ? navigator.geolocation : null;
+if (Platform.OS !== 'web') {
+  try {
+    Geolocation = require('@react-native-community/geolocation').default;
+  } catch (e) {
+    Geolocation = null;
+  }
+} else {
+  Geolocation = typeof navigator !== 'undefined' ? navigator.geolocation : null;
 }
 
 /**

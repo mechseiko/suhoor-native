@@ -3,7 +3,7 @@ import { View, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { useNetwork } from '../context/NetworkContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Text } from './ui';
 
 const NetworkStatusNotification = () => {

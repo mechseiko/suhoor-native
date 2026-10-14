@@ -13,7 +13,7 @@ import {
 import { useTheme } from '../../context/ThemeContext'
 import { useLanguage } from '../../context/LanguageContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import Ionicons from 'react-native-vector-icons/Ionicons'
+import Ionicons from '@expo/vector-icons/Ionicons'
 
 const API_BASE = 'https://ummahapi.com/api/duas'
 const CACHE_KEY = 'suhoor_duas_cache'
