@@ -17,6 +17,11 @@
 -keep class com.google.code.gson.** { *; }
 -keepclassmembers class com.google.code.gson.** { *; }
 
+# Facebook image pipeline (fbjni/imagepipeline in react-native deps) references
+# androidx exif utils that are not packaged; harmless, silence R8's missing-class
+# error generated in _app/outputs/mapping/release/missing_rules.txt.
+-dontwarn androidx.exifinterface.media.ExifInterface
+
 # React Native bridge reflection
 -keepclassmembers class * extends com.facebook.react.bridge.ReactContextBaseJavaModule {
    public <init>(...);

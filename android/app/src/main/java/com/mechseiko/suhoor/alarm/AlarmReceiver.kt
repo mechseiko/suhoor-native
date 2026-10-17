@@ -81,15 +81,46 @@ class AlarmReceiver : BroadcastReceiver() {
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.notification_icon)
             .setContentTitle("It's time for suhoor")
-            .setContentText("It's time for Suhoor! Wake up and check in")
+            .setContentText("It's time for Suhoor! Wake up and enter PIN to dismiss")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setOngoing(true)
             .setAutoCancel(false)
+            .setContentIntent(createMainActivityPendingIntent(context, alarmData))
             .setFullScreenIntent(createFullScreenIntent(context, alarmData), true)
             .build()
 
         notificationManager.notify(NOTIFICATION_ID, notification)
+    }
+
+    /**
+     * Create intent to open React Native app (MainActivity) to enter PIN
+     */
+    private fun createMainActivityPendingIntent(context: Context, alarmData: AlarmData): android.app.PendingIntent {
+        val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra("alarm_trigger", true)
+            putExtra("alarm_id", alarmData.id)
+            putExtra("alarm_type", alarmData.type)
+        } ?: Intent(context, com.mechseiko.suhoor.MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra("alarm_trigger", true)
+            putExtra("alarm_id", alarmData.id)
+            putExtra("alarm_type", alarmData.type)
+        }
+
+        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+        } else {
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT
+        }
+
+        return android.app.PendingIntent.getActivity(
+            context,
+            (alarmData.id + "_rn").hashCode(),
+            launchIntent,
+            flags
+        )
     }
 
     /**

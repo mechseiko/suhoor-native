@@ -11,6 +11,30 @@ import com.facebook.react.defaults.DefaultReactActivityDelegate
 class MainActivity : ReactActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(null)
+    setupLockScreenFlags()
+  }
+
+  override fun onNewIntent(intent: android.content.Intent?) {
+    super.onNewIntent(intent)
+    setIntent(intent)
+    setupLockScreenFlags()
+  }
+
+  private fun setupLockScreenFlags() {
+    if (intent?.getBooleanExtra("alarm_trigger", false) == true) {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+        setShowWhenLocked(true)
+        setTurnScreenOn(true)
+      } else {
+        @Suppress("DEPRECATION")
+        window.addFlags(
+          android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+          android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+          android.view.WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
+          android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+        )
+      }
+    }
   }
 
   /**

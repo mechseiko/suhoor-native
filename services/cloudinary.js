@@ -1,9 +1,17 @@
 // Cloudinary Service for Suhoor Profile Pictures
 import { Platform } from 'react-native';
+// Read through the virtual `@env` module (react-native-dotenv), same convention
+// as config/firebase.js: Metro does not inline `process.env.EXPO_PUBLIC_*` in
+// this bare app, so those reads would be `undefined` at runtime.
+import {
+  EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME,
+  EXPO_PUBLIC_CLOUDINARY_API_KEY,
+  EXPO_PUBLIC_CLOUDINARY_API_SECRET,
+} from '@env';
 
-const CLOUDINARY_CLOUD_NAME = 'h7yxeeqk';
-const CLOUDINARY_API_KEY = '552674894174143';
-const CLOUDINARY_API_SECRET = 'YTBw3SzpYdCbhlQOjC3x1-B2sQQ';
+const CLOUDINARY_CLOUD_NAME = EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
+const CLOUDINARY_API_KEY = EXPO_PUBLIC_CLOUDINARY_API_KEY;
+const CLOUDINARY_API_SECRET = EXPO_PUBLIC_CLOUDINARY_API_SECRET;
 const FOLDER_NAME = 'suhoorProfilePictures';
 
 /**

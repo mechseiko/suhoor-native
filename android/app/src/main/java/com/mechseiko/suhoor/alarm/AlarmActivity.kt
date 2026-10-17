@@ -2,6 +2,7 @@ package com.mechseiko.suhoor.alarm
 
 import android.app.KeyguardManager
 import android.content.Context
+import android.content.Intent
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
@@ -18,6 +19,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.google.gson.Gson
+import com.mechseiko.suhoor.MainActivity
 import com.mechseiko.suhoor.R
 import java.util.Date
 
@@ -113,8 +115,8 @@ class AlarmActivity : AppCompatActivity() {
     private fun setupUI() {
         val titleTextView = findViewById<TextView>(R.id.alarm_title)
         val timeTextView = findViewById<TextView>(R.id.alarm_time)
-        val dismissButton = findViewById<Button>(R.id.dismiss_button)
-        val snoozeButton = findViewById<Button>(R.id.snooze_button)
+        val enterPinButton = findViewById<Button>(R.id.enter_pin_button)
+        val alarmRoot = findViewById<View>(R.id.alarm_root)
 
         titleTextView?.text = when (alarmData?.type) {
             "wake_up" -> "Wake Up, It's time for suhoor"
@@ -125,12 +127,12 @@ class AlarmActivity : AppCompatActivity() {
 
         timeTextView?.text = alarmData?.let { Date(it.triggerTime).toString() } ?: "Now"
 
-        dismissButton?.setOnClickListener {
-            dismissAlarm()
+        enterPinButton?.setOnClickListener {
+            openAppForPin()
         }
 
-        snoozeButton?.setOnClickListener {
-            snoozeAlarm()
+        alarmRoot?.setOnClickListener {
+            openAppForPin()
         }
     }
 
@@ -254,39 +256,51 @@ class AlarmActivity : AppCompatActivity() {
     }
 
     /**
-     * Dismiss the alarm
+     * Stop native sound & vibration and open the React Native app (MainActivity)
+     * where the user is required to enter their 4-digit PIN in AlarmOverlay to dismiss.
      */
-    private fun dismissAlarm() {
-        // Cancel notification
+    private fun openAppForPin() {
+        stopAlarmSound()
+        stopVibration()
+        releaseWakeLock()
+
         val notificationManager = androidx.core.app.NotificationManagerCompat.from(this)
         notificationManager.cancel(AlarmReceiver.NOTIFICATION_ID)
 
-        // Log wake-up time to Firestore (this would be done via React Native bridge)
-        // For now, we'll just finish the activity
-        finish()
-    }
-
-    /**
-     * Snooze the alarm for 5 minutes
-     */
-    private fun snoozeAlarm() {
-        alarmData?.let { data ->
-            val snoozeTime = System.currentTimeMillis() + 5 * 60 * 1000 // 5 minutes
-
-            val alarmManagerModule = AlarmManagerModule(this)
-            alarmManagerModule.scheduleAlarm(
-                alarmId = "${data.id}_snooze",
-                triggerTime = snoozeTime,
-                userId = data.userId,
-                groupId = data.groupId,
-                alarmType = "recheck"
-            )
+        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra("alarm_trigger", true)
+            putExtra("alarm_id", alarmData?.id)
+            putExtra("alarm_type", alarmData?.type)
+        } ?: Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra("alarm_trigger", true)
+            putExtra("alarm_id", alarmData?.id)
+            putExtra("alarm_type", alarmData?.type)
         }
 
-        // Cancel current notification
-        val notificationManager = androidx.core.app.NotificationManagerCompat.from(this)
-        notificationManager.cancel(AlarmReceiver.NOTIFICATION_ID)
-
-        finish()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+            keyguardManager?.requestDismissKeyguard(this, object : KeyguardManager.KeyguardDismissCallback() {
+                override fun onDismissSucceeded() {
+                    startActivity(launchIntent)
+                    finish()
+                }
+                override fun onDismissError() {
+                    startActivity(launchIntent)
+                    finish()
+                }
+                override fun onDismissCancelled() {
+                    startActivity(launchIntent)
+                    finish()
+                }
+            }) ?: run {
+                startActivity(launchIntent)
+                finish()
+            }
+        } else {
+            startActivity(launchIntent)
+            finish()
+        }
     }
 }

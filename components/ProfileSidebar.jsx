@@ -182,21 +182,35 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
         >
           {/* Drawer Header */}
           <View style={[styles.header, { borderBottomColor: colors.border || '#E5E7EB' }]}>
-            <View style={styles.userRow}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => navigateTo('ProfileTab')}
+              style={styles.userRow}
+              accessibilityRole="button"
+              accessibilityLabel={avatarUrl ? "View profile" : "Upload profile picture"}
+            >
               <View style={[styles.avatarCircle, { backgroundColor: brand.primary, overflow: 'hidden' }]}>
                 {avatarUrl ? (
                   <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
                 ) : (
-                  <Text style={styles.avatarInitial}>{userInitial}</Text>
+                  <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="camera" size={22} color="#FFFFFF" />
+                  </View>
                 )}
               </View>
               <View style={styles.userMeta}>
                 <Text variant="h3" numberOfLines={1} style={{ color: colors.text || '#111827' }}>
                   {displayName}
                 </Text>
-                <Text variant="caption" tone="secondary" numberOfLines={1}>
-                  {email}
-                </Text>
+                {!avatarUrl ? (
+                  <Text variant="caption" style={{ color: colors.primary || brand.primary, fontWeight: '600' }} numberOfLines={1}>
+                    {t('profile.tapToUploadPhoto', 'Tap to upload photo')}
+                  </Text>
+                ) : (
+                  <Text variant="caption" tone="secondary" numberOfLines={1}>
+                    {email}
+                  </Text>
+                )}
                 <View style={{ marginTop: 4, flexDirection: 'row' }}>
                   <Badge
                     label={`Lv. ${currentLevel.level} • ${currentLevel.name}`}
@@ -205,7 +219,7 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
                   />
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
 
             <TouchableOpacity onPress={onClose} hitSlop={10} style={styles.closeBtn}>
               <Ionicons name="close" size={22} color={colors.textSecondary || '#6B7280'} />
@@ -220,17 +234,16 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
             <View style={styles.menuSection}>
               <TouchableOpacity
                 style={styles.menuRow}
-                onPress={() => navigateTo('LeaderboardTab')}
+                onPress={() => navigateTo('ProfileTab')}
               >
-                <View style={[styles.menuIconBox, { backgroundColor: 'rgba(168, 85, 247, 0.12)' }]}>
-                  <Ionicons name="trophy-outline" size={18} color="#A855F7" />
+                <View style={[styles.menuIconBox, { backgroundColor: 'rgba(99, 102, 241, 0.12)' }]}>
+                  <Ionicons name="person-outline" size={18} color="#6366F1" />
                 </View>
                 <Text variant="body" style={styles.menuLabel}>
-                  {t('nav.leaderboard', 'Leaderboard')}
+                  {t('profile.myProfile', 'My Profile')}
                 </Text>
                 <Ionicons name="chevron-forward" size={18} color={colors.textSecondary || '#9CA3AF'} />
               </TouchableOpacity>
-
               <TouchableOpacity
                 style={styles.menuRow}
                 onPress={() => navigateTo('MilestonesTab')}

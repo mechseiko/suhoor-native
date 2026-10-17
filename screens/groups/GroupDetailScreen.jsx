@@ -488,7 +488,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     return () => clearInterval(interval);
   }, [todayData]);
 
-  // 5. Actions: Edit name, invite, leave, buzz, remove member, toggle leaderboard
+  // 5. Actions: Edit name, invite, leave, buzz, remove member
   const handleSaveGroupName = async () => {
     if (!groupId || !newGroupName.trim()) return;
     setSavingName(true);
@@ -1808,10 +1808,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   shareBtnText: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  leaderboardBtnText: {
     fontSize: 12,
     fontWeight: "700",
   },

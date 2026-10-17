@@ -1,6 +1,6 @@
 import { FlatList, Image, Modal, RefreshControl, StyleSheet, TouchableOpacity, View, TextInput } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -316,6 +316,11 @@ export const HomeScreen = ({ navigation }) => {
     currentUser?.displayName ||
     currentUser?.email?.split('@')[0];
 
+  const avatarUrl =
+    userProfile?.avatar_url ||
+    userProfile?.photoURL ||
+    currentUser?.photoURL;
+
   return (
     <Screen
       refreshControl={
@@ -385,11 +390,20 @@ export const HomeScreen = ({ navigation }) => {
                 shadowOpacity: 0.15,
                 shadowRadius: 3,
                 elevation: 2,
+                overflow: 'hidden',
               }}
             >
-              <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 16 }}>
-                {(displayName || 'U').charAt(0).toUpperCase()}
-              </Text>
+              {avatarUrl ? (
+                <Image
+                  source={{ uri: avatarUrl }}
+                  style={{ width: 38, height: 38, borderRadius: 19 }}
+                  resizeMode="cover"
+                />
+              ) : (
+                <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 16 }}>
+                  {(displayName || 'U').charAt(0).toUpperCase()}
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
 
