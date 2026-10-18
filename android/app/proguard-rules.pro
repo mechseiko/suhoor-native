@@ -34,3 +34,7 @@
 }
 -keep class com.facebook.react.bridge.NativeModule { *; }
 -keep class com.facebook.react.bridge.JavaScriptModule { *; }
+-keep class com.facebook.react.bridge.** { *; }
+-keep class com.facebook.react.modules.** { *; }
+-keep class com.facebook.react.modules.blob.** { *; }
+-keep class com.facebook.react.uimanager.** { *; }

@@ -345,19 +345,6 @@ export const FastingPrompt = () => {
             },
           ]}
         >
-          <Ionicons
-            name={
-              currentDayFastingStatus === 'fasting'
-                ? 'checkmark-circle'
-                : 'moon-outline'
-            }
-            size={18}
-            color={
-              currentDayFastingStatus === 'fasting'
-                ? colors.success || '#10B981'
-                : colors.textSecondary
-            }
-          />
           <View style={{ flex: 1 }}>
             <Text
               style={{

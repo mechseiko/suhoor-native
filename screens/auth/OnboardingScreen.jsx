@@ -12,6 +12,7 @@ import {
   SafeAreaView,
   StyleSheet,
   Switch,
+  Text as RNText,
   TextInput,
   TouchableOpacity,
   View,
@@ -1323,7 +1324,9 @@ export const OnboardingScreen = ({ onComplete }) => {
             accessibilityRole="button"
             accessibilityLabel="Select Language"
           >
-            <Text style={{ fontSize: 16 }}>{languageFlags[currentLang.code] || "🌐"}</Text>
+            <RNText style={{ fontSize: 18, color: "#111827", fontFamily: undefined }}>
+              {languageFlags[currentLang.code] || "🌐"}
+            </RNText>
             <Text
               style={{
                 fontFamily: "SpaceGrotesk-Bold",
@@ -1655,9 +1658,9 @@ export const OnboardingScreen = ({ onComplete }) => {
                         columnGap: 12,
                       }}
                     >
-                      <Text style={{ fontSize: 22 }}>
+                      <RNText style={{ fontSize: 24, color: "#111827", fontFamily: undefined }}>
                         {languageFlags[lang.code] || "🌐"}
-                      </Text>
+                      </RNText>
                       <View>
                         <Text
                           style={{
