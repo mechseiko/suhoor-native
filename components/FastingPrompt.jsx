@@ -368,7 +368,7 @@ export const FastingPrompt = () => {
       />
 
       {/* Status banner — only shown in its correct time window */}
-      {bannerMode === 'iftar' && (
+      {/* {bannerMode === 'iftar' && (
         <View
           style={[
             styles.statusBanner,
@@ -444,7 +444,7 @@ export const FastingPrompt = () => {
             )}
           </View>
         </View>
-      )}
+      )} */}
 
 
       {status === 'idle' && (

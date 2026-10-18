@@ -1670,6 +1670,7 @@ export const OnboardingScreen = ({ onComplete }) => {
                       flexDirection: "row",
                       alignItems: "center",
                       justifyContent: "space-between",
+                      fontFamily: "Quicksand-Regular",
                       paddingHorizontal: 14,
                       paddingVertical: 12,
                       borderRadius: 12,
@@ -1693,6 +1694,7 @@ export const OnboardingScreen = ({ onComplete }) => {
                           variant="h3"
                           style={{
                             fontSize: 14,
+                            fontFamily: "Quicksand-Regular",
                             color: isSelected ? brand.primary : "#374151",
                           }}
                         >
