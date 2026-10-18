@@ -13,12 +13,14 @@ import { useTheme } from "../../context/ThemeContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { Linking } from "react-native";
 
+const WEB_BASE_URL = "https://suhoor-group.web.app";
+
 const BOOKS = [
   {
     title: "Book of Fasting",
     subtitle: "As-Siyaam wa Ahkaamuhu",
     author: "Shaikh Usaamah Al-Qoosee",
-    file: "https://suhoorapp.cv/books/book-of-fasting.pdf",
+    file: "book-of-fasting.pdf",
     description:
       "A comprehensive translation of a small pocket-size booklet covering the essential rulings, conditions, and etiquette of Islamic fasting.",
     pages: 32,
@@ -28,7 +30,7 @@ const BOOKS = [
     title: "Ramadhan: Let's Avoid the Losses",
     subtitle: "Maximizing the Holy Month",
     author: "Islamic Research Foundation",
-    file: "https://suhoorapp.cv/books/ramadhan-avoid-losses.pdf",
+    file: "ramadhan-avoid-losses.pdf",
     description:
       "A practical guide identifying common traps and wasted moments in Ramadan, helping you protect your spiritual rewards.",
     pages: 40,
@@ -38,7 +40,7 @@ const BOOKS = [
     title: "A Guide For Ramadhan",
     subtitle: "Productivity & Planning",
     author: "Darussalam Publications",
-    file: "https://suhoorapp.cv/books/a-guide-for-ramadhan.pdf",
+    file: "a-guide-for-ramadhan.pdf",
     description:
       "A structured handbook to help Muslims plan their daily schedule, Quran recitation goals, and voluntary prayers throughout Ramadan.",
     pages: 21,
@@ -48,7 +50,7 @@ const BOOKS = [
     title: "Kitab Us-Sawm",
     subtitle: "The Classic Book of Fasting",
     author: "Mujlisul Ulama (PE)",
-    file: "https://suhoorapp.cv/books/kitaabus-sawm.pdf",
+    file: "kitaabus-sawm.pdf",
     description:
       "Detailed theological exposition on the inner and outer dimensions of fasting, exemptions, and making up missed fasts.",
     pages: 47,
@@ -58,7 +60,7 @@ const BOOKS = [
     title: "Causes Behind The Increase & Decrease of Eemaan",
     subtitle: "Strengthening Faith",
     author: "Shaykh Abdur-Razzaq Al-Badr",
-    file: "https://suhoorapp.cv/books/causes-of-eemaan.pdf",
+    file: "causes-of-eemaan.pdf",
     description:
       "Clarification of the key spiritual factors that elevate faith and the common sins and distractions that weaken it.",
     pages: 164,
@@ -68,7 +70,7 @@ const BOOKS = [
     title: "Islamic Fundamentals: Zakat & Sawm",
     subtitle: "Pillars of Practice",
     author: "Islamic Studies Academy",
-    file: "https://suhoorapp.cv/books/islamic-fundamentals-zakat-and-sawm-hints-the-principles-economic-system-in-islam.pdf",
+    file: "islamic-fundamentals-zakat-and-sawm-hints-the-principles-economic-system-in-islam.pdf",
     description:
       "An indispensable handbook for students and seekers detailing the Islamic socioeconomic principles and fasting guidelines.",
     pages: 66,
@@ -78,7 +80,7 @@ const BOOKS = [
     title: "Bulugh Al-Maram (Kitab as-Siyam)",
     subtitle: "Attainment of the Objective",
     author: "Al-Hafidh Ibn Hajar Al-Asqalani",
-    file: "https://suhoorapp.cv/books/bulugh-al-maram.pdf",
+    file: "bulugh-al-maram.pdf",
     description:
       "The monumental classical compilation of legal Hadiths regarding the rulings of fasting, moon-sighting, and I'tikaf.",
     pages: 576,
@@ -98,8 +100,8 @@ export const BooksScreen = ({ navigation }) => {
       book.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const openBook = (url) => {
-    Linking.openURL(url);
+  const openBook = (filename) => {
+    Linking.openURL(`${WEB_BASE_URL}/books/${filename}`);
   };
 
   return (

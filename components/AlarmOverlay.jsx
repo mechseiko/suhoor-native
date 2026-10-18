@@ -28,6 +28,7 @@ import {
 import { brand, neutral } from '../theme'
 import { Button, Text } from './ui'
 import { getAlarmSoundUri } from '../utils/soundGenerator'
+import { navigate } from '../services/NavigationService'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -209,6 +210,11 @@ export const AlarmOverlay = () => {
     }
     cancelAlarm()
     dismissAlarm()
+    try {
+      navigate('GroupsTab')
+    } catch (e) {
+      console.warn('Could not navigate to GroupsTab after buzz dismiss:', e)
+    }
   }
 
   // PIN digit handling for personal alarm dismissal
@@ -275,6 +281,11 @@ export const AlarmOverlay = () => {
     setStatus('success')
     setTimeout(() => {
       dismissAlarm()
+      try {
+        navigate('GroupsTab')
+      } catch (e) {
+        console.warn('Could not navigate to GroupsTab after alarm dismiss:', e)
+      }
     }, 1200)
   }
 

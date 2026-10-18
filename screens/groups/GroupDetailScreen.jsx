@@ -91,10 +91,9 @@ export const GroupDetailScreen = ({ route, navigation }) => {
   const [pinError, setPinError] = useState("");
   const pinRefs = [useRef(), useRef(), useRef(), useRef()];
 
-  // Buzz state
-  const [isBuzzing, setIsBuzzing] = useState(false);
-  const [buzzData, setBuzzData] = useState(null); // Store buzz data (fromUserName, groupName)
-  const [buzzCounts, setBuzzCounts] = useState({}); // Track buzz counts per target per day
+  // Buzz state & real-time cooldown tracking
+  const [recentBuzzTimestamps, setRecentBuzzTimestamps] = useState({});
+  const [countdownTick, setCountdownTick] = useState(0);
 
   // Member action modal state (for 3-dots / hold-down)
   const [selectedMemberForAction, setSelectedMemberForAction] = useState(null);
@@ -249,24 +248,11 @@ export const GroupDetailScreen = ({ route, navigation }) => {
   };
 
   // Check if wakeup status should be displayed:
-  // Shows by 0:00 (midnight) and disappears when it's time for Fajr / 6:00
+  // Shows only from 5:00 PM (17:00) in the evening through midnight up to 8:00 AM morning
   const isStatusVisibleNow = () => {
     const now = new Date();
     const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    const nowMinutes = currentHour * 60 + currentMinute;
-
-    // Determine cutoff time (suhoor time or 6:00 AM)
-    let cutoffMinutes = 6 * 60; // fallback to 6:00 AM
-    if (todayData?.time?.sahur) {
-      const [h, m] = todayData.time.sahur.split(":").map(Number);
-      if (!isNaN(h) && !isNaN(m)) {
-        cutoffMinutes = h * 60 + m;
-      }
-    }
-
-    // Visible from 0:00 (0 mins) up to cutoff
-    return nowMinutes >= 0 && nowMinutes <= cutoffMinutes;
+    return currentHour >= 17 || currentHour < 8;
   };
 
   // Check if a specific member is currently in their individual wake-up window
@@ -420,45 +406,47 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       setOnlineMembers(data.onlineMembers || []);
     };
 
-    const handleGotBuzzed = (data) => {
-      console.log(
-        "Got buzzed by:",
-        data.fromUserName,
-        "from group:",
-        data.groupName
-      );
-      setBuzzData({
-        fromUserName: data.fromUserName,
-        groupName: data.groupName,
-      });
-      setIsBuzzing(true);
-    };
-
     on("member-woke-up", handleMemberWokeUp);
     on("group-members-update", handleGroupMembersUpdate);
-    on("get-buzzed", handleGotBuzzed);
 
     return () => {
       off("member-woke-up", handleMemberWokeUp);
       off("group-members-update", handleGroupMembersUpdate);
-      off("get-buzzed", handleGotBuzzed);
     };
   }, [isSocketConnected, groupId, currentUser, on, off]);
 
-  // Loop vibration if user is buzzing
+  // Real-time listener for group buzz cooldowns
   useEffect(() => {
-    let interval;
-    if (isBuzzing) {
-      // Vibrate pattern: wait 0ms, vibrate 500ms, wait 500ms
-      Vibration.vibrate([0, 500, 500], true);
-    } else {
-      Vibration.cancel();
-    }
-    return () => {
-      Vibration.cancel();
-      clearInterval(interval);
-    };
-  }, [isBuzzing]);
+    if (!groupId) return;
+    const buzzesRef = collection(db, COLLECTIONS.groupBuzzes);
+    const q = query(buzzesRef, where("group_id", "==", groupId));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const timestamps = {};
+        snapshot.forEach((d) => {
+          const data = d.data();
+          const t = data.timestamp || (data.buzzed_at?.toMillis ? data.buzzed_at.toMillis() : 0);
+          if (data.target_user_id) {
+            timestamps[data.target_user_id] = t;
+          }
+        });
+        setRecentBuzzTimestamps(timestamps);
+      },
+      (err) => {
+        console.error("Error listening to group buzzes:", err);
+      }
+    );
+    return () => unsubscribe();
+  }, [groupId]);
+
+  // 1-second interval to update live countdown ticks on buzz buttons
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdownTick((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // 4. Calculate Wake Up Window (45 minutes before Suhoor ends)
   useEffect(() => {
@@ -614,6 +602,22 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       : `${remainingSecs}s`;
   };
 
+  const formatCountdown = (ms) => {
+    const totalSecs = Math.ceil(ms / 1000);
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  const getBuzzRemainingMs = (userId) => {
+    const lastBuzzed = recentBuzzTimestamps[userId];
+    if (!lastBuzzed) return 0;
+    const elapsed = Date.now() - lastBuzzed;
+    const COOLDOWN_MS = 3 * 60 * 1000; // 3 minutes cooldown
+    const remaining = COOLDOWN_MS - elapsed;
+    return remaining > 0 ? remaining : 0;
+  };
+
   // Shared eligibility checks: self, fasting intention, wake window,
   // 5-minute grace after wake time, and the 3-minute group cooldown.
   const checkBuzzEligibility = async (member) => {
@@ -645,6 +649,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
             ok: false,
             reason: "grace",
             timeText: formatRemainingTime(gracePeriodMs - elapsedSinceWakeUp),
+            wakeTimeText: wakeUpStr,
           };
         }
       }
@@ -728,7 +733,18 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     try {
       const check = await checkBuzzEligibility(member);
       if (!check.ok) {
-        triggerToast(getBuzzRejectionMessage(member, check), "info");
+        if (check.reason === "grace") {
+          Alert.alert(
+            t('groups.gracePeriodTitle'),
+            t('groups.gracePeriodBody', {
+              name: member.profiles.display_name || member.profiles.email,
+              wakeTime: check.wakeTimeText,
+              remaining: check.timeText,
+            })
+          );
+        } else {
+          triggerToast(getBuzzRejectionMessage(member, check), "info");
+        }
         return;
       }
 
@@ -848,9 +864,10 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     if (!member?.profiles) return;
     const targetUserId = member.profiles?.id || member.user_id;
     Alert.alert(
-      "Remove Member",
-      `Are you sure you want to remove ${member.profiles.display_name || member.profiles.email
-      } from the group? They will be permanently barred from re-entering.`,
+      t('groups.removeMemberTitle'),
+      t('groups.removeMemberConfirm', {
+        name: member.profiles.display_name || member.profiles.email,
+      }),
       [
         { text: t('common.cancel'), style: "cancel" },
         {
@@ -1077,7 +1094,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                 memberStatus === "awake" ? (
                   <View style={[styles.awakeBadge, { backgroundColor: isDark ? 'rgba(0, 194, 168, 0.15)' : 'rgba(0, 194, 168, 0.1)' }]}>
                     <Text style={[styles.awakeBadgeText, { color: colors.success }]}>
-                      Awake
+                      {t('groups.awake', 'Awake')}
                       {wakeUpLog
                         ? ` (${new Date(
                           wakeUpLog.woke_up_at
@@ -1090,11 +1107,11 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                   </View>
                 ) : memberStatus === "sleeping" && intendsToFast ? (
                   <View style={[styles.sleepingBadge, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}>
-                    <Text style={[styles.sleepingBadgeText, { color: isDark ? '#60A5FA' : '#3B82F6' }]}>Asleep</Text>
+                    <Text style={[styles.sleepingBadgeText, { color: isDark ? '#60A5FA' : '#3B82F6' }]}>{t('groups.sleeping', 'Asleep')}</Text>
                   </View>
                 ) : memberStatus === "not_fasting" || !intendsToFast ? (
                   <View style={[styles.notFastingBadge, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)' }]}>
-                    <Text style={[styles.notFastingBadgeText, { color: colors.error }]}>Not Fasting</Text>
+                    <Text style={[styles.notFastingBadgeText, { color: colors.error }]}>{t('groups.notFasting', 'Not Fasting')}</Text>
                   </View>
                 ) : null
               ) : null}
@@ -1105,18 +1122,41 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         <View style={styles.memberActions}>
           {!bulkMode &&
             isMemberBuzzable(item) && (
-              <TouchableOpacity
-                style={[styles.buzzYellowBtn, { backgroundColor: colors.secondary }]}
-                onPress={() => handleBuzzMember(item)}
-                activeOpacity={0.8}
-              >
-                <Ionicons
-                  name="notifications"
-                  size={15}
-                  color={colors.primary}
-                />
-                <Text style={[styles.buzzYellowBtnText, { color: colors.primary }]}>Buzz</Text>
-              </TouchableOpacity>
+              getBuzzRemainingMs(item.profiles.id) > 0 ? (
+                <View
+                  style={[
+                    styles.buzzCooldownBtn,
+                    {
+                      backgroundColor: isDark
+                        ? 'rgba(255, 255, 255, 0.08)'
+                        : 'rgba(0, 0, 0, 0.05)',
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name="time-outline"
+                    size={13}
+                    color={colors.textSecondary}
+                  />
+                  <Text style={[styles.buzzCooldownText, { color: colors.textSecondary }]}>
+                    {formatCountdown(getBuzzRemainingMs(item.profiles.id))}
+                  </Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.buzzYellowBtn, { backgroundColor: colors.secondary }]}
+                  onPress={() => handleBuzzMember(item)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons
+                    name="notifications"
+                    size={15}
+                    color={colors.primary}
+                  />
+                  <Text style={[styles.buzzYellowBtnText, { color: colors.primary }]}>Buzz</Text>
+                </TouchableOpacity>
+              )
             )}
 
           {/* 3 vertical dots action button in front of member */}
@@ -1257,7 +1297,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
           {isNetworkConnected && (
             <View style={[styles.liveBadge, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.12)' }]}>
               <View style={[styles.liveDot, { backgroundColor: colors.success }]} />
-              <Text style={[styles.liveText, { color: colors.success }]}>Live</Text>
+              <Text style={[styles.liveText, { color: colors.success }]}>{t('groups.live')}</Text>
             </View>
           )}
 
@@ -1275,7 +1315,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
           </View>
 
           <Text style={[styles.membersCountText, { color: colors.textSecondary }]}>
-            {members.length} {members.length === 1 ? "member" : "members"}
+            {members.length} {members.length === 1 ? t('groups.member') : t('groups.members', 'members')}
           </Text>
         </View>
 
@@ -1290,7 +1330,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                 size={16}
                 color={colors.primary}
               />
-              <Text style={[styles.shareBtnText, { color: colors.primary }]}>Copy Invite</Text>
+              <Text style={[styles.shareBtnText, { color: colors.primary }]}>{t('groups.copyInvite')}</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -1302,7 +1342,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
               size={16}
               color={colors.primary}
             />
-            <Text style={[styles.shareBtnText, { color: colors.primary }]}>Settings</Text>
+            <Text style={[styles.shareBtnText, { color: colors.primary }]}>{t('groups.settings')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -1321,11 +1361,11 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                 size={16}
                 color={colors.secondary}
               />
-              <Text style={[styles.awakeSuccessText, { color: colors.secondary }]}>Awake</Text>
+              <Text style={[styles.awakeSuccessText, { color: colors.secondary }]}>{t('groups.awake', 'Awake')}</Text>
             </View>
           ) : wantsToFast ? (
             <View style={[styles.sleepingBadge, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}>
-              <Text style={[styles.sleepingBadgeText, { color: isDark ? '#60A5FA' : '#3B82F6' }]}>Asleep</Text>
+              <Text style={[styles.sleepingBadgeText, { color: isDark ? '#60A5FA' : '#3B82F6' }]}>{t('groups.sleeping', 'Asleep')}</Text>
             </View>
           ) : null}
         </View>
@@ -1350,89 +1390,6 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         )}
       </View>
 
-      {/* Buzz Alarm Overlay Modal - Similar to main AlarmOverlay */}
-      <Modal visible={isBuzzing} animationType="fade" transparent={false}>
-        <View style={[styles.buzzOverlay, { backgroundColor: colors.background }]}>
-          {/* Logo at top */}
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              columnGap: 12,
-              marginBottom: 20,
-            }}
-          >
-            <Image
-              source={require("../../assets/icon-nobg.png")}
-              style={{ width: 48, height: 48 }}
-              resizeMode="contain"
-            />
-            <Text
-              variant="display"
-              style={{
-                fontFamily: "Quicksand-Regular",
-                fontWeight: "700",
-                color: colors.secondary,
-                fontSize: 28,
-              }}
-            >
-              Suhoor
-            </Text>
-          </View>
-
-          {/* Animated notification icon */}
-          <View style={{ alignItems: "center", marginVertical: 30 }}>
-            <Ionicons name="notifications" size={100} color={colors.secondary} />
-          </View>
-
-          {/* Titles */}
-          <View style={{ alignItems: "center", paddingHorizontal: 16 }}>
-            <Text
-              style={{
-                fontSize: 32,
-                fontWeight: "800",
-                color: colors.text,
-                textAlign: "center",
-                marginBottom: 12,
-              }}
-            >
-              WAKE UP!
-            </Text>
-            <Text
-              style={{
-                fontSize: 18,
-                color: colors.text,
-                textAlign: "center",
-                lineHeight: 24,
-              }}
-            >
-              {buzzData?.fromUserName || t('groups.member')} from{" "}
-              {buzzData?.groupName || t('groups.groupName')} is waking you for Suhoor!
-            </Text>
-            <Text
-              style={{
-                color: colors.textSecondary,
-                fontSize: 14,
-                textAlign: "center",
-                marginTop: 16,
-                paddingHorizontal: 8,
-              }}
-            >
-              Press the button below to dismiss and check in on the Groups tab
-              to stop being buzzed.
-            </Text>
-          </View>
-
-          {/* Dismiss Button */}
-          <TouchableOpacity
-            style={[styles.buzzDismissBtn, { backgroundColor: colors.secondary }]}
-            onPress={() => setIsBuzzing(false)}
-          >
-            <Text style={[styles.buzzDismissText, { color: colors.primary }]}>{t('common.dismiss')}</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
-
       {/* PIN Verification Modal */}
       <Modal visible={showPinModal} animationType="slide" transparent={true}>
         <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
@@ -1450,7 +1407,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                   { textAlign: "center", marginBottom: 20, color: colors.textSecondary },
                 ]}
               >
-                Enter your personal 4-digit PIN to confirm you are awake.
+                {t('groups.pinPromptDesc')}
               </Text>
               <View
                 style={{
@@ -1497,7 +1454,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
               style={[styles.modalConfirmBtn, { backgroundColor: colors.primary }]}
               onPress={() => validateAndWakeUp()}
             >
-              <Text style={[styles.modalConfirmText, { color: colors.onPrimaryFill }]}>Confirm, I'm Awake</Text>
+              <Text style={[styles.modalConfirmText, { color: colors.onPrimaryFill }]}>{t('groups.confirmAwakeBtn')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1997,6 +1954,20 @@ const styles = StyleSheet.create({
   },
   buzzYellowBtnText: {
     fontSize: 12,
+    fontWeight: "700",
+  },
+  buzzCooldownBtn: {
+    paddingVertical: 5,
+    paddingHorizontal: 9,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    columnGap: 4,
+    borderWidth: 1,
+  },
+  buzzCooldownText: {
+    fontSize: 11,
     fontWeight: "700",
   },
   findBtn: {

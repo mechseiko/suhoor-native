@@ -22,6 +22,11 @@
 # error generated in _app/outputs/mapping/release/missing_rules.txt.
 -dontwarn androidx.exifinterface.media.ExifInterface
 
+# Hermes JS Engine
+-keep class com.facebook.hermes.reactexecutor.** { *; }
+-keep class com.facebook.hermes.** { *; }
+-keep class com.facebook.jni.** { *; }
+
 # React Native bridge reflection
 -keepclassmembers class * extends com.facebook.react.bridge.ReactContextBaseJavaModule {
    public <init>(...);

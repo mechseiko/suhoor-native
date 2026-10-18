@@ -730,8 +730,8 @@ export const GroupsScreen = ({ navigation }) => {
           <View style={styles.checkInContent}>
             <Ionicons name="alarm-outline" size={20} color={colors.white} />
             <View style={styles.checkInText}>
-              <Text style={styles.checkInTitle}>Are you Awake?</Text>
-              <Text style={styles.checkInSubtitle}>Check in to prevent buzzing from group members</Text>
+              <Text style={styles.checkInTitle}>{t('groups.areYouAwake') || 'Are you Awake?'}</Text>
+              <Text style={styles.checkInSubtitle}>{t('groups.checkInSubtitle') || 'Check in to prevent buzzing from group members'}</Text>
             </View>
           </View>
           <TouchableOpacity
@@ -740,7 +740,7 @@ export const GroupsScreen = ({ navigation }) => {
             disabled={loading}
           >
             <Text style={styles.checkInBtnText}>
-              {loading ? 'Checking in…' : 'Check in'}
+              {loading ? (t('groups.checkingInBtn') || 'Checking in…') : (t('groups.checkInBtn') || 'Check in')}
             </Text>
           </TouchableOpacity>
         </View>

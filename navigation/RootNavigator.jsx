@@ -12,6 +12,7 @@ import NewUserSplash from '../components/NewUserSplash'
 import { db } from '../config/firebase'
 import { COLLECTIONS } from '../config/firestoreSchema'
 import { doc, getDoc } from 'firebase/firestore'
+import { navigationRef } from '../services/NavigationService'
 
 // Remembers that verification was confirmed at least once, so an offline
 // launch of an already-verified user gets straight into the app instead of
@@ -138,9 +139,16 @@ export const RootNavigator = () => {
     }
   }, [currentUser, userProfile])
 
-  // Brand-new user: show the splash once, then dismiss into onboarding
-  if (showNewUserSplash === true || (showNewUserSplash === null && !currentUser)) {
+  // Brand-new user: show the splash once, then dismiss into onboarding.
+  // Only render when explicitly true — never during the null (undetermined) phase
+  // to avoid a race condition where returning users briefly see the splash.
+  if (showNewUserSplash === true) {
     return <NewUserSplash onFinish={() => setShowNewUserSplash(false)} />
+  }
+
+  // Still determining splash state — hold on LogoLoader
+  if (showNewUserSplash === null) {
+    return <LogoLoader />
   }
 
   if (!loadTimedOut && (loading || onboardingComplete === null || checkingVerification)) {
@@ -154,7 +162,7 @@ export const RootNavigator = () => {
   } : {}
 
   return (
-    <NavigationContainer style={navContainerStyle}>
+    <NavigationContainer ref={navigationRef} style={navContainerStyle}>
       <View style={styles.container}>
         {currentUser && isVerified ? (
           <AppTour tabBarRef={tabBarRef}>

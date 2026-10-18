@@ -37,6 +37,7 @@ export const FastingPrompt = () => {
   const [targetDisplay, setTargetDisplay] = useState('');
   const [defaultAnswer, setDefaultAnswer] = useState(false);
   const [isTodayTarget, setIsTodayTarget] = useState(false);
+  const [currentDayFastingStatus, setCurrentDayFastingStatus] = useState(null);
 
   // Toast state
   const [toastVisible, setToastVisible] = useState(false);
@@ -117,6 +118,29 @@ export const FastingPrompt = () => {
 
     determineTarget();
   }, [currentUser, userProfile, formatDate]);
+
+  // Fetch current day fasting status to display at top of prompt
+  useEffect(() => {
+    if (!currentUser) return;
+    const fetchCurrentStatus = async () => {
+      try {
+        const todayStr = new Date().toLocaleDateString('en-CA');
+        const statusRef = doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${todayStr}`);
+        const statusSnap = await getDoc(statusRef);
+        if (statusSnap.exists()) {
+          const data = statusSnap.data();
+          if (data.checkedIn === true || data.wantsToFast === true) {
+            setCurrentDayFastingStatus('fasting');
+          } else if (data.wantsToFast === false) {
+            setCurrentDayFastingStatus('not_fasting');
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching current day fasting status:', err);
+      }
+    };
+    fetchCurrentStatus();
+  }, [currentUser]);
 
   // Auto-record the intention at the start of the wake-up window when the
   // prompt was never answered — special days follow the user's fasting
@@ -289,13 +313,80 @@ export const FastingPrompt = () => {
   const formattedHijriMonth = hijriMonthName(dateObj, locale, hijri.month);
 
   return (
-    <View>
+    <View style={{ gap: spacing.sm }}>
       <Toast
         message={toastMsg}
         type={toastType}
         visible={toastVisible}
         onDismiss={() => setToastVisible(false)}
       />
+
+      {currentDayFastingStatus && (
+        <View
+          style={[
+            styles.statusBanner,
+            {
+              backgroundColor:
+                currentDayFastingStatus === 'fasting'
+                  ? isDark
+                    ? 'rgba(16, 185, 129, 0.12)'
+                    : 'rgba(16, 185, 129, 0.08)'
+                  : isDark
+                  ? 'rgba(107, 114, 128, 0.15)'
+                  : 'rgba(107, 114, 128, 0.08)',
+              borderColor:
+                currentDayFastingStatus === 'fasting'
+                  ? isDark
+                    ? 'rgba(16, 185, 129, 0.3)'
+                    : 'rgba(16, 185, 129, 0.2)'
+                  : isDark
+                  ? 'rgba(107, 114, 128, 0.3)'
+                  : 'rgba(107, 114, 128, 0.2)',
+            },
+          ]}
+        >
+          <Ionicons
+            name={
+              currentDayFastingStatus === 'fasting'
+                ? 'checkmark-circle'
+                : 'moon-outline'
+            }
+            size={18}
+            color={
+              currentDayFastingStatus === 'fasting'
+                ? colors.success || '#10B981'
+                : colors.textSecondary
+            }
+          />
+          <View style={{ flex: 1 }}>
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: '700',
+                color:
+                  currentDayFastingStatus === 'fasting'
+                    ? colors.success || '#10B981'
+                    : colors.textSecondary,
+              }}
+            >
+              {currentDayFastingStatus === 'fasting'
+                ? t('fasting.youAreFasting')
+                : t('fasting.youAreNotFasting')}
+            </Text>
+            {currentDayFastingStatus === 'fasting' && (
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: isDark ? '#A7F3D0' : '#047857',
+                  marginTop: 1,
+                }}
+              >
+                {t('fasting.mayAllahAccept')}
+              </Text>
+            )}
+          </View>
+        </View>
+      )}
 
       {status === 'idle' && (
         <Card
@@ -550,6 +641,15 @@ export const FastingPrompt = () => {
 };
 
 const styles = StyleSheet.create({
+  statusBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    gap: spacing.sm,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',

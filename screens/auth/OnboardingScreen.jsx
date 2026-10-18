@@ -5,6 +5,7 @@ import {
   Dimensions,
   Image,
   Linking,
+  Modal,
   NativeModules,
   PermissionsAndroid,
   Platform,
@@ -1180,7 +1181,8 @@ const AlarmPinStep = ({ alarmPin, setAlarmPin, pinError, setPinError }) => {
 };
 
 export const OnboardingScreen = ({ onComplete }) => {
-  const { t } = useLanguage();
+  const { t, changeLanguage, languages, locale } = useLanguage();
+  const [langModalVisible, setLangModalVisible] = useState(false);
   const [step, setStep] = useState(0);
   const [alarmPin, setAlarmPin] = useState(["", "", "", ""]);
   const [pinError, setPinError] = useState("");
@@ -1196,6 +1198,21 @@ export const OnboardingScreen = ({ onComplete }) => {
     ramadan: true,
     dhulHijjah: true,
   });
+
+  const languageFlags = {
+    en: "🇬🇧",
+    ar: "🇸🇦",
+    fr: "🇫🇷",
+    es: "🇪🇸",
+    tr: "🇹🇷",
+    ur: "🇵🇰",
+  };
+
+  const currentLang = languages?.find((l) => l.code === locale) || {
+    code: "en",
+    name: "English",
+    nativeName: "English",
+  };
 
   const current = STEPS[step];
   const isLastStep = step === STEPS.length - 1;
@@ -1254,13 +1271,13 @@ export const OnboardingScreen = ({ onComplete }) => {
           paddingTop: 32,
         }}
       >
-        {/* Top Bar with Flexed Logo + App Name and Skip button */}
+        {/* Top Bar with Logo on Left and Language Selector Pill on Right */}
         <View
           style={{
             height: 48,
             flexDirection: "row",
             alignItems: "center",
-            justifyContent: "center",
+            justifyContent: "space-between",
             marginBottom: 20,
           }}
         >
@@ -1268,12 +1285,12 @@ export const OnboardingScreen = ({ onComplete }) => {
             style={{
               flexDirection: "row",
               alignItems: "center",
-              columnGap: 12,
+              columnGap: 10,
             }}
           >
             <Image
               source={require("../../assets/icon-nobg.png")}
-              style={{ width: 44, height: 44 }}
+              style={{ width: 40, height: 40 }}
               resizeMode="contain"
             />
             <Text
@@ -1281,11 +1298,44 @@ export const OnboardingScreen = ({ onComplete }) => {
               style={{
                 fontFamily: "Quicksand-Regular",
                 fontWeight: "700",
+                fontSize: 22,
               }}
             >
               Suhoor
             </Text>
           </View>
+
+          {/* Smooth Language Selector Pill with Flag */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setLangModalVisible(true)}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              columnGap: 6,
+              backgroundColor: "#F3F4F6",
+              paddingHorizontal: 12,
+              paddingVertical: 7,
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: "#E5E7EB",
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Select Language"
+          >
+            <Text style={{ fontSize: 16 }}>{languageFlags[currentLang.code] || "🌐"}</Text>
+            <Text
+              style={{
+                fontFamily: "SpaceGrotesk-Bold",
+                fontSize: 12,
+                color: brand.primary,
+                fontWeight: "700",
+              }}
+            >
+              {currentLang.nativeName || currentLang.name}
+            </Text>
+            <Ionicons name="chevron-down" size={14} color="#6B7280" />
+          </TouchableOpacity>
         </View>
 
         {/* Center Content */}
@@ -1509,6 +1559,141 @@ export const OnboardingScreen = ({ onComplete }) => {
           </View>
         </View>
       </View>
+
+      {/* Language Selection Modal */}
+      <Modal
+        visible={langModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setLangModalVisible(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setLangModalVisible(false)}
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0, 0, 0, 0.45)",
+            justifyContent: "center",
+            alignItems: "center",
+            paddingHorizontal: 24,
+          }}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 340,
+              backgroundColor: "#FFFFFF",
+              borderRadius: 20,
+              padding: 20,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: 0.15,
+              shadowRadius: 20,
+              elevation: 10,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 16,
+                paddingBottom: 12,
+                borderBottomWidth: 1,
+                borderBottomColor: "#F3F4F6",
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: "SpaceGrotesk-Bold",
+                  fontSize: 16,
+                  color: brand.primary,
+                  fontWeight: "700",
+                }}
+              >
+                {t("settings.language") || "Select Language"}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setLangModalVisible(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="close" size={20} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ rowGap: 8 }}>
+              {languages?.map((lang) => {
+                const isSelected = lang.code === locale;
+                return (
+                  <TouchableOpacity
+                    key={lang.code}
+                    activeOpacity={0.7}
+                    onPress={async () => {
+                      await changeLanguage(lang.code);
+                      setLangModalVisible(false);
+                    }}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      paddingHorizontal: 14,
+                      paddingVertical: 12,
+                      borderRadius: 12,
+                      backgroundColor: isSelected
+                        ? "rgba(21, 12, 51, 0.06)"
+                        : "#F9FAFB",
+                      borderWidth: 1.5,
+                      borderColor: isSelected ? brand.primary : "#E5E7EB",
+                    }}
+                  >
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        columnGap: 12,
+                      }}
+                    >
+                      <Text style={{ fontSize: 22 }}>
+                        {languageFlags[lang.code] || "🌐"}
+                      </Text>
+                      <View>
+                        <Text
+                          style={{
+                            fontFamily: "SpaceGrotesk-Bold",
+                            fontSize: 14,
+                            fontWeight: isSelected ? "700" : "600",
+                            color: isSelected ? brand.primary : "#374151",
+                          }}
+                        >
+                          {lang.nativeName}
+                        </Text>
+                        <Text
+                          style={{
+                            fontFamily: "Quicksand-Regular",
+                            fontSize: 11,
+                            color: "#9CA3AF",
+                          }}
+                        >
+                          {lang.name}
+                        </Text>
+                      </View>
+                    </View>
+                    {isSelected && (
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={20}
+                        color={brand.primary}
+                      />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };
