@@ -233,6 +233,7 @@ export const ar = {
   "fasting.youAreFasting": "أنت صائم اليوم",
   "fasting.youAreNotFasting": "أنت لست صائمًا اليوم",
   "fasting.mayAllahAccept": "تقبّل الله صيامكم وطاعتكم.",
+  "fasting.iftarTime": "حان وقت الإفطار!",
   "groups.gracePeriodTitle": "فترة السماح للاستيقاظ",
   "groups.gracePeriodBody": "انطلق منبّه {{name}} عند {{wakeTime}}. يُرجى الانتظار 5 دقائق (متبقٍ {{remaining}}) ليستيقظ ويُدخل الرمز.",
   "groups.live": "مباشر",

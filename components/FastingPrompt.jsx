@@ -142,6 +142,52 @@ export const FastingPrompt = () => {
     fetchCurrentStatus();
   }, [currentUser]);
 
+  // ── Banner time-window ──────────────────────────────────────────────────────
+  // 'hidden'          → before suhoor ends, or after 20:00
+  // 'fasting_status'  → after suhoor ends, before iftar
+  // 'iftar'           → from iftar time until 20:00
+  const [bannerMode, setBannerMode] = React.useState('hidden');
+
+  useEffect(() => {
+    const computeMode = () => {
+      if (!todayData?.time) return;
+      const now = new Date();
+      const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+      const parseMins = (str) => {
+        if (!str) return null;
+        const [h, m] = str.split(':').map(Number);
+        if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+        return h * 60 + m;
+      };
+
+      const suhoorMins = parseMins(todayData.time.sahur);
+      const iftarMins = parseMins(todayData.time.iftar || todayData.time.maghrib);
+      const endOfBannerMins = 20 * 60; // 20:00
+
+      if (suhoorMins === null) return;
+
+      if (nowMinutes < suhoorMins) {
+        // Before suhoor ends — hide banner
+        setBannerMode('hidden');
+      } else if (iftarMins !== null && nowMinutes >= iftarMins && nowMinutes < endOfBannerMins) {
+        // Iftar window: from Maghrib until 20:00
+        setBannerMode('iftar');
+      } else if (nowMinutes >= endOfBannerMins) {
+        // After 20:00 — hide banner
+        setBannerMode('hidden');
+      } else {
+        // After suhoor, before iftar — show fasting status
+        setBannerMode('fasting_status');
+      }
+    };
+
+    computeMode();
+    const interval = setInterval(computeMode, 60000);
+    return () => clearInterval(interval);
+  }, [todayData]);
+
+
   // Auto-record the intention at the start of the wake-up window when the
   // prompt was never answered — special days follow the user's fasting
   // defaults, ordinary days default to not fasting.
@@ -321,7 +367,32 @@ export const FastingPrompt = () => {
         onDismiss={() => setToastVisible(false)}
       />
 
-      {currentDayFastingStatus && (
+      {/* Status banner — only shown in its correct time window */}
+      {bannerMode === 'iftar' && (
+        <View
+          style={[
+            styles.statusBanner,
+            {
+              backgroundColor: isDark ? 'rgba(251, 191, 36, 0.15)' : 'rgba(251, 191, 36, 0.10)',
+              borderColor: isDark ? 'rgba(251, 191, 36, 0.4)' : 'rgba(251, 191, 36, 0.3)',
+            },
+          ]}
+        >
+          <View style={{ flex: 1 }}>
+            <Text
+              variant="h3"
+              style={{
+                fontSize: 13,
+                color: isDark ? '#FCD34D' : '#B45309',
+              }}
+            >
+              {t('fasting.iftarTime')}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {bannerMode === 'fasting_status' && currentDayFastingStatus && (
         <View
           style={[
             styles.statusBanner,
@@ -347,9 +418,9 @@ export const FastingPrompt = () => {
         >
           <View style={{ flex: 1 }}>
             <Text
+              variant="h3"
               style={{
                 fontSize: 13,
-                fontWeight: '700',
                 color:
                   currentDayFastingStatus === 'fasting'
                     ? colors.success || '#10B981'
@@ -374,6 +445,7 @@ export const FastingPrompt = () => {
           </View>
         </View>
       )}
+
 
       {status === 'idle' && (
         <Card

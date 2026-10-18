@@ -245,6 +245,7 @@ export const en = {
   "fasting.youAreFasting": "You are fasting today",
   "fasting.youAreNotFasting": "You are not fasting today",
   "fasting.mayAllahAccept": "May Allah accept your fast.",
+  "fasting.iftarTime": "It's time for Iftar!",
   "groups.gracePeriodTitle": "Wake-Up Grace Period",
   "groups.gracePeriodBody": "{{name}}'s alarm rang at {{wakeTime}}. Please allow a 5-minute grace period ({{remaining}} remaining) for them to wake up and enter their PIN before buzzing.",
   "groups.live": "Live",

@@ -233,6 +233,7 @@ export const fr = {
   "fasting.youAreFasting": "Vous jeûnez aujourd'hui",
   "fasting.youAreNotFasting": "Vous ne jeûnez pas aujourd'hui",
   "fasting.mayAllahAccept": "Qu'Allah accepte votre jeûne.",
+  "fasting.iftarTime": "C'est l'heure de l'iftar !",
   "groups.gracePeriodTitle": "Délai de grâce au réveil",
   "groups.gracePeriodBody": "L'alarme de {{name}} a sonné à {{wakeTime}}. Veuillez patienter 5 minutes ({{remaining}} restant) pour lui laisser le temps de se réveiller et d'entrer son code PIN.",
   "groups.live": "En direct",

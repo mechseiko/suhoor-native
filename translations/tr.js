@@ -233,6 +233,7 @@ export const tr = {
   "fasting.youAreFasting": "Bugün oruçlusunuz",
   "fasting.youAreNotFasting": "Bugün oruçlu değilsiniz",
   "fasting.mayAllahAccept": "Allah orucunuzu kabul etsin.",
+  "fasting.iftarTime": "İftar vakti geldi!",
   "groups.gracePeriodTitle": "Uyanma Hoşgörü Süresi",
   "groups.gracePeriodBody": "{{name}} kişisinin alarmı {{wakeTime}} saatinde çaldı. Uyanıp PIN kodunu girmesi için lütfen 5 dakika ({{remaining}} kaldı) bekleyin.",
   "groups.live": "Canlı",

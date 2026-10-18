@@ -1209,6 +1209,38 @@ export const OnboardingScreen = ({ onComplete }) => {
     ur: "🇵🇰",
   };
 
+  const FLAG_IMAGES = {
+    en: "https://flagcdn.com/w80/gb.png",
+    ar: "https://flagcdn.com/w80/sa.png",
+    fr: "https://flagcdn.com/w80/fr.png",
+    es: "https://flagcdn.com/w80/es.png",
+    tr: "https://flagcdn.com/w80/tr.png",
+    ur: "https://flagcdn.com/w80/pk.png",
+  };
+
+  const renderFlag = (code, width = 22, height = 15) => {
+    const uri = FLAG_IMAGES[code];
+    if (uri) {
+      return (
+        <Image
+          source={{ uri }}
+          style={{
+            width,
+            height,
+            borderRadius: 3,
+            backgroundColor: "#E5E7EB",
+          }}
+          resizeMode="cover"
+        />
+      );
+    }
+    return (
+      <RNText style={{ fontSize: height, color: "#111827", fontFamily: undefined }}>
+        {languageFlags[code] || "🌐"}
+      </RNText>
+    );
+  };
+
   const currentLang = languages?.find((l) => l.code === locale) || {
     code: "en",
     name: "English",
@@ -1324,15 +1356,12 @@ export const OnboardingScreen = ({ onComplete }) => {
             accessibilityRole="button"
             accessibilityLabel="Select Language"
           >
-            <RNText style={{ fontSize: 18, color: "#111827", fontFamily: undefined }}>
-              {languageFlags[currentLang.code] || "🌐"}
-            </RNText>
+            {renderFlag(currentLang.code, 22, 15)}
             <Text
+              variant="h3"
               style={{
-                fontFamily: "SpaceGrotesk-Bold",
                 fontSize: 12,
                 color: brand.primary,
-                fontWeight: "700",
               }}
             >
               {currentLang.nativeName || currentLang.name}
@@ -1658,15 +1687,12 @@ export const OnboardingScreen = ({ onComplete }) => {
                         columnGap: 12,
                       }}
                     >
-                      <RNText style={{ fontSize: 24, color: "#111827", fontFamily: undefined }}>
-                        {languageFlags[lang.code] || "🌐"}
-                      </RNText>
+                      {renderFlag(lang.code, 26, 18)}
                       <View>
                         <Text
+                          variant="h3"
                           style={{
-                            fontFamily: "SpaceGrotesk-Bold",
                             fontSize: 14,
-                            fontWeight: isSelected ? "700" : "600",
                             color: isSelected ? brand.primary : "#374151",
                           }}
                         >

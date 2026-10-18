@@ -233,6 +233,7 @@ export const ur = {
   "fasting.youAreFasting": "آج آپ کا روزہ ہے",
   "fasting.youAreNotFasting": "آج آپ کا روزہ نہیں ہے",
   "fasting.mayAllahAccept": "اللہ آپ کا روزہ قبول فرمائے۔",
+  "fasting.iftarTime": "افطار کا وقت ہو گیا!",
   "groups.gracePeriodTitle": "بیدار ہونے کا رعایتی وقت",
   "groups.gracePeriodBody": "{{name}} کا الارم {{wakeTime}} بجے بج چکا ہے۔ برائے مہربانی ان کے جاگنے اور پن درج کرنے کے لیے 5 منٹ (باقی {{remaining}}) کا وقت دیں۔",
   "groups.live": "لائیو",
