@@ -50,6 +50,23 @@ export const FastingPrompt = () => {
     setToastVisible(true);
   };
 
+  // FIX: Added a listener to trigger a re-check when the clock crosses midnight
+  const [nowMinutes, setNowMinutes] = useState(() => {
+    const n = new Date();
+    return n.getHours() * 60 + n.getMinutes();
+  });
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      const n = new Date();
+      setNowMinutes(n.getHours() * 60 + n.getMinutes());
+    }, 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  // FIX: Trigger to re-fetch DB if the day rolls over
+  const currentDayKey = new Date().toLocaleDateString('en-CA');
+
   useEffect(() => {
     const determineTarget = async () => {
       if (!currentUser) return;
@@ -66,11 +83,9 @@ export const FastingPrompt = () => {
       const targetStr = target.toLocaleDateString('en-CA');
       setIsTodayTarget(targetStr === todayStr);
 
-      // Check cache first
       try {
         const cachedAnswer = await AsyncStorage.getItem(`suhoor_intent_${targetStr}`);
 
-        // Check Firestore database (server of truth)
         const statusRef = doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${targetStr}`);
         const statusSnap = await getDoc(statusRef);
         if (statusSnap.exists()) {
@@ -117,7 +132,7 @@ export const FastingPrompt = () => {
     };
 
     determineTarget();
-  }, [currentUser, userProfile, formatDate]);
+  }, [currentUser, userProfile, formatDate, currentDayKey]);
 
   // Fetch current day fasting status to display at top of prompt
   useEffect(() => {
@@ -140,12 +155,9 @@ export const FastingPrompt = () => {
       }
     };
     fetchCurrentStatus();
-  }, [currentUser]);
+  }, [currentUser, currentDayKey]);
 
   // ── Banner time-window ──────────────────────────────────────────────────────
-  // 'hidden'          → before suhoor ends, or after 20:00
-  // 'fasting_status'  → after suhoor ends, before iftar
-  // 'iftar'           → from iftar time until 20:00
   const [bannerMode, setBannerMode] = React.useState('hidden');
 
   useEffect(() => {
@@ -168,16 +180,12 @@ export const FastingPrompt = () => {
       if (suhoorMins === null) return;
 
       if (nowMinutes < suhoorMins) {
-        // Before suhoor ends — hide banner
         setBannerMode('hidden');
       } else if (iftarMins !== null && nowMinutes >= iftarMins && nowMinutes < endOfBannerMins) {
-        // Iftar window: from Maghrib until 20:00
         setBannerMode('iftar');
       } else if (nowMinutes >= endOfBannerMins) {
-        // After 20:00 — hide banner
         setBannerMode('hidden');
       } else {
-        // After suhoor, before iftar — show fasting status
         setBannerMode('fasting_status');
       }
     };
@@ -187,10 +195,11 @@ export const FastingPrompt = () => {
     return () => clearInterval(interval);
   }, [todayData]);
 
+  // ── Main prompt visibility ─────────────────────────────────────────────────
+  const PROMPT_START_MINUTES = 8 * 60; // 8am
+  const isPromptVisible = nowMinutes >= PROMPT_START_MINUTES;
 
-  // Auto-record the intention at the start of the wake-up window when the
-  // prompt was never answered — special days follow the user's fasting
-  // defaults, ordinary days default to not fasting.
+  // Auto-record intention
   useEffect(() => {
     if (!currentUser) return;
     const wakeMinutes =
@@ -227,6 +236,9 @@ export const FastingPrompt = () => {
           wantsToFast ? 'yes' : 'no'
         );
 
+        // FIX: Update the UI immediately if this happens while the screen is open
+        setStatus(wantsToFast ? 'confirmed_fasting' : 'confirmed_not_fasting');
+
         const [sH, sM] = (todayData?.time?.sahur || '').split(':').map(Number);
         if (wantsToFast) {
           if (!isNaN(sH) && !isNaN(sM) && scheduleDailySuhoorAlarm) {
@@ -251,6 +263,7 @@ export const FastingPrompt = () => {
     checkWakeUpWindow,
     scheduleDailySuhoorAlarm,
     cancelDailySuhoorAlarm,
+    t,
   ]);
 
   const handleYes = async () => {
@@ -268,9 +281,6 @@ export const FastingPrompt = () => {
 
       await AsyncStorage.setItem(`suhoor_intent_${targetDate}`, 'yes');
 
-      // Wake-up alarm = suhoor end minus the user's wake-up window length.
-      // Suhoor's time of day drifts by ~1 minute a day, so today's value is
-      // the closest source when the prompt targets tomorrow.
       const wakeMinutes =
         userProfile?.preferences?.wakeUpMinutesBeforeSuhoor || 45;
       const [sH, sM] = (todayData?.time?.sahur || '').split(':').map(Number);
@@ -289,7 +299,6 @@ export const FastingPrompt = () => {
       setStatus('confirmed_fasting');
       triggerToast(t('fasting.intentionSetToast'), 'success');
       
-      // Schedule fasting intention notification
       await scheduleNotification({
         semanticId: `fasting_intention_${targetDate}`,
         date: new Date(),
@@ -320,7 +329,6 @@ export const FastingPrompt = () => {
 
       await AsyncStorage.setItem(`suhoor_intent_${targetDate}`, 'no');
 
-      // Cancel scheduled alarm if any
       if (cancelDailySuhoorAlarm) {
         await cancelDailySuhoorAlarm();
       }
@@ -342,8 +350,8 @@ export const FastingPrompt = () => {
     setStatus('idle');
   };
 
-  // Hide entirely during the wake-up window — not the time for tomorrow's fasting prompt
-  if (todayData?.isWakeUpWindow) return null;
+  // Hide entirely before 8am, or while the target is being resolved.
+  if (!isPromptVisible) return null;
   if (status === 'hidden' || !targetDate) return null;
 
   const dateObj = new Date(targetDate + 'T00:00:00');
@@ -354,8 +362,6 @@ export const FastingPrompt = () => {
     isFirstNineDhulHijjah(dateObj);
   const hijri = getHijriDate(dateObj);
 
-  // Localized Hijri month name — the list and the Intl tag both come from
-  // config/languages.js, so no month name is spelled out in this file.
   const formattedHijriMonth = hijriMonthName(dateObj, locale, hijri.month);
 
   return (
@@ -367,7 +373,6 @@ export const FastingPrompt = () => {
         onDismiss={() => setToastVisible(false)}
       />
 
-      {/* Status banner — only shown in its correct time window */}
       {bannerMode === 'iftar' && (
         <View
           style={[
@@ -445,7 +450,6 @@ export const FastingPrompt = () => {
           </View>
         </View>
       )}
-
 
       {status === 'idle' && (
         <Card

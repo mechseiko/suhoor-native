@@ -97,7 +97,7 @@ const StatSkeleton = () => {
   return (
     <Animated.View
       accessibilityRole="progressbar"
-      accessibilityLabel={t('common.loading')}
+      accessibilityLabel={"Loading"}
       style={[
         styles.skeleton,
         {

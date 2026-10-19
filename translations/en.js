@@ -206,6 +206,7 @@ export const en = {
   "groups.joinInfo": "Enter the 8-character unique key provided by the group creator/admin to join their Suhoor wake-up network.",
   "fasting.prompt": "Do you want to fast tomorrow?",
   "fasting.promptToday": "Do you want to fast today?",
+  "fasting.promptAppearsAt5pm": "Fasting prompt appears at 5pm",
   "fasting.yes": "Yes",
   "fasting.no": "No",
   "fasting.specialDay": "Special Day",

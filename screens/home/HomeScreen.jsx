@@ -119,8 +119,8 @@ export const HomeScreen = ({ navigation }) => {
             const now = Date.now();
             const ONE_DAY_MS = 24 * 60 * 60 * 1000;
             const newUnseen = list.find(n => {
-              const t = n.created_at?.toMillis ? n.created_at.toMillis() : (n.created_at?.seconds ? n.created_at.seconds * 1000 : 0);
-              return t > effectiveLastSeen && (now - t) < ONE_DAY_MS;
+              const timestamp = n.created_at?.toMillis ? n.created_at.toMillis() : (n.created_at?.seconds ? n.created_at.seconds * 1000 : 0);
+              return timestamp > effectiveLastSeen && (now - timestamp) < ONE_DAY_MS;
             });
             if (newUnseen) {
               presentNotification({
@@ -139,8 +139,8 @@ export const HomeScreen = ({ navigation }) => {
   }, []);
 
   const unreadNotificationsCount = notifications.filter(n => {
-    const t = n.created_at?.toMillis ? n.created_at.toMillis() : (n.created_at?.seconds ? n.created_at.seconds * 1000 : 0);
-    return t > lastSeenNotifications;
+    const timestamp = n.created_at?.toMillis ? n.created_at.toMillis() : (n.created_at?.seconds ? n.created_at.seconds * 1000 : 0);
+    return timestamp > lastSeenNotifications;
   }).length;
 
   const handleOpenNotifications = () => {

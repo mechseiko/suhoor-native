@@ -426,9 +426,9 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         const timestamps = {};
         snapshot.forEach((d) => {
           const data = d.data();
-          const t = data.timestamp || (data.buzzed_at?.toMillis ? data.buzzed_at.toMillis() : 0);
+          const timestamp = data.timestamp || (data.buzzed_at?.toMillis ? data.buzzed_at.toMillis() : 0);
           if (data.target_user_id) {
-            timestamps[data.target_user_id] = t;
+            timestamps[data.target_user_id] = timestamp;
           }
         });
         setRecentBuzzTimestamps(timestamps);

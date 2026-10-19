@@ -13,6 +13,8 @@ import { db } from '../config/firebase'
 import { COLLECTIONS } from '../config/firestoreSchema'
 import { doc, getDoc } from 'firebase/firestore'
 import { navigationRef } from '../services/NavigationService'
+import { useLanguage } from '../context/LanguageContext'
+
 
 // Remembers that verification was confirmed at least once, so an offline
 // launch of an already-verified user gets straight into the app instead of
@@ -25,6 +27,7 @@ const persistVerified = (uid) => {
 }
 
 export const RootNavigator = () => {
+  const { t } = useLanguage()
   const { currentUser, loading, userProfile } = useAuth()
   const { colors } = useTheme()
   const [onboardingComplete, setOnboardingComplete] = useState(null)

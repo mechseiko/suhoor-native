@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getCurrentCoordinates } from '../utils/location';
 import { fastingTimesUrl } from '../config/env';
@@ -10,7 +10,7 @@ const CACHE_KEY = 'suhoor_fasting_times';
 const todayKey = () => new Date().toLocaleDateString('en-CA');
 
 export function useFastingTimes() {
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
   const [location, setLocation] = useState({
     loaded: false,
     coordinates: null,
@@ -21,8 +21,30 @@ export function useFastingTimes() {
   const [fastingData, setFastingData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  // State to track day changes
+  const [currentDayKey, setCurrentDayKey] = useState(todayKey());
 
-  // Load cached fasting times on mount
+  // Live clock tick so time-derived booleans stay fresh while the app is open.
+  const [nowTick, setNowTick] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => {
+      setNowTick(Date.now());
+      // FIX: Check if the day rolled over while the app was open
+      const newKey = todayKey();
+      setCurrentDayKey((prevKey) => {
+        if (prevKey !== newKey) return newKey;
+        return prevKey;
+      });
+    }, 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // User-configured wake-up minutes. 
+  const wakeMinutes =
+    userProfile?.preferences?.wakeUpMinutesBeforeSuhoor ?? null;
+
+  // Load cached fasting times on mount or day change
   useEffect(() => {
     let cancelled = false;
 
@@ -34,8 +56,12 @@ export function useFastingTimes() {
         const parsed = JSON.parse(cached);
 
         // Invalidate cache if it's from a different day
-        if (parsed.date !== todayKey()) {
+        if (parsed.date !== currentDayKey) {
           await AsyncStorage.removeItem(CACHE_KEY);
+          if (!cancelled) {
+            setFastingData(null); // Trigger refetch for new day
+            setLoading(true);
+          }
         } else if (!cancelled) {
           setFastingData(parsed.data);
           setLoading(false);
@@ -49,11 +75,9 @@ export function useFastingTimes() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [currentDayKey]); // Re-run when day changes
 
-  // Resolve coordinates: user-set location, else device GPS, else profile default,
-  // else no location available. utils/location always resolves, so this never leaves
-  // the screen waiting on a permission the user declined.
+  // Resolve coordinates
   useEffect(() => {
     let cancelled = false;
 
@@ -75,6 +99,7 @@ export function useFastingTimes() {
       setError('No location available. Please set your location in settings.');
       return;
     }
+    // Only skip if we already have data FOR THE CURRENT DAY
     if (fastingData) {
       setLoading(false);
       return;
@@ -119,21 +144,13 @@ export function useFastingTimes() {
     return () => {
       cancelled = true;
     };
-  }, [location.loaded, location.coordinates?.lat, location.coordinates?.lng, fastingData]);
+  }, [location.loaded, location.coordinates?.lat, location.coordinates?.lng, fastingData, currentDayKey]);
 
   const todayData = fastingData?.fasting?.[0];
 
-  /**
-   * Is it time to wake up?
-   *
-   * The wake-up window opens `minutesBefore` minutes before suhoor ends and runs
-   * until suhoor ends. The spec's default is 45 minutes, user-configurable up to
-   * 120. This is a *window*, not an instant — an earlier version returned true
-   * only within 60 seconds of the exact minute, so an app that was backgrounded
-   * across that minute never fired at all.
-   */
   const checkWakeUpWindow = useCallback(
-    (minutesBefore = 45) => {
+    (minutesBefore = wakeMinutes) => {
+      if (minutesBefore == null) return false;
       if (!todayData?.time?.sahur) return false;
 
       const [hours, minutes] = todayData.time.sahur.split(':').map(Number);
@@ -147,8 +164,23 @@ export function useFastingTimes() {
 
       return now >= windowOpens.getTime() && now <= suhoorEnd.getTime();
     },
-    [todayData]
+    [todayData, wakeMinutes]
   );
+
+  const isWakeUpWindow = useMemo(
+    () => (wakeMinutes == null ? false : checkWakeUpWindow(wakeMinutes)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [checkWakeUpWindow, wakeMinutes, nowTick]
+  );
+
+  const hasSuhoorEnded = useMemo(() => {
+    if (!todayData?.time?.sahur) return false;
+    const [h, m] = todayData.time.sahur.split(':').map(Number);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return false;
+    const end = new Date();
+    end.setHours(h, m, 0, 0);
+    return nowTick > end.getTime();
+  }, [todayData, nowTick]);
 
   return {
     fastingData,
@@ -156,8 +188,10 @@ export function useFastingTimes() {
     loading,
     error,
     location,
-    isWakeUpWindow: checkWakeUpWindow(),
+    isWakeUpWindow,
     checkWakeUpWindow,
+    hasSuhoorEnded,
+    wakeMinutes,
   };
 }
 
