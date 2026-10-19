@@ -19,9 +19,7 @@ export const LanguageSelector = () => {
     locale,
     languages,
     changeLanguage,
-    t,
     isLoadingLocale,
-    needsRestartForRtl,
   } = useLanguage()
 
   if (isLoadingLocale) {
@@ -79,26 +77,6 @@ export const LanguageSelector = () => {
           </TouchableOpacity>
         )
       })}
-
-      {needsRestartForRtl && (
-        <View
-          style={[styles.restartBanner, { backgroundColor: colors.surfaceVariant }]}
-        >
-          <Ionicons
-            name="information-circle-outline"
-            size={16}
-            color={colors.secondary}
-          />
-          <Text
-            style={[styles.restartText, { color: colors.textSecondary }]}
-          >
-            {t(
-              'settings.restartForRtl',
-              'Restart the app to finish switching the layout direction.'
-            )}
-          </Text>
-        </View>
-      )}
     </View>
   )
 }
@@ -125,19 +103,6 @@ const styles = StyleSheet.create({
   langSubtitle: {
     marginTop: 2,
     fontSize: 12,
-  },
-  restartBanner: {
-    marginTop: 12,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    columnGap: 8,
-    borderRadius: 10,
-    padding: 12,
-  },
-  restartText: {
-    flex: 1,
-    fontSize: 12,
-    lineHeight: 17,
   },
 })
 

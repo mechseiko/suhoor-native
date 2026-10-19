@@ -11,6 +11,7 @@ import {
 } from 'react-native'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import { useTheme } from '../context/ThemeContext'
+import { useLanguage } from '../context/LanguageContext'
 import { brand } from '../theme'
 import { Text } from './ui'
 
@@ -25,6 +26,7 @@ export const AuthWrapper = ({
   onBackPress,
 }) => {
   const { colors = {} } = useTheme()
+  const { t } = useLanguage()
 
   return (
     <SafeAreaView
@@ -41,7 +43,7 @@ export const AuthWrapper = ({
               onPress={onBackPress}
               hitSlop={12}
               accessibilityRole="button"
-              accessibilityLabel="Go back"
+              accessibilityLabel={t('onboarding.goBackA11y')}
               style={[
                 styles.backBtn,
                 { backgroundColor: colors.surfaceVariant || '#F3F4F6' },

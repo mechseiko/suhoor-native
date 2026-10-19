@@ -285,7 +285,7 @@ export const HomeScreen = ({ navigation }) => {
   const handlePinVerify = async (override) => {
     const entered = override ?? pinDigits.join('');
     if (entered.length < 4) {
-      setPinError('Enter your 4-digit PIN.');
+      setPinError(t('home.pinError'));
       return;
     }
 
@@ -307,7 +307,7 @@ export const HomeScreen = ({ navigation }) => {
       setPinDigits(['', '', '', '']);
     } catch (err) {
       console.error('Error saving PIN:', err);
-      setPinError('Failed to save PIN. Try again.');
+      setPinError(t('home.pinSaveError'));
     }
   };
 
@@ -345,7 +345,7 @@ export const HomeScreen = ({ navigation }) => {
               onPress={handleOpenNotifications}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Notifications"
+              accessibilityLabel={t('settings.notifications')}
               style={{
                 width: 38,
                 height: 38,
@@ -377,7 +377,7 @@ export const HomeScreen = ({ navigation }) => {
               onPress={() => setSidebarVisible(true)}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Open profile sidebar"
+              accessibilityLabel={t('a11y.openProfileSidebar')}
               style={{
                 width: 38,
                 height: 38,
@@ -423,14 +423,14 @@ export const HomeScreen = ({ navigation }) => {
               <Ionicons name="lock-closed-outline" size={20} color={colors.warning} />
             </View>
             <View style={styles.cardHeaderText}>
-              <Text variant="h3" style={{ color: colors.warning }}>Set Your Alarm PIN</Text>
+              <Text variant="h3" style={{ color: colors.warning }}>{t('home.pinPromptTitle')}</Text>
               <Text variant="caption" tone="secondary">
-                You need to set up your 4-digit PIN to be able to receive and dismiss alarms.
+                {t('home.pinPromptDesc')}
               </Text>
             </View>
           </View>
           <Button
-            title="Set Up PIN"
+            title={t('home.pinPromptButton')}
             onPress={() => {
               setShowPinModal(true);
               setTimeout(() => pinRefs[0]?.current?.focus(), 200);
@@ -451,15 +451,15 @@ export const HomeScreen = ({ navigation }) => {
               <Ionicons name="volume-mute" size={20} color="#EF4444" />
             </View>
             <View style={styles.cardHeaderText}>
-              <Text variant="h3" style={{ color: '#EF4444' }}>Alarm Audio is Turned Off</Text>
+              <Text variant="h3" style={{ color: '#EF4444' }}>{t('home.audioOffTitle')}</Text>
               <Text variant="caption" tone="secondary">
-                Your alarms and group member wake-up buzzes will not make any sound because audible alarms are disabled in your settings.
+                {t('home.audioOffDesc')}
               </Text>
             </View>
           </View>
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
             <Button
-              title="Turn On Sound"
+              title={t('home.turnOnSound')}
               onPress={async () => {
                 if (currentUser?.uid) {
                   try {
@@ -475,7 +475,7 @@ export const HomeScreen = ({ navigation }) => {
               style={{ flex: 1, borderRadius: 8 }}
             />
             <Button
-              title="Settings"
+              title={t('home.settings')}
               onPress={() => navigation.navigate('ProfileTab')}
               variant="secondary"
               style={{ borderRadius: 8, paddingHorizontal: 16 }}
@@ -592,9 +592,9 @@ export const HomeScreen = ({ navigation }) => {
               <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: alpha(colors.primary, 0.1), alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
                 <Ionicons name="lock-closed" size={28} color={colors.primary} />
               </View>
-              <Text variant="h2" style={{ textAlign: 'center', marginBottom: 8 }}>Set Your Alarm PIN</Text>
+              <Text variant="h2" style={{ textAlign: 'center', marginBottom: 8 }}>{t('home.pinModalTitle')}</Text>
               <Text variant="body" tone="secondary" style={{ textAlign: 'center', fontSize: 13 }}>
-                Enter a 4-digit PIN to dismiss your Suhoor alarm. This ensures you're truly awake when stopping the alarm.
+                {t('home.pinModalDesc')}
               </Text>
             </View>
 
@@ -683,7 +683,7 @@ export const HomeScreen = ({ navigation }) => {
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Ionicons name="notifications" size={20} color={colors.primary} />
-                <Text variant="h2">Notifications</Text>
+                <Text variant="h2">{t('home.notifications')}</Text>
               </View>
               <TouchableOpacity
                 onPress={() => setShowNotifications(false)}
@@ -705,9 +705,9 @@ export const HomeScreen = ({ navigation }) => {
             {notifications.length === 0 ? (
               <View style={{ padding: 40, alignItems: 'center', justifyContent: 'center' }}>
                 <Ionicons name="notifications-outline" size={48} color={colors.muted || '#9CA3AF'} />
-                <Text variant="h3" style={{ marginTop: 12 }}>No notifications yet</Text>
+                <Text variant="h3" style={{ marginTop: 12 }}>{t('home.noNotifications')}</Text>
                 <Text variant="caption" tone="secondary" style={{ marginTop: 4, textAlign: 'center' }}>
-                  You are all caught up on everything.
+                  {t('home.allCaughtUp')}
                 </Text>
               </View>
             ) : (

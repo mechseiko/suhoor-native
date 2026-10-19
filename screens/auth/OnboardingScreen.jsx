@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import {
   Animated,
   AppState,
@@ -17,25 +17,26 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Geolocation from "@react-native-community/geolocation";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useLanguage } from "../../context/LanguageContext";
 import { Button, Text } from "../../components/ui";
 import { brand } from "../../theme";
 
-const S1 = "The 100% Free Software";
-const S2 = " that solves the problem of missing suhoor,";
-const S3 = " for everyone.";
-const FULL_TYPEWRITER_TEXT = S1 + S2 + S3;
+const S1 = (t) => t("onboarding.typewriter1");
+const S2 = (t) => t("onboarding.typewriter2");
+const S3 = (t) => t("onboarding.typewriter3");
 
 /**
  * Step 1 Animated Hero:
  * Infinite typewriter animation of the core promise, with ambient color orbs,
  * color mixes, and generous vertical rhythm filling the screen height.
  */
-const TypewriterHero = () => {
+const TypewriterHero = ({ t }) => {
   const [charIndex, setCharIndex] = useState(0);
   const [cursorVisible, setCursorVisible] = useState(true);
+  const FULL_TYPEWRITER_TEXT = useMemo(() => S1(t) + S2(t) + S3(t), [t]);
 
   // Ambient floating background orbs
   const orbScale1 = useRef(new Animated.Value(1)).current;
@@ -44,13 +45,17 @@ const TypewriterHero = () => {
 
   // Typewriter effect: types out once, then stops
   useEffect(() => {
+    setCharIndex(0); // Reset when text changes (language change)
+  }, [FULL_TYPEWRITER_TEXT]);
+
+  useEffect(() => {
     if (charIndex < FULL_TYPEWRITER_TEXT.length) {
       const timer = setTimeout(() => {
         setCharIndex((prev) => prev + 1);
       }, 45);
       return () => clearTimeout(timer);
     }
-  }, [charIndex]);
+  }, [charIndex, FULL_TYPEWRITER_TEXT]);
 
   // Blinking cursor
   useEffect(() => {
@@ -132,15 +137,19 @@ const TypewriterHero = () => {
   let t2 = "";
   let t3 = "";
 
-  if (charIndex <= S1.length) {
-    t1 = S1.slice(0, charIndex);
-  } else if (charIndex <= S1.length + S2.length) {
-    t1 = S1;
-    t2 = S2.slice(0, charIndex - S1.length);
+  const s1 = S1(t);
+  const s2 = S2(t);
+  const s3 = S3(t);
+
+  if (charIndex <= s1.length) {
+    t1 = s1.slice(0, charIndex);
+  } else if (charIndex <= s1.length + s2.length) {
+    t1 = s1;
+    t2 = s2.slice(0, charIndex - s1.length);
   } else {
-    t1 = S1;
-    t2 = S2;
-    t3 = S3.slice(0, charIndex - S1.length - S2.length);
+    t1 = s1;
+    t2 = s2;
+    t3 = s3.slice(0, charIndex - s1.length - s2.length);
   }
 
   return (
@@ -336,13 +345,13 @@ const NotificationPermissionStep = ({ onStatusChange }) => {
           variant="inherit"
           style={{ color: brand.primary, fontWeight: "800" }}
         >
-          Stay{" "}
+          {t("onboarding.stayNotified")}{" "}
         </Text>
         <Text
           variant="inherit"
           style={{ color: brand.secondary, fontWeight: "800" }}
         >
-          Notified
+          {t("onboarding.notified")}
         </Text>
       </Text>
 
@@ -388,7 +397,7 @@ const NotificationPermissionStep = ({ onStatusChange }) => {
             fontFamily: "SpaceGrotesk-Bold",
           }}
         >
-          {granted ? "Permission granted" : "Permission not granted"}
+          {granted ? t("onboarding.permissionGranted") : t("onboarding.permissionNotGranted")}
         </Text>
       </View>
 
@@ -427,7 +436,7 @@ const NotificationPermissionStep = ({ onStatusChange }) => {
               fontFamily: "SpaceGrotesk-Bold",
             }}
           >
-            GRANT PERMISSION
+            {t("onboarding.grantPermission")}
           </Text>
         </TouchableOpacity>
       )}
@@ -550,13 +559,13 @@ const LocationPermissionStep = ({ onStatusChange }) => {
           variant="inherit"
           style={{ color: brand.primary, fontWeight: "800" }}
         >
-          Precise{" "}
+          {t("onboarding.precise")}{" "}
         </Text>
         <Text
           variant="inherit"
           style={{ color: brand.secondary, fontWeight: "800" }}
         >
-          Location
+          {t("onboarding.location")}
         </Text>
       </Text>
 
@@ -602,7 +611,7 @@ const LocationPermissionStep = ({ onStatusChange }) => {
             fontFamily: "SpaceGrotesk-Bold",
           }}
         >
-          {detected ? "Location detected" : "Location not detected"}
+          {detected ? t("onboarding.locationDetected") : t("onboarding.locationNotDetected")}
         </Text>
       </View>
 
@@ -641,7 +650,7 @@ const LocationPermissionStep = ({ onStatusChange }) => {
               fontFamily: "SpaceGrotesk-Bold",
             }}
           >
-            GRANT LOCATION PERMISSION
+            {t("onboarding.grantLocationPermission")}
           </Text>
         </TouchableOpacity>
       )}
@@ -731,13 +740,13 @@ const BatteryOptimizationStep = ({ onStatusChange }) => {
           variant="inherit"
           style={{ color: brand.primary, fontWeight: "800" }}
         >
-          Reliable{" "}
+          {t("onboarding.reliable")}{" "}
         </Text>
         <Text
           variant="inherit"
           style={{ color: brand.secondary, fontWeight: "800" }}
         >
-          Alarms
+          {t("onboarding.alarms")}
         </Text>
       </Text>
 
@@ -784,8 +793,8 @@ const BatteryOptimizationStep = ({ onStatusChange }) => {
           }}
         >
           {disabled
-            ? "Battery Optimization is disabled"
-            : "Battery Optimization is enabled"}
+            ? t("onboarding.batteryDisabled")
+            : t("onboarding.batteryEnabled")}
         </Text>
       </View>
 
@@ -824,7 +833,7 @@ const BatteryOptimizationStep = ({ onStatusChange }) => {
               fontFamily: "SpaceGrotesk-Bold",
             }}
           >
-            DISABLE BATTERY OPTIMIZATION
+            {t("onboarding.disableBattery")}
           </Text>
         </TouchableOpacity>
       )}
@@ -840,24 +849,23 @@ const STEPS = [
   {
     id: 2,
     image: require("../../assets/onboarding/2.png"),
-    titlePrimary: "Set ",
-    titleSecondary: "Alarms",
-    subtitle: "Set smart alarms for suhoor, your own device alarm goes first.",
+    titlePrimary: "onboarding.setAlarms",
+    titleSecondary: "onboarding.setAlarmsTitle",
+    subtitle: "onboarding.setAlarmsSub",
   },
   {
     id: 3,
     image: require("../../assets/onboarding/3.png"),
-    titlePrimary: "Group ",
-    titleSecondary: "Wake Up",
-    subtitle:
-      "Your group members checks if you haven't checked in. They can trigger your alarm until you check in.",
+    titlePrimary: "onboarding.groupWakeUp",
+    titleSecondary: "onboarding.wakeUpTitle",
+    subtitle: "onboarding.groupWakeUpSub",
   },
   {
     id: 4,
     image: require("../../assets/onboarding/4.png"),
-    titlePrimary: "Wake Up ",
-    titleSecondary: "Buzz",
-    subtitle: "Send a buzz to people who haven't woken up.",
+    titlePrimary: "onboarding.wakeUpBuzz",
+    titleSecondary: "onboarding.buzz",
+    subtitle: "onboarding.wakeUpBuzzSub",
   },
   {
     id: 5,
@@ -881,7 +889,7 @@ const STEPS = [
   },
 ];
 
-const FastingRoutineStep = ({ fastingDefaults, setFastingDefaults }) => {
+const FastingRoutineStep = ({ fastingDefaults, setFastingDefaults, t }) => {
   const toggle = (key) => {
     setFastingDefaults((prev) => ({
       ...prev,
@@ -893,26 +901,26 @@ const FastingRoutineStep = ({ fastingDefaults, setFastingDefaults }) => {
     {
       key: "sunnah",
       icon: "moon-outline",
-      title: "Sunnah Days",
-      desc: "Default to fasting on Mondays and Thursdays",
+      title: "onboarding.sunnahDays",
+      desc: "onboarding.sunnahDaysDesc",
     },
     {
       key: "whiteDays",
       icon: "sparkles-outline",
-      title: "White Days",
-      desc: "Default to fasting on 13th, 14th & 15th of the Hijri month",
+      title: "onboarding.whiteDays",
+      desc: "onboarding.whiteDaysDesc",
     },
     {
       key: "ramadan",
       icon: "star-outline",
-      title: "Ramadan Fasting",
-      desc: "Default to fasting on every day of Ramadan",
+      title: "onboarding.ramadanFasting",
+      desc: "onboarding.ramadanFastingDesc",
     },
     {
       key: "dhulHijjah",
       icon: "heart-outline",
-      title: "First 9 Days of Dhul-Hijjah",
-      desc: "Default to fasting on first 9 days of Dhul-Hijjah",
+      title: "onboarding.dhulHijjah",
+      desc: "onboarding.dhulHijjahDesc",
     },
   ];
 
@@ -932,13 +940,13 @@ const FastingRoutineStep = ({ fastingDefaults, setFastingDefaults }) => {
             variant="inherit"
             style={{ color: brand.primary, fontWeight: "800" }}
           >
-            Fasting{" "}
+            {t("onboarding.fastingDefaults")}{" "}
           </Text>
           <Text
             variant="inherit"
             style={{ color: brand.secondary, fontWeight: "800" }}
           >
-            Defaults
+            {t("onboarding.defaults")}
           </Text>
         </Text>
         <Text
@@ -951,8 +959,7 @@ const FastingRoutineStep = ({ fastingDefaults, setFastingDefaults }) => {
             fontSize: 13,
           }}
         >
-          We want to know when you like to fast and automatically set your alarm for that day,
-          you can always change this anytime in Settings.
+          {t("onboarding.fastingDefaultsDesc")}
         </Text>
       </View>
 
@@ -1013,7 +1020,7 @@ const FastingRoutineStep = ({ fastingDefaults, setFastingDefaults }) => {
                       marginBottom: 1,
                     }}
                   >
-                    {item.title}
+                    {t(item.title)}
                   </Text>
                   <Text
                     style={{
@@ -1022,7 +1029,7 @@ const FastingRoutineStep = ({ fastingDefaults, setFastingDefaults }) => {
                       color: "#6B7280",
                     }}
                   >
-                    {item.desc}
+                    {t(item.desc)}
                   </Text>
                 </View>
               </View>
@@ -1046,7 +1053,7 @@ const FastingRoutineStep = ({ fastingDefaults, setFastingDefaults }) => {
  * The PIN is required to dismiss the personal Suhoor alarm overlay,
  * proving the user is truly awake. It is saved to Firestore via profile.
  */
-const AlarmPinStep = ({ alarmPin, setAlarmPin, pinError, setPinError }) => {
+const AlarmPinStep = ({ alarmPin, setAlarmPin, pinError, setPinError, t }) => {
   const inputRefs = [useRef(), useRef(), useRef(), useRef()];
 
   const handleDigit = (index, value) => {
@@ -1099,13 +1106,13 @@ const AlarmPinStep = ({ alarmPin, setAlarmPin, pinError, setPinError }) => {
             variant="inherit"
             style={{ color: brand.primary, fontWeight: "800" }}
           >
-            Alarm{" "}
+            {t("onboarding.alarmPin")}{" "}
           </Text>
           <Text
             variant="inherit"
             style={{ color: brand.secondary, fontWeight: "800" }}
           >
-            PIN
+            {t("onboarding.pin")}
           </Text>
         </Text>
         <Text
@@ -1118,8 +1125,7 @@ const AlarmPinStep = ({ alarmPin, setAlarmPin, pinError, setPinError }) => {
             fontSize: 13,
           }}
         >
-          Set a personal 4-digit PIN. You'll enter this PIN to dismiss your
-          Suhoor alarm and prove you're truly awake.
+          {t("onboarding.alarmPinDesc")}
         </Text>
       </View>
 
@@ -1175,7 +1181,7 @@ const AlarmPinStep = ({ alarmPin, setAlarmPin, pinError, setPinError }) => {
         tone="secondary"
         style={{ textAlign: "center", fontSize: 11, marginTop: 4 }}
       >
-        You can change this PIN anytime in Settings.
+        {t("onboarding.pinChangeNote")}
       </Text>
     </View>
   );
@@ -1252,20 +1258,18 @@ export const OnboardingScreen = ({ onComplete }) => {
 
   const next = async () => {
     if (current.isNotification && !requirements.notification) {
-      setRequirementError(
-        "Please grant notification permission before continuing."
-      );
+      setRequirementError(t("onboarding.notificationError"));
       return;
     }
     // Location and battery optimization are now optional - remove mandatory checks
     setRequirementError("");
-    
+
 
     // Validate PIN before advancing past the PIN step
     if (current.isPin) {
       const pinStr = alarmPin.join("");
       if (pinStr.length < 4 || alarmPin.some((d) => d === "")) {
-        setPinError("Please enter all 4 digits of your PIN.");
+        setPinError(t("onboarding.pinError"));
         return;
       }
       setPinError("");
@@ -1334,7 +1338,7 @@ export const OnboardingScreen = ({ onComplete }) => {
                 fontSize: 22,
               }}
             >
-              Suhoor
+              {t('app.name', 'Suhoor')}
             </Text>
           </View>
 
@@ -1354,7 +1358,7 @@ export const OnboardingScreen = ({ onComplete }) => {
               borderColor: "#E5E7EB",
             }}
             accessibilityRole="button"
-            accessibilityLabel="Select Language"
+            accessibilityLabel={t('onboarding.selectLanguageA11y')}
           >
             {renderFlag(currentLang.code, 22, 15)}
             <Text
@@ -1362,6 +1366,7 @@ export const OnboardingScreen = ({ onComplete }) => {
               style={{
                 fontSize: 12,
                 color: brand.primary,
+                fontFamily: "Quicksand-Regular",
               }}
             >
               {currentLang.nativeName || currentLang.name}
@@ -1372,7 +1377,7 @@ export const OnboardingScreen = ({ onComplete }) => {
 
         {/* Center Content */}
         {current.isHero ? (
-          <TypewriterHero />
+          <TypewriterHero t={t} />
         ) : current.isNotification ? (
           <NotificationPermissionStep
             onStatusChange={(value) =>
@@ -1406,11 +1411,13 @@ export const OnboardingScreen = ({ onComplete }) => {
             setAlarmPin={setAlarmPin}
             pinError={pinError}
             setPinError={setPinError}
+            t={t}
           />
         ) : current.isRoutine ? (
           <FastingRoutineStep
             fastingDefaults={fastingDefaults}
             setFastingDefaults={setFastingDefaults}
+            t={t}
           />
         ) : (
           <View
@@ -1486,13 +1493,13 @@ export const OnboardingScreen = ({ onComplete }) => {
                 variant="inherit"
                 style={{ color: brand.primary, fontWeight: "700" }}
               >
-                {current.titlePrimary}
+                {t(current.titlePrimary)}
               </Text>
               <Text
                 variant="inherit"
                 style={{ color: brand.secondary, fontWeight: "800" }}
               >
-                {current.titleSecondary}
+                {t(current.titleSecondary)}
               </Text>
             </Text>
 
@@ -1507,7 +1514,7 @@ export const OnboardingScreen = ({ onComplete }) => {
                 fontWeight: "600",
               }}
             >
-              {current.subtitle}
+              {t(current.subtitle)}
             </Text>
           </View>
         )}
@@ -1562,7 +1569,7 @@ export const OnboardingScreen = ({ onComplete }) => {
               activeOpacity={0.7}
               onPress={back}
               accessibilityRole="button"
-              accessibilityLabel="Go back"
+              accessibilityLabel={t('onboarding.goBackA11y')}
               style={{
                 width: 52,
                 height: 52,
@@ -1639,7 +1646,7 @@ export const OnboardingScreen = ({ onComplete }) => {
             >
               <Text
                 style={{
-                  fontFamily: "SpaceGrotesk-Bold",
+                  fontFamily: "Quicksand-Regular",
                   fontSize: 16,
                   color: brand.primary,
                   fontWeight: "700",

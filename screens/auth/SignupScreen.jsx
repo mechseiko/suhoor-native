@@ -473,7 +473,7 @@ export const SignupScreen = ({ navigation }) => {
             style={{
               flexDirection: "row",
               alignItems: "center",
-              marginVertical: 24,
+              marginVertical: 12,
             }}
           >
             <View

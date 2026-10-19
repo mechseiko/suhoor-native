@@ -37,4 +37,29 @@
 -keep class com.facebook.react.bridge.** { *; }
 -keep class com.facebook.react.modules.** { *; }
 -keep class com.facebook.react.modules.blob.** { *; }
+-keepclassmembers class com.facebook.react.modules.blob.** { *; }
+-keep class com.facebook.react.modules.blob.BlobCollector { *; }
+-keepclassmembers class com.facebook.react.modules.blob.BlobCollector { *; }
+-keep class com.facebook.react.modules.blob.BlobModule { *; }
+-keepclassmembers class com.facebook.react.modules.blob.BlobModule { *; }
 -keep class com.facebook.react.uimanager.** { *; }
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
+# SoLoader — React Native's native-module loader. Without this keep, a
+# minified release build throws ExceptionInInitializerError from BlobModule's
+# static initializer (SoLoader.n -> native loader) at startup, which surfaces
+# as "main has not been registered" and crashes the app immediately.
+-keep class com.facebook.soloader.** { *; }
+-keepclassmembers class com.facebook.soloader.** { *; }
+-dontwarn com.facebook.soloader.**
+
+# Expo / Unimodules autolinked modules — keep package + module implementations
+# so R8 doesn't strip them or their static initializers in release builds.
+-keep class expo.modules.** { *; }
+-keepclassmembers class expo.modules.** { *; }
+-keep class org.unimodules.** { *; }
+-keepclassmembers class org.unimodules.** { *; }
+-dontwarn expo.modules.**
+-dontwarn org.unimodules.**

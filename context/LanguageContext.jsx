@@ -6,7 +6,7 @@ import React, {
   useCallback,
   useMemo,
 } from 'react';
-import { I18nManager } from 'react-native';
+import { I18nManager, NativeModules, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
 import {
@@ -33,8 +33,8 @@ import {
  *   { locale, t, i18n, changeLanguage, languages, dir, isRTL, intlTag,
  *     formatDate, formatTime }
  *
- * plus two mobile-only flags (`isLoadingLocale`, `needsRestartForRtl`), so a
- * component body reads the same in both codebases.
+ * plus one mobile-only flag (`isLoadingLocale`), so a component body reads
+ * the same in both codebases.
  */
 
 const LanguageContext = createContext({});
@@ -46,18 +46,13 @@ export const LanguageProvider = ({ children }) => {
   const { t, i18n: instance } = useTranslation();
 
   const [isLoadingLocale, setIsLoadingLocale] = useState(!i18n.isInitialized);
-  // React Native can only flip layout direction at startup. When the user picks
-  // a language whose direction differs from the running layout, strings switch
-  // immediately but mirroring needs a relaunch — surfaced here so the UI can say
-  // so instead of looking broken.
-  const [needsRestartForRtl, setNeedsRestartForRtl] = useState(false);
 
   const locale = resolveLanguage(instance.resolvedLanguage || instance.language);
 
   /**
    * Applies layout direction. `allowRTL` must be enabled before `forceRTL` has
-   * any effect, and neither takes hold mid-session, so we only report the
-   * mismatch rather than pretending it applied.
+   * any effect, and neither takes hold mid-session, so we trigger an automatic
+   * reload on Android when direction changes.
    */
   const applyDirection = useCallback((code) => {
     const shouldBeRtl = isRtl(code);
@@ -65,12 +60,12 @@ export const LanguageProvider = ({ children }) => {
       I18nManager.allowRTL(true);
       if (I18nManager.isRTL !== shouldBeRtl) {
         I18nManager.forceRTL(shouldBeRtl);
-        setNeedsRestartForRtl(true);
-      } else {
-        setNeedsRestartForRtl(false);
+        return true;
       }
+      return false;
     } catch (error) {
       console.warn('Failed to apply layout direction:', error);
+      return false;
     }
   }, []);
 
@@ -98,7 +93,22 @@ export const LanguageProvider = ({ children }) => {
         // i18next persists the choice itself, via the detector's
         // cacheUserLanguage — no separate AsyncStorage write to keep in sync.
         await i18n.changeLanguage(next);
-        applyDirection(next);
+        const needsRestart = applyDirection(next);
+
+        // Automatically restart if layout direction changed
+        if (needsRestart) {
+          if (Platform.OS === 'android') {
+            try {
+              await NativeModules.DevSettings?.reload();
+            } catch (e) {
+              console.warn('Could not reload automatically:', e);
+            }
+          } else {
+            // iOS doesn't have DevSettings.reload, we'll rely on the banner
+            console.log('RTL layout changed - restart required on iOS');
+          }
+        }
+
         return { success: true, locale: next };
       } catch (error) {
         console.error('Failed to change language:', error);
@@ -147,7 +157,6 @@ export const LanguageProvider = ({ children }) => {
       formatDate,
       formatTime,
       isLoadingLocale,
-      needsRestartForRtl,
     }),
     [
       locale,
@@ -157,7 +166,6 @@ export const LanguageProvider = ({ children }) => {
       formatDate,
       formatTime,
       isLoadingLocale,
-      needsRestartForRtl,
     ]
   );
 

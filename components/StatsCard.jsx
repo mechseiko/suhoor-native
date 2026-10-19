@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from 'react'
 import { Animated, Platform, StyleSheet, View } from 'react-native'
 import { useTheme } from '../context/ThemeContext'
 import { useNetwork } from '../context/NetworkContext'
+import { useLanguage } from '../context/LanguageContext'
 import { radius } from '../theme'
 import { Card, IconTile, Text } from './ui'
 
@@ -29,6 +30,7 @@ export const StatsCard = ({
 }) => {
   const { isConnected } = useNetwork();
   const { colors } = useTheme();
+  const { t } = useLanguage();
 
   return (
     <Card style={[styles.card, style]}>
@@ -95,7 +97,7 @@ const StatSkeleton = () => {
   return (
     <Animated.View
       accessibilityRole="progressbar"
-      accessibilityLabel="Loading"
+      accessibilityLabel={t('common.loading')}
       style={[
         styles.skeleton,
         {

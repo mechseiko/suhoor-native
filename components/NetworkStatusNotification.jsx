@@ -101,7 +101,7 @@ const NetworkStatusNotification = () => {
           onPress={hideNotification}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           style={styles.closeBtn}
-          accessibilityLabel="Dismiss"
+          accessibilityLabel={t('common.dismiss')}
           activeOpacity={0.7}
         >
           <Ionicons name="close" size={16} color={iconColor} />
