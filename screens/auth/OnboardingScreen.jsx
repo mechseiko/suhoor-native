@@ -670,11 +670,15 @@ const BatteryOptimizationStep = ({ onStatusChange }) => {
     }
 
     try {
-      const value =
-        await NativeModules.AlarmBridge?.isBatteryOptimizationDisabled();
-      const isDisabled = value === true;
-      setDisabled(isDisabled);
-      onStatusChange?.(true);
+      if (NativeModules && NativeModules.AlarmBridge) {
+        const value = await NativeModules.AlarmBridge.isBatteryOptimizationDisabled();
+        const isDisabled = value === true;
+        setDisabled(isDisabled);
+        onStatusChange?.(true);
+      } else {
+        setDisabled(false);
+        onStatusChange?.(true);
+      }
     } catch (error) {
       setDisabled(false);
       onStatusChange?.(true);
@@ -693,7 +697,13 @@ const BatteryOptimizationStep = ({ onStatusChange }) => {
     try {
       if (Platform.OS === "android") {
         try {
-          await NativeModules.AlarmBridge?.openBatteryOptimizationSettings();
+          if (NativeModules && NativeModules.AlarmBridge) {
+            await NativeModules.AlarmBridge.openBatteryOptimizationSettings();
+          } else {
+            await Linking.sendIntent(
+              "android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS"
+            );
+          }
         } catch (_) {
           await Linking.sendIntent(
             "android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS"

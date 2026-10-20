@@ -27,13 +27,13 @@ const NewUserSplash = ({ onFinish, duration = 2200 }) => {
         toValue: 1,
         duration: 350,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: isNative,
+        useNativeDriver: Platform.OS !== 'web',
       }),
       Animated.timing(logoScale, {
         toValue: 1,
         duration: 400,
         easing: Easing.out(Easing.back(1.1)),
-        useNativeDriver: isNative,
+        useNativeDriver: Platform.OS !== 'web',
       }),
     ]).start()
 
@@ -43,7 +43,7 @@ const NewUserSplash = ({ onFinish, duration = 2200 }) => {
         toValue: 0,
         duration: 400,
         easing: Easing.in(Easing.cubic),
-        useNativeDriver: isNative,
+        useNativeDriver: Platform.OS !== 'web',
       }).start(({ finished }) => {
         if (finished && onFinish) {
           onFinish()

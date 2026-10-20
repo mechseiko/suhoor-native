@@ -99,7 +99,9 @@ export const LanguageProvider = ({ children }) => {
         if (needsRestart) {
           if (Platform.OS === 'android') {
             try {
-              await NativeModules.DevSettings?.reload();
+              if (NativeModules && NativeModules.DevSettings) {
+                await NativeModules.DevSettings.reload();
+              }
             } catch (e) {
               console.warn('Could not reload automatically:', e);
             }

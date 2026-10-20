@@ -101,7 +101,7 @@ export const AlarmProvider = ({ children }) => {
         await cancelNotification('suhoor-daily-alarm');
 
         // Cancel previous native alarm if available
-        if (Platform.OS === 'android' && NativeModules.AlarmBridge?.cancelAlarm) {
+        if (Platform.OS === 'android' && NativeModules && NativeModules.AlarmBridge && NativeModules.AlarmBridge.cancelAlarm) {
           try {
             await NativeModules.AlarmBridge.cancelAlarm('suhoor-daily-alarm');
           } catch (e) {}
@@ -112,7 +112,7 @@ export const AlarmProvider = ({ children }) => {
         await AsyncStorage.removeItem(`suhoor_alarm_dismissed_${todayStr}`);
 
         // Schedule exact native Android alarm (survives Doze, device sleep, and deep background)
-        if (Platform.OS === 'android' && NativeModules.AlarmBridge?.scheduleAlarm) {
+        if (Platform.OS === 'android' && NativeModules && NativeModules.AlarmBridge && NativeModules.AlarmBridge.scheduleAlarm) {
           try {
             await NativeModules.AlarmBridge.scheduleAlarm(
               'suhoor-daily-alarm',
@@ -163,7 +163,7 @@ export const AlarmProvider = ({ children }) => {
   const cancelDailySuhoorAlarm = useCallback(async () => {
     try {
       await cancelNotification('suhoor-daily-alarm');
-      if (Platform.OS === 'android' && NativeModules.AlarmBridge?.cancelAlarm) {
+      if (Platform.OS === 'android' && NativeModules && NativeModules.AlarmBridge && NativeModules.AlarmBridge.cancelAlarm) {
         try {
           await NativeModules.AlarmBridge.cancelAlarm('suhoor-daily-alarm');
         } catch (e) {}

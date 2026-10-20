@@ -30,6 +30,12 @@ config.resolver = {
 config.transformer = {
   ...config.transformer,
   babelTransformerPath: require.resolve("react-native-svg-transformer/expo"),
+  minifierConfig: {
+    keep_fnames: true,
+    mangle: {
+      keep_fnames: true,
+    },
+  },
 };
 
 const nativeWindConfig = withNativeWind(config, { input: "./global.css" });
