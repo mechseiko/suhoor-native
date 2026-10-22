@@ -34,7 +34,7 @@ export const ForgotPasswordScreen = ({ navigation }) => {
 
     // Check cooldown
     if (cooldownRemaining > 0) {
-      setError(`Please wait ${cooldownRemaining} seconds before requesting another reset link`)
+      setError(t("auth.resetWait", `Please wait ${cooldownRemaining} seconds before requesting another reset link`))
       return
     }
 
@@ -124,7 +124,7 @@ export const ForgotPasswordScreen = ({ navigation }) => {
       <Input
         label={t('settings.emailAddress')}
         icon="mail-outline"
-        placeholder="your@email.com"
+        placeholder={t("auth.emailPlaceholder", "your@email.com")}
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"

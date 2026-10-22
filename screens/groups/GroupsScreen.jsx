@@ -48,8 +48,8 @@ export const GroupsScreen = ({ navigation }) => {
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
   
   const loadingMessages = [
-    'Loading your groups...',
-    'Fetching group members',
+    t('groups.loadingGroups'),
+    t('groups.fetchingMembers'),
   ]
 
   useEffect(() => {
@@ -245,11 +245,11 @@ export const GroupsScreen = ({ navigation }) => {
 
     const entered = pinDigits.join('')
     if (entered.length < 4) {
-      setPinError('Enter your 4-digit alarm PIN.')
+      setPinError(t('groups.enterPin'))
       return
     }
     if (savedPin && entered !== savedPin) {
-      setPinError('Incorrect PIN. Try again.')
+      setPinError(t('alarm.incorrectPin'))
       setPinDigits(['', '', '', ''])
       setTimeout(() => pinRefs[0]?.current?.focus(), 100)
       return
@@ -292,7 +292,7 @@ export const GroupsScreen = ({ navigation }) => {
   const handlePinSubmit = async (overridePin) => {
     const entered = overridePin ?? pinDigits.join('')
     if (entered.length < 4) {
-      setPinError('Enter your 4-digit alarm PIN.')
+      setPinError(t('groups.enterPin'))
       return
     }
     let savedPin = ''
@@ -300,7 +300,7 @@ export const GroupsScreen = ({ navigation }) => {
       savedPin = (await AsyncStorage.getItem('suhoor_alarm_pin')) || ''
     } catch {}
     if (savedPin && entered !== savedPin) {
-      setPinError('Incorrect PIN. Try again.')
+      setPinError(t('alarm.incorrectPin'))
       setPinDigits(['', '', '', ''])
       setTimeout(() => pinRefs[0]?.current?.focus(), 100)
       return

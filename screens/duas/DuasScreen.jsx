@@ -352,7 +352,7 @@ export const DuasScreen = ({ navigation }) => {
                 accessibilityRole="button"
               >
                 <Text style={[styles.loadMoreText, { color: colors.primary }]}>
-                  {`Load more duas (${visibleCount} of ${filteredDuas.length})`}
+                  {t('duas.loadMore', `Load more duas (${visibleCount} of ${filteredDuas.length})`, { visibleCount, total: filteredDuas.length })}
                 </Text>
               </TouchableOpacity>
             ) : null

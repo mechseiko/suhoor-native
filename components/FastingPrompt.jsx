@@ -196,8 +196,21 @@ export const FastingPrompt = () => {
   }, [todayData]);
 
   // ── Main prompt visibility ─────────────────────────────────────────────────
-  const PROMPT_START_MINUTES = 8 * 60; // 8am
-  const isPromptVisible = nowMinutes >= PROMPT_START_MINUTES;
+  // Show only from 8 AM (when the target is always tomorrow per getTargetFastingDate).
+  // Also hide once suhoor has ended (end of wake-up window) — it stays hidden
+  // until 8 AM the next cycle.
+  const PROMPT_START_MINUTES = 8 * 60; // 8 AM
+  const suhoorEndMinutes = React.useMemo(() => {
+    if (!todayData?.time?.sahur) return null;
+    const [h, m] = todayData.time.sahur.split(':').map(Number);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+    return h * 60 + m;
+  }, [todayData]);
+  // Prompt is visible: from 8 AM, but NOT once suhoor has ended (we're in or past the wake-up window)
+  const isPromptVisible =
+    nowMinutes >= PROMPT_START_MINUTES &&
+    (suhoorEndMinutes === null || nowMinutes < suhoorEndMinutes);
+
 
   // Auto-record intention
   useEffect(() => {

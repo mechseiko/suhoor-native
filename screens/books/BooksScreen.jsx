@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import {
   View,
   Text,
@@ -157,7 +157,7 @@ export const BooksScreen = ({ navigation }) => {
                 <Ionicons name="book-outline" size={24} color="#6366F1" />
               </View>
               <View style={styles.pagesBadge}>
-                <Text style={styles.pagesText}>{book.pages} pages</Text>
+                <Text style={styles.pagesText}>{t("common.pages", "pages")}</Text>
               </View>
             </View>
 
@@ -174,7 +174,7 @@ export const BooksScreen = ({ navigation }) => {
                 </Text>
               )}
               <Text style={[styles.author, { color: colors.textSecondary }]}>
-                By {book.author}
+                {t("common.by", "By")} {book.author}
               </Text>
               <Text
                 style={[styles.description, { color: colors.textSecondary }]}
@@ -190,7 +190,7 @@ export const BooksScreen = ({ navigation }) => {
                 onPress={() => openBook(book.file)}
               >
                 <Ionicons name="document-text-outline" size={16} color="white" />
-                <Text style={styles.readButtonText}>Read PDF</Text>
+                <Text style={styles.readButtonText}>{t("common.readPdf", "Read PDF")}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -200,10 +200,10 @@ export const BooksScreen = ({ navigation }) => {
           <View style={[styles.emptyState, { backgroundColor: colors.surface }]}>
             <Ionicons name="book-outline" size={48} color={colors.textSecondary} />
             <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              No books matched your search
+              {t("common.noMatches", "No books matched your search")}
             </Text>
             <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-              Try searching for keywords like "Fasting", "Ramadhan", or "Eemaan"
+              {t("common.searchHint", 'Try searching for keywords like "Fasting", "Ramadhan", or "Eemaan"')}
             </Text>
           </View>
         )}

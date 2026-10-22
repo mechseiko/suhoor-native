@@ -237,10 +237,10 @@ const ProfileScreen = ({ route }) => {
       await updateDoc(doc(db, COLLECTIONS.profiles, currentUser.uid), {
         "preferences.alarmSound": soundId,
       });
-      showToast("Alarm sound updated", "success");
+      showToast(t("profile.alarmSoundUpdated", "Alarm sound updated"), "success");
     } catch (err) {
       console.error("Failed to update alarm sound:", err);
-      showToast("Failed to update alarm sound", "error");
+      showToast(t("profile.alarmSoundUpdateError", "Failed to update alarm sound"), "error");
     }
   };
 
@@ -252,12 +252,12 @@ const ProfileScreen = ({ route }) => {
         "preferences.soundEnabled": value,
       });
       showToast(
-        value ? "Audible alarms turned on" : "Audible alarms turned off",
+        value ? t("profile.soundEnabledOn", "Audible alarms turned on") : t("profile.soundEnabledOff", "Audible alarms turned off"),
         "info"
       );
     } catch (err) {
       console.error("Failed to update sound preference:", err);
-      showToast("Failed to update sound preference", "error");
+      showToast(t("profile.soundUpdateError", "Failed to update sound preference"), "error");
     } finally {
       setIsUpdatingSettings(false);
     }
@@ -306,7 +306,7 @@ const ProfileScreen = ({ route }) => {
         setLocationResults(results);
       } catch (err) {
         console.error("Error searching location:", err);
-        showToast(t("profile.locationSearchError", "Failed to search location"), "error");
+      showToast(t("profile.locationSearchError", "Failed to search location"), "error");
       } finally {
         setIsSearchingLocation(false);
       }
@@ -360,7 +360,7 @@ const ProfileScreen = ({ route }) => {
     if (!currentUser) return;
     const pinStr = alarmPin.join("");
     if (pinStr.length < 4 || alarmPin.some((d) => d === "")) {
-      setPinError("Please enter all 4 digits of your PIN.");
+      setPinError(t("profile.pinError", "Please enter all 4 digits of your PIN."));
       return;
     }
 
@@ -373,7 +373,7 @@ const ProfileScreen = ({ route }) => {
       // Save to AsyncStorage for alarm overlay
       await AsyncStorage.setItem("suhoor_alarm_pin", pinStr);
 
-      showToast("Alarm PIN updated successfully!", "success");
+      showToast(t("profile.pinSuccess", "Alarm PIN updated successfully!"), "success");
       setPinError("");
     } catch (err) {
       console.error("Error saving PIN:", err);
@@ -479,7 +479,7 @@ const ProfileScreen = ({ route }) => {
       const result = await getCurrentCoordinates(currentUser?.uid);
       if (!result.coordinates || result.source !== "gps") {
         showToast(
-          "Could not detect your current location. Enable location services and try again.",
+          t("profile.locationDetectError", "Could not detect your current location. Enable location services and try again."),
           "error"
         );
         return;
@@ -497,7 +497,7 @@ const ProfileScreen = ({ route }) => {
       showToast(t("profile.currentLocationSaved", "Current location saved"), "success");
     } catch (err) {
       console.error("Error detecting current location:", err);
-      showToast("Could not detect your current location", "error");
+      showToast(t("profile.locationDetectFail", "Could not detect your current location"), "error");
     } finally {
       setIsUpdatingSettings(false);
     }
@@ -586,10 +586,10 @@ const ProfileScreen = ({ route }) => {
         url: "https://suhoor-group.web.app/login",
         handleCodeInApp: true,
       });
-      showToast("Verification email sent! Check your inbox.", "success");
+      showToast(t("profile.verificationEmailSent", "Verification email sent! Check your inbox."), "success");
     } catch (err) {
       console.error("Error sending verification email:", err);
-      showToast("Unable to send email right now. Please try again.", "error");
+      showToast(t("profile.verificationSendError", "Unable to send email right now. Please try again."), "error");
     } finally {
       setIsResendingVerification(false);
     }
@@ -1631,10 +1631,10 @@ const ProfileScreen = ({ route }) => {
                   <Text
                     style={[styles.settingLabel, themedStyles.settingLabel]}
                   >
-                    Audible Alarms & Sounds
+                    {t("profile.audibleAlarms")}
                   </Text>
                   <Text style={[styles.settingSub, themedStyles.settingSub]}>
-                    Play audio when your Suhoor alarm rings or when buzzed by group members
+                    {t("profile.audibleAlarmsSub")}
                   </Text>
                 </View>
                 <Switch
@@ -1655,10 +1655,10 @@ const ProfileScreen = ({ route }) => {
               <View style={styles.cardHeader}>
                 <View>
                   <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
-                    Alarm Sound
+                    {t("profile.alarmSound")}
                   </Text>
                   <Text style={[styles.settingSub, themedStyles.settingSub, { marginTop: 2 }]}>
-                    Choose the sound that plays when your alarm rings
+                    {t("profile.alarmSoundSub")}
                   </Text>
                 </View>
               </View>
@@ -1787,7 +1787,7 @@ const ProfileScreen = ({ route }) => {
                   {latestVersion && (
                     <View style={{ backgroundColor: colors.primary + '20', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
                       <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary }}>
-                        {latestVersion} available
+                        {t("profile.versionAvailable", "{{version}} available", { version: latestVersion })}
                       </Text>
                     </View>
                   )}
@@ -1987,8 +1987,8 @@ const ProfileScreen = ({ route }) => {
               <Ionicons name="locate-outline" size={18} color={Colors.white} />
               <Text style={styles.primaryButtonText}>
                 {isUpdatingSettings
-                  ? "Detecting location..."
-                  : "Use current location"}
+                  ? t("profile.detectingLocation")
+                  : t("profile.useCurrentLocation")}
               </Text>
             </TouchableOpacity>
 

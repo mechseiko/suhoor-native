@@ -111,8 +111,8 @@ export const TabNavigator = ({ tabBarRef }) => {
         name="HomeTab"
         component={HomeScreen}
         options={{
-          title: 'Overview',
-          tabBarLabel: 'Overview',
+          title: t('nav.dashboard', 'Overview'),
+          tabBarLabel: t('nav.dashboard', 'Overview'),
           headerShown: false,
         }}
       />
@@ -120,8 +120,8 @@ export const TabNavigator = ({ tabBarRef }) => {
         name="FastingTimesTab"
         component={FastingTimesScreen}
         options={{
-          title: 'Alarms',
-          tabBarLabel: 'Alarms',
+          title: t('nav.fastingTimes', 'Alarms'),
+          tabBarLabel: t('nav.fastingTimes', 'Alarms'),
           headerTitle: t('nav.fastingTimes'),
         }}
       />
@@ -129,8 +129,8 @@ export const TabNavigator = ({ tabBarRef }) => {
         name="GroupsTab"
         component={GroupsStack}
         options={{
-          title: 'Groups',
-          tabBarLabel: 'Groups',
+          title: t('nav.groups', 'Groups'),
+          tabBarLabel: t('nav.groups', 'Groups'),
           headerShown: false,
         }}
       />
@@ -147,8 +147,8 @@ export const TabNavigator = ({ tabBarRef }) => {
         name="ProfileTab"
         component={ProfileScreen}
         options={{
-          title: 'Profile',
-          tabBarLabel: 'Profile',
+          title: t('nav.profile', 'Profile'),
+          tabBarLabel: t('nav.profile', 'Profile'),
           headerTitle: t('profile.myProfile'),
         }}
       />
@@ -156,7 +156,7 @@ export const TabNavigator = ({ tabBarRef }) => {
         name="MilestonesTab"
         component={MilestonesScreen}
         options={{
-          title: 'Milestones',
+          title: t('nav.milestones', 'Milestones'),
           headerTitle: t('nav.milestones'),
           tabBarItemStyle: { display: 'none' },
           tabBarButton: () => null,

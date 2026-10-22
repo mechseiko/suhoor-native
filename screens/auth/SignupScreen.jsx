@@ -363,7 +363,7 @@ export const SignupScreen = ({ navigation }) => {
           <Input
             label={t("settings.emailAddress")}
             icon="mail-outline"
-            placeholder="your@email.com"
+            placeholder={t("auth.emailPlaceholder", "your@email.com")}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -374,7 +374,7 @@ export const SignupScreen = ({ navigation }) => {
           <Input
             label={t("auth.password")}
             icon="lock-closed-outline"
-            placeholder="••••••••"
+            placeholder={t("auth.passwordPlaceholder", "••••••••")}
             value={password}
             onChangeText={setPassword}
             hint={t("auth.passwordHint")}
@@ -386,7 +386,7 @@ export const SignupScreen = ({ navigation }) => {
           <Input
             label={t("auth.confirmPassword")}
             icon="lock-closed-outline"
-            placeholder="••••••••"
+            placeholder={t("auth.passwordPlaceholder", "••••••••")}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secure

@@ -158,7 +158,7 @@ export const LoginScreen = ({ navigation }) => {
       <Input
         label={t('settings.emailAddress')}
         icon="mail-outline"
-        placeholder="your@email.com"
+        placeholder={t("auth.emailPlaceholder", "your@email.com")}
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
@@ -169,7 +169,7 @@ export const LoginScreen = ({ navigation }) => {
       <Input
         label={t('auth.password')}
         icon="lock-closed-outline"
-        placeholder="••••••••"
+        placeholder={t("auth.passwordPlaceholder", "••••••••")}
         value={password}
         onChangeText={setPassword}
         secure

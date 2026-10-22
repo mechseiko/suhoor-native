@@ -948,7 +948,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       savedPin = (await AsyncStorage.getItem("suhoor_alarm_pin")) || "";
     } catch { }
     if (savedPin && entered !== savedPin) {
-      setPinError("Incorrect PIN. Try again.");
+      setPinError(t("alarm.incorrectPin"));
       setPinDigits(["", "", "", ""]);
       setTimeout(() => pinRefs[0]?.current?.focus(), 100);
       return;

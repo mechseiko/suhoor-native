@@ -642,7 +642,7 @@ export const HomeScreen = ({ navigation }) => {
                 style={{ flex: 1 }}
               />
               <Button
-                title="Save PIN"
+                title={t('home.savePin', 'Save PIN')}
                 onPress={() => handlePinVerify()}
                 variant="secondary"
                 style={{ flex: 1 }}
