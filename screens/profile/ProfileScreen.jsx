@@ -1697,14 +1697,14 @@ const ProfileScreen = ({ route }) => {
                               paddingHorizontal: 6,
                               paddingVertical: 1.5,
                               borderRadius: 6,
-                              backgroundColor: option.badge === "Standard" ? "rgba(0,0,0,0.06)" : "rgba(16, 185, 129, 0.12)",
+                              backgroundColor: option.badge === t("profile.badgeStandard", "Standard") ? "rgba(0,0,0,0.06)" : "rgba(16, 185, 129, 0.12)",
                             }}
                           >
                             <Text
                               style={{
                                 fontSize: 10,
                                 fontWeight: "700",
-                                color: option.badge === "Standard" ? colors.textSecondary : "#059669",
+                                color: option.badge === t("profile.badgeStandard", "Standard") ? colors.textSecondary : "#059669",
                               }}
                             >
                               {option.badge}

@@ -61,13 +61,13 @@ export const ForgotPasswordScreen = ({ navigation }) => {
       console.error('Password reset error:', err)
       const errorCode = err.code
       let errorMessage = t('auth.resetError')
-      
+
       if (errorCode === 'auth/user-not-found') {
-        errorMessage = t('auth.userNotFound') || 'No account found with this email'
+        errorMessage = t('auth.userNotFound')
       } else if (errorCode === 'auth/invalid-email') {
-        errorMessage = t('auth.invalidEmail') || 'Invalid email address'
+        errorMessage = t('auth.invalidEmail')
       } else if (errorCode === 'auth/too-many-requests') {
-        errorMessage = t('auth.tooManyRequests') || 'Too many attempts. Please try again later'
+        errorMessage = t('auth.tooManyRequests')
       } else if (err.message) {
         errorMessage = err.message
       }

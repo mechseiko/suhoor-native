@@ -8,6 +8,10 @@ const CACHE_KEY = 'suhoor_fasting_times';
 
 /** Storage date key — always en-CA (YYYY-MM-DD), never the UI language. */
 const todayKey = () => new Date().toLocaleDateString('en-CA');
+const toDateKey = (d) => d.toLocaleDateString('en-CA');
+
+/** Default minutes before suhoor to open the wake-up window. */
+const DEFAULT_WAKE_MINUTES = 45;
 
 export function useFastingTimes() {
   const { currentUser, userProfile } = useAuth();
@@ -21,28 +25,22 @@ export function useFastingTimes() {
   const [fastingData, setFastingData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
-  // State to track day changes
   const [currentDayKey, setCurrentDayKey] = useState(todayKey());
 
-  // Live clock tick so time-derived booleans stay fresh while the app is open.
+  // Live clock tick so time-derived values stay fresh while the app is open.
   const [nowTick, setNowTick] = useState(Date.now());
   useEffect(() => {
     const id = setInterval(() => {
       setNowTick(Date.now());
-      // FIX: Check if the day rolled over while the app was open
       const newKey = todayKey();
-      setCurrentDayKey((prevKey) => {
-        if (prevKey !== newKey) return newKey;
-        return prevKey;
-      });
+      setCurrentDayKey((prev) => (prev !== newKey ? newKey : prev));
     }, 30_000);
     return () => clearInterval(id);
   }, []);
 
-  // User-configured wake-up minutes. 
+  // User-configured wake-up minutes. 45 is the documented default.
   const wakeMinutes =
-    userProfile?.preferences?.wakeUpMinutesBeforeSuhoor ?? null;
+    userProfile?.preferences?.wakeUpMinutesBeforeSuhoor ?? DEFAULT_WAKE_MINUTES;
 
   // Load cached fasting times on mount or day change
   useEffect(() => {
@@ -55,11 +53,10 @@ export function useFastingTimes() {
 
         const parsed = JSON.parse(cached);
 
-        // Invalidate cache if it's from a different day
         if (parsed.date !== currentDayKey) {
           await AsyncStorage.removeItem(CACHE_KEY);
           if (!cancelled) {
-            setFastingData(null); // Trigger refetch for new day
+            setFastingData(null);
             setLoading(true);
           }
         } else if (!cancelled) {
@@ -72,23 +69,17 @@ export function useFastingTimes() {
     };
 
     loadCachedTimes();
-    return () => {
-      cancelled = true;
-    };
-  }, [currentDayKey]); // Re-run when day changes
+    return () => { cancelled = true; };
+  }, [currentDayKey]);
 
   // Resolve coordinates
   useEffect(() => {
     let cancelled = false;
-
     getCurrentCoordinates(currentUser?.uid).then(({ coordinates, source, error: locationError }) => {
       if (cancelled) return;
       setLocation({ loaded: true, coordinates, source, error: locationError });
     });
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [currentUser?.uid]);
 
   // Fetch times once coordinates are known
@@ -99,7 +90,6 @@ export function useFastingTimes() {
       setError('No location available. Please set your location in settings.');
       return;
     }
-    // Only skip if we already have data FOR THE CURRENT DAY
     if (fastingData) {
       setLoading(false);
       return;
@@ -110,7 +100,6 @@ export function useFastingTimes() {
     const fetchFastingTimes = async () => {
       setLoading(true);
       setError('');
-
       try {
         const response = await fetch(
           fastingTimesUrl(location.coordinates.lat, location.coordinates.lng)
@@ -141,36 +130,69 @@ export function useFastingTimes() {
     };
 
     fetchFastingTimes();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [location.loaded, location.coordinates?.lat, location.coordinates?.lng, fastingData, currentDayKey]);
 
-  const todayData = fastingData?.fasting?.[0];
+  const fastingDays = fastingData?.fasting ?? [];
+  const todayData = fastingDays[0] ?? null;
 
-  const checkWakeUpWindow = useCallback(
-    (minutesBefore = wakeMinutes) => {
-      if (minutesBefore == null) return false;
-      if (!todayData?.time?.sahur) return false;
+  /**
+   * Resolve the day row for a given en-CA date key.
+   * Prefers an explicit `date` field on each row; falls back to array
+   * indexing ([today, tomorrow, ...]) for APIs that don't include a date.
+   */
+  const getDayData = useCallback((dateKey) => {
+    if (!dateKey) return null;
+    const byDate = fastingDays.find((d) => d?.date === dateKey);
+    if (byDate) return byDate;
 
-      const [hours, minutes] = todayData.time.sahur.split(':').map(Number);
-      if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return false;
+    const todayStr = todayKey();
+    if (dateKey === todayStr) return fastingDays[0] ?? null;
 
-      const suhoorEnd = new Date();
-      suhoorEnd.setHours(hours, minutes, 0, 0);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    if (dateKey === toDateKey(tomorrow)) return fastingDays[1] ?? null;
 
-      const windowOpens = new Date(suhoorEnd.getTime() - minutesBefore * 60000);
-      const now = Date.now();
+    return null;
+  }, [fastingDays]);
 
-      return now >= windowOpens.getTime() && now <= suhoorEnd.getTime();
-    },
-    [todayData, wakeMinutes]
-  );
+  /** Suhoor end for the given date key, as a local Date, or null. */
+  const getSuhoor = useCallback((dateKey) => {
+    const day = getDayData(dateKey);
+    if (!day?.time?.sahur) return null;
+    const [h, m] = day.time.sahur.split(':').map(Number);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+    const d = new Date(`${dateKey}T00:00:00`);
+    d.setHours(h, m, 0, 0);
+    return d;
+  }, [getDayData]);
+
+  /**
+   * Wake-up-window start = suhoor(date) - minutesBefore.
+   * minutesBefore defaults to the user's preference, then 45.
+   */
+  const getWakeStart = useCallback((dateKey, minutesBefore) => {
+    const suhoor = getSuhoor(dateKey);
+    if (!suhoor) return null;
+    const mins = minutesBefore ?? wakeMinutes;
+    if (!Number.isFinite(mins)) return null;
+    return new Date(suhoor.getTime() - mins * 60000);
+  }, [getSuhoor, wakeMinutes]);
+
+  /** True iff now is inside [wakeStart, suhoor] for the given day. */
+  const checkWakeUpWindow = useCallback((dateKey, minutesBefore) => {
+    const key = dateKey || todayKey();
+    const wakeStart = getWakeStart(key, minutesBefore);
+    if (!wakeStart) return false;
+    const suhoor = getSuhoor(key);
+    if (!suhoor) return false;
+    const now = Date.now();
+    return now >= wakeStart.getTime() && now <= suhoor.getTime();
+  }, [getWakeStart, getSuhoor]);
 
   const isWakeUpWindow = useMemo(
-    () => (wakeMinutes == null ? false : checkWakeUpWindow(wakeMinutes)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [checkWakeUpWindow, wakeMinutes, nowTick]
+    () => checkWakeUpWindow(),
+    [checkWakeUpWindow, nowTick]
   );
 
   const hasSuhoorEnded = useMemo(() => {
@@ -184,6 +206,7 @@ export function useFastingTimes() {
 
   return {
     fastingData,
+    fastingDays,
     todayData,
     loading,
     error,
@@ -192,6 +215,10 @@ export function useFastingTimes() {
     checkWakeUpWindow,
     hasSuhoorEnded,
     wakeMinutes,
+    // NEW — used by FastingPrompt to resolve the target day's suhoor/wakeStart
+    getDayData,
+    getSuhoor,
+    getWakeStart,
   };
 }
 

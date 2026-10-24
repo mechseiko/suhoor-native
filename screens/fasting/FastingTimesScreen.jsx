@@ -8,10 +8,8 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
-  PanResponder,
   Dimensions,
   RefreshControl,
-  Animated,
   Platform,
 } from 'react-native';
 
@@ -35,204 +33,140 @@ const DEFAULT_WAKE_MINUTES = 45;
 const MIN_WAKE_MINUTES = 15;
 const MAX_WAKE_MINUTES = 120;
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CLOCK_SIZE = Math.min(SCREEN_WIDTH - 80, 280);
-const CLOCK_RADIUS = CLOCK_SIZE / 2;
-
-const TimePickerDial = ({ value, onChange, colors, timeText, captionText, dragText }) => {
-  const [angle, setAngle] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const clockRef = useRef(null);
-
-  useEffect(() => {
-    // Convert value (0-120) to angle (0-360 degrees)
-    const normalizedValue = value / MAX_WAKE_MINUTES;
-    const newAngle = normalizedValue * 360;
-    setAngle(newAngle);
-  }, [value]);
-
-  const calculateAngleFromTouch = (touchX, touchY, layoutX, layoutY) => {
-    const centerX = layoutX + CLOCK_RADIUS;
-    const centerY = layoutY + CLOCK_RADIUS;
-    
-    const dx = touchX - centerX;
-    const dy = touchY - centerY;
-    
-    // Calculate distance from center
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const minDistance = CLOCK_RADIUS * 0.3; // Minimum distance from center
-    
-    if (distance < minDistance) {
-      return null; // Ignore touches too close to center
-    }
-    
-    // Calculate angle in degrees
-    let angle = Math.atan2(dy, dx) * (180 / Math.PI);
-    
-    // Adjust angle to start from top (90 degrees in standard math)
-    angle = angle + 90;
-    if (angle < 0) angle += 360;
-    
-    return angle;
-  };
-
-  const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: (event) => {
-      setIsDragging(true);
-      clockRef.current?.measure((x, y, width, height, pageX, pageY) => {
-        const { pageX: touchX, pageY: touchY } = event.nativeEvent;
-        const calculatedAngle = calculateAngleFromTouch(touchX, touchY, pageX, pageY);
-        if (calculatedAngle !== null) {
-          const normalizedValue = calculatedAngle / 360;
-          const newValue = Math.round(normalizedValue * MAX_WAKE_MINUTES);
-          setAngle(calculatedAngle);
-          onChange(Math.min(Math.max(newValue, MIN_WAKE_MINUTES), MAX_WAKE_MINUTES));
-        }
-      });
-    },
-    onPanResponderMove: (event) => {
-      clockRef.current?.measure((x, y, width, height, pageX, pageY) => {
-        const { pageX: touchX, pageY: touchY } = event.nativeEvent;
-        const calculatedAngle = calculateAngleFromTouch(touchX, touchY, pageX, pageY);
-        if (calculatedAngle !== null) {
-          const normalizedValue = calculatedAngle / 360;
-          const newValue = Math.round(normalizedValue * MAX_WAKE_MINUTES);
-          setAngle(calculatedAngle);
-          onChange(Math.min(Math.max(newValue, MIN_WAKE_MINUTES), MAX_WAKE_MINUTES));
-        }
-      });
-    },
-    onPanResponderRelease: () => {
-      setIsDragging(false);
-      // Snap to nearest 5-minute increment, respecting 15-min minimum
-      const snappedValue = Math.max(MIN_WAKE_MINUTES, Math.round(value / 5) * 5);
-      onChange(Math.min(snappedValue, MAX_WAKE_MINUTES));
-    },
-    onPanResponderTerminate: () => {
-      setIsDragging(false);
-    },
-  });
-
-  const knobX = CLOCK_RADIUS + (CLOCK_RADIUS - 20) * Math.cos((angle - 90) * Math.PI / 180);
-  const knobY = CLOCK_RADIUS + (CLOCK_RADIUS - 20) * Math.sin((angle - 90) * Math.PI / 180);
+const WakeUpTimePicker = ({ value, onChange, colors, timeText, captionText }) => {
+  const [modalVisible, setModalVisible] = useState(false);
+  
+  // Generate 5-minute increments from 15 to 120
+  const options = [];
+  for (let i = MIN_WAKE_MINUTES; i <= MAX_WAKE_MINUTES; i += 5) {
+    options.push(i);
+  }
 
   return (
     <View style={{ alignItems: 'center', marginVertical: 20 }}>
-      <View
-        ref={clockRef}
+      <TouchableOpacity
+        onPress={() => setModalVisible(true)}
         style={{
-          width: CLOCK_SIZE,
-          height: CLOCK_SIZE,
-          borderRadius: CLOCK_RADIUS,
           backgroundColor: colors.surfaceVariant,
           borderWidth: 2,
           borderColor: colors.border,
-          position: 'relative',
+          borderRadius: 16,
+          padding: 20,
+          alignItems: 'center',
+          minWidth: 200,
         }}
-        {...panResponder.panHandlers}
       >
-        {/* Clock face markings */}
-        {[0, 15, 30, 45, 60, 75, 90, 105, 120].map((mark) => {
-          const markAngle = (mark / MAX_WAKE_MINUTES) * 360 - 90;
-          const markX = CLOCK_RADIUS + (CLOCK_RADIUS - 15) * Math.cos(markAngle * Math.PI / 180);
-          const markY = CLOCK_RADIUS + (CLOCK_RADIUS - 15) * Math.sin(markAngle * Math.PI / 180);
-          
-          return (
-            <View
-              key={mark}
-              style={{
-                position: 'absolute',
-                left: markX - 3,
-                top: markY - 3,
-                width: 6,
-                height: 6,
-                borderRadius: 3,
-                backgroundColor: mark === 0 || mark === 45 || mark === 90 || mark === 120 
-                  ? colors.primary 
-                  : colors.textSecondary,
-              }}
-            />
-          );
-        })}
-
-        {/* Progress arc */}
-        <View
+        <Text
           style={{
-            position: 'absolute',
-            width: CLOCK_SIZE,
-            height: CLOCK_SIZE,
-            borderRadius: CLOCK_RADIUS,
-            borderWidth: 4,
-            borderColor: 'transparent',
-            borderTopColor: colors.primary,
-            borderRightColor: angle > 90 ? colors.primary : 'transparent',
-            borderBottomColor: angle > 180 ? colors.primary : 'transparent',
-            borderLeftColor: angle > 270 ? colors.primary : 'transparent',
-            transform: [{ rotate: `${angle}deg` }],
-          }}
-        />
-
-        {/* Draggable knob */}
-        <View
-          style={{
-            position: 'absolute',
-            left: knobX - 12,
-            top: knobY - 12,
-            width: 24,
-            height: 24,
-            borderRadius: 12,
-            backgroundColor: colors.primary,
-            borderWidth: 3,
-            borderColor: colors.white,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.25,
-            shadowRadius: 4,
-            elevation: 5,
-          }}
-        />
-
-        {/* Center display — the actual alarm time this dial position produces */}
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            alignItems: 'center',
-            justifyContent: 'center',
-            pointerEvents: 'none',
+            fontSize: 28,
+            fontWeight: '800',
+            color: colors.text,
+            textAlign: 'center',
           }}
         >
-          <Text
-            style={{
-              fontSize: 24,
-              fontWeight: '800',
-              color: colors.text,
-              textAlign: 'center',
-            }}
-          >
-            {timeText}
-          </Text>
-          <Text
-            style={{
-              fontSize: 11,
-              color: colors.textSecondary,
-              textAlign: 'center',
-              marginTop: 2,
-            }}
-          >
-            {captionText}
-          </Text>
-        </View>
-      </View>
+          {timeText}
+        </Text>
+        <Text
+          style={{
+            fontSize: 11,
+            color: colors.textSecondary,
+            textAlign: 'center',
+            marginTop: 4,
+          }}
+        >
+          {captionText}
+        </Text>
+        <Text style={{ marginTop: 8, fontSize: 12, color: colors.primary, fontWeight: '600' }}>
+          Tap to change
+        </Text>
+      </TouchableOpacity>
 
-      <Text style={{ marginTop: 12, fontSize: 12, color: colors.textSecondary }}>
-        {dragText}
-      </Text>
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 20,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              borderRadius: 16,
+              padding: 20,
+              width: '100%',
+              maxHeight: '80%',
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: '700',
+                color: colors.text,
+                marginBottom: 16,
+                textAlign: 'center',
+              }}
+            >
+              Select Wake-Up Time
+            </Text>
+            
+            <ScrollView style={{ maxHeight: 300 }}>
+              {options.map((minutes) => (
+                <TouchableOpacity
+                  key={minutes}
+                  onPress={() => {
+                    onChange(minutes);
+                    setModalVisible(false);
+                  }}
+                  style={{
+                    padding: 16,
+                    borderBottomWidth: 1,
+                    borderBottomColor: colors.border,
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      color: colors.text,
+                      fontWeight: value === minutes ? '700' : '400',
+                    }}
+                  >
+                    {minutes} minutes before suhoor
+                  </Text>
+                  {value === minutes && (
+                    <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <TouchableOpacity
+              onPress={() => setModalVisible(false)}
+              style={{
+                marginTop: 16,
+                padding: 16,
+                backgroundColor: colors.border,
+                borderRadius: 8,
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text }}>
+                Cancel
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -647,13 +581,12 @@ export const FastingTimesScreen = ({ navigation }) => {
                 })}
               </Text>
 
-              <TimePickerDial
+              <WakeUpTimePicker
                 value={personalWakeUpMinutes}
                 onChange={setPersonalWakeUpMinutes}
                 colors={colors}
                 timeText={personalWakeUp}
                 captionText={t('fastingTimes.minutesBeforeValue', { minutes: personalWakeUpMinutes })}
-                dragText={t('fastingTimes.dragCaption')}
               />
 
               <Text style={{ fontSize: 13, fontWeight: '600', marginTop: 8, textAlign: 'center', color: colors.accent }}>

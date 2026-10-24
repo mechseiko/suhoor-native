@@ -18,6 +18,46 @@ import { Platform } from 'react-native'
  * than crashing the bundle. Add that package before shipping iOS.
  */
 
+/**
+ * Notification channels used throughout the app.
+ *
+ * NOTIFICATION TYPES AND WHEN THEY'RE SENT:
+ *
+ * 1. wakeUp (suhoor-wake-up)
+ *    - When: Scheduled alarm time for waking up for suhoor
+ *    - Context: Set via useAlarm.js scheduleNotificationAlarm
+ *    - User action: Tapping opens the alarm overlay to dismiss with PIN
+ *
+ * 2. fastingPrompt (suhoor-fasting-prompt)
+ *    - When: After user sets their fasting intention in the daily prompt
+ *    - Context: Sent via FastingPrompt.jsx handleYes function
+ *    - Content: Confirmation that alarm is active for the target date
+ *
+ * 3. suhoorStart (suhoor-start)
+ *    - When: At the exact suhoor time
+ *    - Context: Can be scheduled for precise timing
+ *    - Note: Not currently used in the app
+ *
+ * 4. suhoorEnd (suhoor-end)
+ *    - When: After suhoor/fasting window ends
+ *    - Context: Can be scheduled for end of fasting period
+ *    - Note: Not currently used in the app
+ *
+ * 5. iftar (suhoor-iftar)
+ *    - When: At iftar time (sunset/maghrib)
+ *    - Context: Can be scheduled for iftar notification
+ *    - Note: Not currently used in the app
+ *
+ * 6. iftarReminder (suhoor-iftar-reminder)
+ *    - When: Reminders before iftar time
+ *    - Context: Can be scheduled for pre-iftar reminders
+ *    - Note: Not currently used in the app
+ *
+ * 7. general (suhoor-general)
+ *    - When: Broadcast announcements and updates from admin
+ *    - Context: Sent via HomeScreen.jsx notifications listener
+ *    - Content: General app announcements, feature updates, etc.
+ */
 export const CHANNELS = {
   wakeUp: { id: 'suhoor-wake-up', name: 'Suhoor Wake Up' },
   fastingPrompt: { id: 'suhoor-fasting-prompt', name: 'Fasting Intention' },

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Platform } from 'react-native';
+import { Platform, AppState } from 'react-native';
 import DeviceInfo from 'react-native-device-info';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db } from '../config/firebase';
@@ -43,7 +43,7 @@ export function useAlarm() {
   const alarmIdRef = useRef(null);
   const { t } = useLanguage();
 
-  // Check permission on mount
+  // Check permission on mount and when app returns from settings
   useEffect(() => {
     let cancelled = false;
 
@@ -69,8 +69,17 @@ export function useAlarm() {
     };
 
     checkPermission();
+
+    // Re-check when app returns from settings (detects permission revocation)
+    const appStateSubscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        checkPermission();
+      }
+    });
+
     return () => {
       cancelled = true;
+      appStateSubscription?.remove();
     };
   }, [nativeAlarm.isNativeAvailable]);
 

@@ -50,7 +50,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
   const { colors, isDark } = useTheme();
   const { t } = useLanguage();
   const { isConnected: isSocketConnected } = useSocket();
-  const { isConnected: isNetworkConnected } = useNetwork();
+  const { isConnected: isNetworkConnected, isOffline } = useNetwork();
   const {
     socket,
     isConnected,
@@ -1372,6 +1372,32 @@ export const GroupDetailScreen = ({ route, navigation }) => {
 
         {renderBulkBar()}
 
+        {/* Data Offline Warning - shown when offline during critical hours */}
+        {isOffline && (() => {
+          const now = new Date();
+          const currentHour = now.getHours();
+          const fajrTime = todayData?.time?.sahur ? new Date(`2000-01-01T${todayData.time.sahur}:00`) : new Date();
+          fajrTime.setHours(4, 30, 0, 0);
+          
+          // Show warning from 8 PM to Fajr time
+          if (currentHour >= 20 || currentHour < fajrTime.getHours()) {
+            return (
+              <View style={[styles.offlineWarning, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)', borderColor: isDark ? 'rgba(239, 68, 68, 0.4)' : 'rgba(239, 68, 68, 0.3)' }]}>
+                <Ionicons name="wifi-off" size={20} color={isDark ? '#F87171' : '#DC2626'} style={styles.warningIcon} />
+                <View style={styles.warningTextContainer}>
+                  <Text style={[styles.warningTitle, { color: isDark ? '#FCA5A5' : '#B91C1C' }]}>
+                    {t('groups.offlineWarningTitle')}
+                  </Text>
+                  <Text style={[styles.warningMessage, { color: isDark ? '#FECACA' : '#991B1B' }]}>
+                    {t('groups.offlineWarningMessage')}
+                  </Text>
+                </View>
+              </View>
+            );
+          }
+          return null;
+        })()}
+
         {membersLoading ? (
           <View style={{ alignItems: 'center', paddingVertical: 32 }}>
             <ActivityIndicator color={colors.primary} size="large" />
@@ -2284,6 +2310,30 @@ const styles = StyleSheet.create({
     marginRight: 10,
     alignItems: "center",
     justifyContent: "center",
+  },
+  // Offline warning
+  offlineWarning: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    marginBottom: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  warningIcon: {
+    marginRight: 12,
+  },
+  warningTextContainer: {
+    flex: 1,
+  },
+  warningTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    marginBottom: 2,
+  },
+  warningMessage: {
+    fontSize: 12,
+    lineHeight: 16,
   },
 });
 

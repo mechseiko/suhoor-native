@@ -1123,7 +1123,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
               <TextInput
                 value={adminSearch}
                 onChangeText={setAdminSearch}
-                placeholder="Search member name or email..."
+                placeholder={t('groups.searchMemberPlaceholder', 'Search member name or email...')}
                 placeholderTextColor={colors.textSecondary}
                 style={[styles.modalSearchInput, { color: colors.text }]}
               />

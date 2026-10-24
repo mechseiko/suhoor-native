@@ -52,7 +52,7 @@ const TypewriterHero = ({ t }) => {
     if (charIndex < FULL_TYPEWRITER_TEXT.length) {
       const timer = setTimeout(() => {
         setCharIndex((prev) => prev + 1);
-      }, 45);
+      }, 25);
       return () => clearTimeout(timer);
     }
   }, [charIndex, FULL_TYPEWRITER_TEXT]);

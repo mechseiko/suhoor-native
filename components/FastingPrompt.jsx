@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, View, Image, TouchableOpacity } from 'react-native';
 import { db } from '../config/firebase';
 import { COLLECTIONS } from '../config/firestoreSchema';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -22,7 +22,7 @@ import Toast from './Toast';
 import { useAlarmState } from '../context/AlarmContext';
 import { useFastingTimes } from '../hooks/useFastingTimes';
 import { Badge, Button, Card, Text } from './ui';
-import { alpha, radius, spacing } from '../theme';
+import { radius, spacing } from '../theme';
 import { scheduleNotification, CHANNELS } from '../services/notifications';
 
 export const FastingPrompt = () => {
@@ -30,14 +30,15 @@ export const FastingPrompt = () => {
   const { colors, isDark } = useTheme();
   const { t, locale, formatDate } = useLanguage();
   const { scheduleDailySuhoorAlarm, cancelDailySuhoorAlarm } = useAlarmState();
-  const { todayData, checkWakeUpWindow } = useFastingTimes();
+  const { getDayData, getWakeStart, checkWakeUpWindow, wakeMinutes } = useFastingTimes();
+
   const [status, setStatus] = useState('idle');
   const [loading, setLoading] = useState(false);
-  const [targetDate, setTargetDate] = useState('');
-  const [targetDisplay, setTargetDisplay] = useState('');
-  const [defaultAnswer, setDefaultAnswer] = useState(false);
-  const [isTodayTarget, setIsTodayTarget] = useState(false);
   const [currentDayFastingStatus, setCurrentDayFastingStatus] = useState(null);
+
+  // ── Proactive-arm state ────────────────────────────────────────────────
+  const [statusResolved, setStatusResolved] = useState(false);
+  const autoArmedRef = useRef(null); // remembers which targetKey we already auto-armed
 
   // Toast state
   const [toastVisible, setToastVisible] = useState(false);
@@ -50,270 +51,228 @@ export const FastingPrompt = () => {
     setToastVisible(true);
   };
 
-  // FIX: Added a listener to trigger a re-check when the clock crosses midnight
-  const [nowMinutes, setNowMinutes] = useState(() => {
-    const n = new Date();
-    return n.getHours() * 60 + n.getMinutes();
-  });
-
+  // Tick every minute so visibility / banner recompute across boundaries.
+  const [nowTick, setNowTick] = useState(Date.now());
   useEffect(() => {
-    const id = setInterval(() => {
-      const n = new Date();
-      setNowMinutes(n.getHours() * 60 + n.getMinutes());
-    }, 60000);
+    const id = setInterval(() => setNowTick(Date.now()), 60000);
     return () => clearInterval(id);
   }, []);
 
-  // FIX: Trigger to re-fetch DB if the day rolls over
-  const currentDayKey = new Date().toLocaleDateString('en-CA');
+  // ── Target + visibility, derived at render ──────────────────────────────
+  // getTargetFastingDate: 08:00–23:59 → tomorrow; 00:00–07:59 → today.
+  const targetDateObj = getTargetFastingDate();
+  const targetKey = targetDateObj ? targetDateObj.toLocaleDateString('en-CA') : null;
+  const targetDateMidnight = targetKey ? new Date(`${targetKey}T00:00:00`) : null;
+  const targetData = targetKey ? getDayData(targetKey) : null;
 
+  const todayStr = new Date().toLocaleDateString('en-CA');
+  const isTodayTarget = targetKey === todayStr;
+
+  const defaultAnswer = targetDateMidnight
+    ? getDefaultIntention(targetDateMidnight, userProfile)
+    : false;
+
+  const targetDisplay = targetDateObj
+    ? formatDate(targetDateObj, {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : '';
+
+  // Visibility rule: hide once wakeStart(target) has passed.
+  // wakeStart = suhoor(target) - wakeMinutes (user setting, default 45).
+  const wakeStart = targetKey ? getWakeStart(targetKey, wakeMinutes) : null;
+  const isPromptVisible = !!(wakeStart && nowTick < wakeStart.getTime());
+
+  // ── Resolve status from Firestore / cache; re-run when targetKey flips ─
   useEffect(() => {
-    const determineTarget = async () => {
-      if (!currentUser) return;
-      const target = getTargetFastingDate();
+    if (!currentUser || !targetKey) {
+      setStatus('idle');
+      setStatusResolved(true); // nothing to resolve
+      return;
+    }
+    let cancelled = false;
+    setStatusResolved(false);
 
-      if (!target) {
-        setStatus('hidden');
-        return;
-      }
-
-      // Determine if the target is today (midnight–8am) or tomorrow (8am+)
-      const now = new Date();
-      const todayStr = now.toLocaleDateString('en-CA');
-      const targetStr = target.toLocaleDateString('en-CA');
-      setIsTodayTarget(targetStr === todayStr);
-
+    const run = async () => {
       try {
-        const cachedAnswer = await AsyncStorage.getItem(`suhoor_intent_${targetStr}`);
-
-        const statusRef = doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${targetStr}`);
+        const statusRef = doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${targetKey}`);
         const statusSnap = await getDoc(statusRef);
+        if (cancelled) return;
+
         if (statusSnap.exists()) {
           const wantsToFast = statusSnap.data().wantsToFast;
-          await AsyncStorage.setItem(`suhoor_intent_${targetStr}`, wantsToFast ? 'yes' : 'no');
+          await AsyncStorage.setItem(`suhoor_intent_${targetKey}`, wantsToFast ? 'yes' : 'no');
+          if (cancelled) return;
           setStatus(wantsToFast ? 'confirmed_fasting' : 'confirmed_not_fasting');
-          setTargetDate(targetStr);
-          setTargetDisplay(
-            formatDate(target, {
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric',
-              year: 'numeric',
-            })
-          );
-          return;
-        } else if (cachedAnswer) {
-          setStatus(cachedAnswer === 'yes' ? 'confirmed_fasting' : 'confirmed_not_fasting');
-          setTargetDate(targetStr);
-          setTargetDisplay(
-            formatDate(target, {
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric',
-              year: 'numeric',
-            })
-          );
           return;
         }
-      } catch (err) {
-        console.error('Error checking fasting cache/db:', err);
-      }
 
-      setTargetDate(targetStr);
-      setTargetDisplay(
-        formatDate(target, {
-          weekday: 'long',
-          month: 'long',
-          day: 'numeric',
-          year: 'numeric',
-        })
-      );
-      setDefaultAnswer(getDefaultIntention(target, userProfile));
+        const cached = await AsyncStorage.getItem(`suhoor_intent_${targetKey}`);
+        if (cancelled) return;
+        setStatus(
+          cached === 'yes'
+            ? 'confirmed_fasting'
+            : cached === 'no'
+            ? 'confirmed_not_fasting'
+            : 'idle'
+        );
+      } catch (err) {
+        console.error('Error resolving fasting status:', err);
+        if (!cancelled) setStatus('idle');
+      } finally {
+        if (!cancelled) setStatusResolved(true);
+      }
     };
 
-    determineTarget();
-  }, [currentUser, userProfile, formatDate, currentDayKey]);
+    run();
+    return () => { cancelled = true; };
+  }, [currentUser, targetKey]);
 
-  // Fetch current day fasting status to display at top of prompt
+  // ── Proactive arm: if status is idle and the day defaults to Yes,
+  //    schedule the alarm for wakeStart(target) in the background.
+  //    Fires only once per targetKey; cleared on Reset so it can re-arm.
+  useEffect(() => {
+    if (!statusResolved) return;
+    if (status !== 'idle') return;          // user already chose, or is confirming
+    if (!defaultAnswer) return;             // normal day → no alarm, per doc
+    if (!targetKey || !wakeStart) return;
+    if (wakeStart.getTime() <= Date.now()) return; // too late, auto-record handles it
+    if (autoArmedRef.current === targetKey) return;
+    if (!scheduleDailySuhoorAlarm) return;
+
+    autoArmedRef.current = targetKey;
+    scheduleDailySuhoorAlarm(wakeStart, t('fasting.suhoorAlarmLabel')).catch((err) => {
+      console.error('Auto-arm failed:', err);
+      autoArmedRef.current = null; // allow retry on next render
+    });
+  }, [
+    statusResolved,
+    status,
+    defaultAnswer,
+    targetKey,
+    wakeStart,
+    scheduleDailySuhoorAlarm,
+    t,
+  ]);
+
+  // ── Current day fasting status (for the top banner) ────────────────────
   useEffect(() => {
     if (!currentUser) return;
-    const fetchCurrentStatus = async () => {
+    let cancelled = false;
+    const fetchStatus = async () => {
       try {
-        const todayStr = new Date().toLocaleDateString('en-CA');
         const statusRef = doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${todayStr}`);
-        const statusSnap = await getDoc(statusRef);
-        if (statusSnap.exists()) {
-          const data = statusSnap.data();
-          if (data.checkedIn === true || data.wantsToFast === true) {
-            setCurrentDayFastingStatus('fasting');
-          } else if (data.wantsToFast === false) {
-            setCurrentDayFastingStatus('not_fasting');
-          }
+        const snap = await getDoc(statusRef);
+        if (cancelled) return;
+        if (snap.exists()) {
+          const d = snap.data();
+          if (d.checkedIn === true) setCurrentDayFastingStatus('fasting');
+          else if (d.wantsToFast === true) setCurrentDayFastingStatus('pending');
+          else if (d.wantsToFast === false) setCurrentDayFastingStatus('not_fasting');
+          else setCurrentDayFastingStatus(null);
+        } else {
+          setCurrentDayFastingStatus(null);
         }
       } catch (err) {
-        console.error('Error fetching current day fasting status:', err);
+        console.error('Error fetching current day status:', err);
       }
     };
-    fetchCurrentStatus();
-  }, [currentUser, currentDayKey]);
+    fetchStatus();
+    return () => { cancelled = true; };
+  }, [currentUser, todayStr]);
 
-  // ── Banner time-window ──────────────────────────────────────────────────────
-  const [bannerMode, setBannerMode] = React.useState('hidden');
-
+  // ── Banner time-window (today's suhoor/iftar) ──────────────────────────
+  const [bannerMode, setBannerMode] = useState('hidden');
   useEffect(() => {
     const computeMode = () => {
-      if (!todayData?.time) return;
+      const day = getDayData(todayStr);
+      if (!day?.time) return;
       const now = new Date();
       const nowMinutes = now.getHours() * 60 + now.getMinutes();
-
-      const parseMins = (str) => {
-        if (!str) return null;
-        const [h, m] = str.split(':').map(Number);
+      const parseMins = (s) => {
+        if (!s) return null;
+        const [h, m] = s.split(':').map(Number);
         if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
         return h * 60 + m;
       };
-
-      const suhoorMins = parseMins(todayData.time.sahur);
-      const iftarMins = parseMins(todayData.time.iftar || todayData.time.maghrib);
-      const endOfBannerMins = 20 * 60; // 20:00
-
+      const suhoorMins = parseMins(day.time.sahur);
+      const iftarMins = parseMins(day.time.iftar || day.time.maghrib);
+      const endOfBannerMins = 20 * 60;
       if (suhoorMins === null) return;
-
-      if (nowMinutes < suhoorMins) {
-        setBannerMode('hidden');
-      } else if (iftarMins !== null && nowMinutes >= iftarMins && nowMinutes < endOfBannerMins) {
-        setBannerMode('iftar');
-      } else if (nowMinutes >= endOfBannerMins) {
-        setBannerMode('hidden');
-      } else {
-        setBannerMode('fasting_status');
-      }
+      if (nowMinutes < suhoorMins) setBannerMode('hidden');
+      else if (iftarMins !== null && nowMinutes >= iftarMins && nowMinutes < endOfBannerMins) setBannerMode('iftar');
+      else if (nowMinutes >= endOfBannerMins) setBannerMode('hidden');
+      else setBannerMode('fasting_status');
     };
-
     computeMode();
-    const interval = setInterval(computeMode, 60000);
-    return () => clearInterval(interval);
-  }, [todayData]);
+    const id = setInterval(computeMode, 60000);
+    return () => clearInterval(id);
+  }, [getDayData, todayStr]);
 
-  // ── Main prompt visibility ─────────────────────────────────────────────────
-  // Show only from 8 AM (when the target is always tomorrow per getTargetFastingDate).
-  // Also hide once suhoor has ended (end of wake-up window) — it stays hidden
-  // until 8 AM the next cycle.
-  const PROMPT_START_MINUTES = 8 * 60; // 8 AM
-  const suhoorEndMinutes = React.useMemo(() => {
-    if (!todayData?.time?.sahur) return null;
-    const [h, m] = todayData.time.sahur.split(':').map(Number);
-    if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
-    return h * 60 + m;
-  }, [todayData]);
-  // Prompt is visible: from 8 AM, but NOT once suhoor has ended (we're in or past the wake-up window)
-  const isPromptVisible =
-    nowMinutes >= PROMPT_START_MINUTES &&
-    (suhoorEndMinutes === null || nowMinutes < suhoorEndMinutes);
-
-
-  // Auto-record intention
+  // ── Auto-record: inside wake window, write default if user never chose ─
+  // Only writes the intent; the alarm was either armed explicitly (Yes),
+  // proactively armed (default-Yes), or is not armed (No / normal day).
   useEffect(() => {
-    if (!currentUser) return;
-    const wakeMinutes =
-      userProfile?.preferences?.wakeUpMinutesBeforeSuhoor || 45;
-    if (!checkWakeUpWindow || !checkWakeUpWindow(wakeMinutes)) return;
+    if (!currentUser || !targetKey) return;
+    if (status !== 'idle') return;
+    if (!checkWakeUpWindow()) return;
 
-    const target = getTargetFastingDate();
-    if (!target) return;
-    const targetStr = target.toLocaleDateString('en-CA');
-
+    let cancelled = false;
     (async () => {
       try {
-        const statusRef = doc(
-          db,
-          COLLECTIONS.dailyFastingStatus,
-          `${currentUser.uid}_${targetStr}`
-        );
-        const statusSnap = await getDoc(statusRef);
-        if (statusSnap.exists()) return;
-        const cachedAnswer = await AsyncStorage.getItem(
-          `suhoor_intent_${targetStr}`
-        );
-        if (cachedAnswer) return;
+        const statusRef = doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${targetKey}`);
+        const snap = await getDoc(statusRef);
+        if (cancelled || snap.exists()) return;
+        const cached = await AsyncStorage.getItem(`suhoor_intent_${targetKey}`);
+        if (cancelled || cached) return;
 
-        const wantsToFast = getDefaultIntention(target, userProfile);
+        const dateMidnight = new Date(`${targetKey}T00:00:00`);
+        const wantsToFast = getDefaultIntention(dateMidnight, userProfile);
         await setDoc(statusRef, {
           userId: currentUser.uid,
-          date: targetStr,
+          date: targetKey,
           wantsToFast,
+          isAutoDefault: true,
           updatedAt: serverTimestamp(),
         });
-        await AsyncStorage.setItem(
-          `suhoor_intent_${targetStr}`,
-          wantsToFast ? 'yes' : 'no'
-        );
-
-        // FIX: Update the UI immediately if this happens while the screen is open
+        await AsyncStorage.setItem(`suhoor_intent_${targetKey}`, wantsToFast ? 'yes' : 'no');
+        if (cancelled) return;
         setStatus(wantsToFast ? 'confirmed_fasting' : 'confirmed_not_fasting');
-
-        const [sH, sM] = (todayData?.time?.sahur || '').split(':').map(Number);
-        if (wantsToFast) {
-          if (!isNaN(sH) && !isNaN(sM) && scheduleDailySuhoorAlarm) {
-            const alarmTime = new Date();
-            alarmTime.setHours(sH, sM, 0, 0);
-            alarmTime.setMinutes(alarmTime.getMinutes() - wakeMinutes);
-            if (alarmTime.getTime() > Date.now()) {
-              await scheduleDailySuhoorAlarm(alarmTime, t('fasting.suhoorAlarmLabel'));
-            }
-          }
-        } else if (cancelDailySuhoorAlarm) {
-          await cancelDailySuhoorAlarm();
-        }
       } catch (err) {
         console.error('Error auto-recording fasting intention:', err);
       }
     })();
-  }, [
-    currentUser,
-    userProfile,
-    todayData,
-    checkWakeUpWindow,
-    scheduleDailySuhoorAlarm,
-    cancelDailySuhoorAlarm,
-    t,
-  ]);
+    return () => { cancelled = true; };
+  }, [currentUser, targetKey, status, checkWakeUpWindow, userProfile]);
 
+  // ── Handlers ───────────────────────────────────────────────────────────
   const handleYes = async () => {
-    if (!currentUser) return;
+    if (!currentUser || !targetKey) return;
     setLoading(true);
-
     try {
-      const statusRef = doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${targetDate}`);
+      const statusRef = doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${targetKey}`);
       await setDoc(statusRef, {
         userId: currentUser.uid,
-        date: targetDate,
+        date: targetKey,
         wantsToFast: true,
         updatedAt: serverTimestamp(),
       });
+      await AsyncStorage.setItem(`suhoor_intent_${targetKey}`, 'yes');
 
-      await AsyncStorage.setItem(`suhoor_intent_${targetDate}`, 'yes');
-
-      const wakeMinutes =
-        userProfile?.preferences?.wakeUpMinutesBeforeSuhoor || 45;
-      const [sH, sM] = (todayData?.time?.sahur || '').split(':').map(Number);
-      const alarmTime = new Date(`${targetDate}T00:00:00`);
-      if (!isNaN(sH) && !isNaN(sM)) {
-        alarmTime.setHours(sH, sM, 0, 0);
-        alarmTime.setMinutes(alarmTime.getMinutes() - wakeMinutes);
-      } else {
-        alarmTime.setHours(4, 30, 0, 0);
-      }
-
-      if (scheduleDailySuhoorAlarm && alarmTime.getTime() > Date.now()) {
+      // Schedule for the TARGET day's wakeStart — never today's suhoor.
+      const alarmTime = getWakeStart(targetKey, wakeMinutes);
+      if (alarmTime && scheduleDailySuhoorAlarm && alarmTime.getTime() > Date.now()) {
         await scheduleDailySuhoorAlarm(alarmTime, t('fasting.suhoorAlarmLabel'));
       }
 
       setStatus('confirmed_fasting');
       triggerToast(t('fasting.intentionSetToast'), 'success');
-      
+
       await scheduleNotification({
-        semanticId: `fasting_intention_${targetDate}`,
+        semanticId: `fasting_intention_${targetKey}`,
         date: new Date(),
         title: t('fasting.intentionSet'),
         message: t('fasting.alarmActiveNotice'),
@@ -328,24 +287,18 @@ export const FastingPrompt = () => {
   };
 
   const handleNo = async () => {
-    if (!currentUser) return;
+    if (!currentUser || !targetKey) return;
     setLoading(true);
-
     try {
-      const statusRef = doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${targetDate}`);
+      const statusRef = doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${targetKey}`);
       await setDoc(statusRef, {
         userId: currentUser.uid,
-        date: targetDate,
+        date: targetKey,
         wantsToFast: false,
         updatedAt: serverTimestamp(),
       });
-
-      await AsyncStorage.setItem(`suhoor_intent_${targetDate}`, 'no');
-
-      if (cancelDailySuhoorAlarm) {
-        await cancelDailySuhoorAlarm();
-      }
-
+      await AsyncStorage.setItem(`suhoor_intent_${targetKey}`, 'no');
+      if (cancelDailySuhoorAlarm) await cancelDailySuhoorAlarm();
       setStatus('confirmed_not_fasting');
       triggerToast(t('fasting.notFastingToast'), 'info');
     } catch (error) {
@@ -356,25 +309,31 @@ export const FastingPrompt = () => {
     }
   };
 
-  const handleReset = () => {
-    setDefaultAnswer(
-      getDefaultIntention(new Date(`${targetDate}T00:00:00`), userProfile)
-    );
+  const handleReset = async () => {
+    if (!currentUser || !targetKey) return;
+    try {
+      autoArmedRef.current = null; // allow proactive-arm to fire again
+      await AsyncStorage.removeItem(`suhoor_intent_${targetKey}`);
+      const statusRef = doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${targetKey}`);
+      await deleteDoc(statusRef).catch(() => {});
+      if (cancelDailySuhoorAlarm) await cancelDailySuhoorAlarm();
+    } catch (err) {
+      console.error('Error resetting fasting intention:', err);
+    }
     setStatus('idle');
   };
 
-  // Hide entirely before 8am, or while the target is being resolved.
+  // ── Render ─────────────────────────────────────────────────────────────
   if (!isPromptVisible) return null;
-  if (status === 'hidden' || !targetDate) return null;
+  if (!targetKey || !targetDateMidnight) return null;
 
-  const dateObj = new Date(targetDate + 'T00:00:00');
+  const dateObj = targetDateMidnight;
   const isSpecial =
     isMondayOrThursday(dateObj) ||
     isWhiteDay(dateObj) ||
     isRamadan(dateObj) ||
     isFirstNineDhulHijjah(dateObj);
   const hijri = getHijriDate(dateObj);
-
   const formattedHijriMonth = hijriMonthName(dateObj, locale, hijri.month);
 
   return (
@@ -397,13 +356,7 @@ export const FastingPrompt = () => {
           ]}
         >
           <View style={{ flex: 1 }}>
-            <Text
-              variant="h3"
-              style={{
-                fontSize: 13,
-                color: isDark ? '#FCD34D' : '#B45309',
-              }}
-            >
+            <Text variant="h3" style={{ fontSize: 13, color: isDark ? '#FCD34D' : '#B45309' }}>
               {t('fasting.iftarTime')}
             </Text>
           </View>
@@ -417,20 +370,16 @@ export const FastingPrompt = () => {
             {
               backgroundColor:
                 currentDayFastingStatus === 'fasting'
-                  ? isDark
-                    ? 'rgba(16, 185, 129, 0.12)'
-                    : 'rgba(16, 185, 129, 0.08)'
-                  : isDark
-                  ? 'rgba(107, 114, 128, 0.15)'
-                  : 'rgba(107, 114, 128, 0.08)',
+                  ? isDark ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.08)'
+                  : currentDayFastingStatus === 'pending'
+                  ? isDark ? 'rgba(251, 191, 36, 0.12)' : 'rgba(251, 191, 36, 0.08)'
+                  : isDark ? 'rgba(107, 114, 128, 0.15)' : 'rgba(107, 114, 128, 0.08)',
               borderColor:
                 currentDayFastingStatus === 'fasting'
-                  ? isDark
-                    ? 'rgba(16, 185, 129, 0.3)'
-                    : 'rgba(16, 185, 129, 0.2)'
-                  : isDark
-                  ? 'rgba(107, 114, 128, 0.3)'
-                  : 'rgba(107, 114, 128, 0.2)',
+                  ? isDark ? 'rgba(16, 185, 129, 0.3)' : 'rgba(16, 185, 129, 0.2)'
+                  : currentDayFastingStatus === 'pending'
+                  ? isDark ? 'rgba(251, 191, 36, 0.3)' : 'rgba(251, 191, 36, 0.2)'
+                  : isDark ? 'rgba(107, 114, 128, 0.3)' : 'rgba(107, 114, 128, 0.2)',
             },
           ]}
         >
@@ -442,11 +391,15 @@ export const FastingPrompt = () => {
                 color:
                   currentDayFastingStatus === 'fasting'
                     ? colors.success || '#10B981'
+                    : currentDayFastingStatus === 'pending'
+                    ? isDark ? '#FCD34D' : '#B45309'
                     : colors.textSecondary,
               }}
             >
               {currentDayFastingStatus === 'fasting'
                 ? t('fasting.youAreFasting')
+                : currentDayFastingStatus === 'pending'
+                ? t('fasting.intentPending')
                 : t('fasting.youAreNotFasting')}
             </Text>
             {currentDayFastingStatus === 'fasting' && (
@@ -467,18 +420,10 @@ export const FastingPrompt = () => {
       {status === 'idle' && (
         <Card
           variant="default"
-          style={{
-            backgroundColor: colors.surface,
-            borderColor: colors.border,
-            borderWidth: 1,
-          }}
+          style={{ backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }}
         >
           <View style={styles.header}>
-            <Image
-              source={require('../assets/icon-nobg.png')}
-              style={styles.logoIcon}
-              resizeMode="contain"
-            />
+            <Image source={require('../assets/icon-nobg.png')} style={styles.logoIcon} resizeMode="contain" />
             <View style={styles.headerText}>
               <Text variant="h3" style={{ color: colors.text }}>
                 {isTodayTarget ? t('fasting.promptToday') : t('fasting.prompt')}
@@ -502,25 +447,13 @@ export const FastingPrompt = () => {
                 <Badge label={t('fasting.sunnahFast')} tone="accent" bordered />
               )}
               {isWhiteDay(dateObj) && !isRamadan(dateObj) && (
-                <Badge
-                  label={t('fasting.whiteDay', { day: hijri.day })}
-                  tone="secondary"
-                  bordered
-                />
+                <Badge label={t('fasting.whiteDay', { day: hijri.day })} tone="secondary" bordered />
               )}
               {isFirstNineDhulHijjah(dateObj) && !isRamadan(dateObj) && (
-                <Badge
-                  label={t('fasting.dhulHijjahDay', { day: hijri.day })}
-                  tone="accent"
-                  bordered
-                />
+                <Badge label={t('fasting.dhulHijjahDay', { day: hijri.day })} tone="accent" bordered />
               )}
               {isRamadan(dateObj) && (
-                <Badge
-                  label={t('fasting.ramadanDay', { day: hijri.day })}
-                  tone="secondary"
-                  bordered
-                />
+                <Badge label={t('fasting.ramadanDay', { day: hijri.day })} tone="secondary" bordered />
               )}
             </View>
           )}
@@ -530,20 +463,14 @@ export const FastingPrompt = () => {
               title={t('fasting.no')}
               onPress={() => setStatus('confirming_no')}
               variant="outline"
-              style={[
-                styles.flexButton,
-                { borderColor: colors.border },
-              ]}
+              style={[styles.flexButton, { borderColor: colors.border }]}
               textStyle={{ color: colors.textSecondary }}
             />
             <Button
               title={t('fasting.yes')}
               onPress={() => setStatus('confirming_yes')}
               variant="secondary"
-              style={[
-                styles.flexButton,
-                { backgroundColor: colors.secondary },
-              ]}
+              style={[styles.flexButton, { backgroundColor: colors.secondary }]}
               textStyle={{ color: '#1D1145', fontWeight: '700' }}
             />
           </View>
@@ -558,11 +485,7 @@ export const FastingPrompt = () => {
           )}
 
           {isSpecial && !defaultAnswer && (
-            <Text
-              variant="caption"
-              tone="secondary"
-              style={styles.footNote}
-            >
+            <Text variant="caption" tone="secondary" style={styles.footNote}>
               {t('fasting.defaultsTo', {
                 answer: defaultAnswer ? t('fasting.yes') : t('fasting.no'),
               })}
@@ -574,19 +497,12 @@ export const FastingPrompt = () => {
       {status === 'confirming_yes' && (
         <Card style={{ backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }}>
           <View style={styles.header}>
-            <Image
-              source={require('../assets/icon-nobg.png')}
-              style={styles.logoIcon}
-              resizeMode="contain"
-            />
+            <Image source={require('../assets/icon-nobg.png')} style={styles.logoIcon} resizeMode="contain" />
             <View style={styles.headerText}>
               <Text variant="h3">{t('fasting.confirmTitle')}</Text>
-              <Text variant="caption" tone="secondary">
-                {t('fasting.confirmSub')}
-              </Text>
+              <Text variant="caption" tone="secondary">{t('fasting.confirmSub')}</Text>
             </View>
           </View>
-
           <View style={styles.buttonRow}>
             <Button
               title={t('common.back')}
@@ -608,19 +524,12 @@ export const FastingPrompt = () => {
       {status === 'confirming_no' && (
         <Card style={{ backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }}>
           <View style={styles.header}>
-            <Image
-              source={require('../assets/icon-nobg.png')}
-              style={styles.logoIcon}
-              resizeMode="contain"
-            />
+            <Image source={require('../assets/icon-nobg.png')} style={styles.logoIcon} resizeMode="contain" />
             <View style={styles.headerText}>
               <Text variant="h3">{t('fasting.skipTitle')}</Text>
-              <Text variant="caption" tone="secondary">
-                {t('fasting.skipSub')}
-              </Text>
+              <Text variant="caption" tone="secondary">{t('fasting.skipSub')}</Text>
             </View>
           </View>
-
           <View style={styles.buttonRow}>
             <Button
               title={t('common.back')}
@@ -648,11 +557,7 @@ export const FastingPrompt = () => {
           }}
         >
           <View style={styles.header}>
-            <Image
-              source={require('../assets/icon-nobg.png')}
-              style={styles.logoIcon}
-              resizeMode="contain"
-            />
+            <Image source={require('../assets/icon-nobg.png')} style={styles.logoIcon} resizeMode="contain" />
             <View style={{ flex: 1, gap: 2 }}>
               <Text variant="h3" style={{ color: isDark ? '#34D399' : '#065F46' }}>
                 {t('fasting.intentionSet')}
@@ -668,11 +573,7 @@ export const FastingPrompt = () => {
               accessibilityRole="button"
               accessibilityLabel={t('fasting.changeIntention')}
             >
-              <Ionicons
-                name="refresh"
-                size={18}
-                color={isDark ? '#34D399' : '#059669'}
-              />
+              <Ionicons name="refresh" size={18} color={isDark ? '#34D399' : '#059669'} />
               <Text style={{ color: isDark ? '#34D399' : '#059669', fontSize: 12, marginLeft: 4, fontWeight: '600' }}>
                 Reset
               </Text>
@@ -684,18 +585,10 @@ export const FastingPrompt = () => {
       {status === 'confirmed_not_fasting' && (
         <Card style={{ backgroundColor: colors.surfaceVariant, borderColor: colors.border, borderWidth: 1 }}>
           <View style={styles.header}>
-            <Image
-              source={require('../assets/icon-nobg.png')}
-              style={styles.logoIcon}
-              resizeMode="contain"
-            />
+            <Image source={require('../assets/icon-nobg.png')} style={styles.logoIcon} resizeMode="contain" />
             <View style={{ flex: 1, gap: 2 }}>
-              <Text variant="h3" tone="secondary">
-                {t('fasting.notFasting')}
-              </Text>
-              <Text variant="caption" tone="secondary">
-                {t('fasting.notFastingSub')}
-              </Text>
+              <Text variant="h3" tone="secondary">{t('fasting.notFasting')}</Text>
+              <Text variant="caption" tone="secondary">{t('fasting.notFastingSub')}</Text>
             </View>
             <TouchableOpacity
               onPress={handleReset}
@@ -733,22 +626,8 @@ const styles = StyleSheet.create({
     rowGap: spacing.md,
     marginBottom: spacing.base,
   },
-  glyph: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoIcon: {
-    width: 30,
-    height: 30,
-  },
-  headerText: {
-    flex: 1,
-    columnGap: spacing.xxs,
-    rowGap: spacing.xxs,
-  },
+  logoIcon: { width: 30, height: 30 },
+  headerText: { flex: 1, columnGap: spacing.xxs, rowGap: spacing.xxs },
   badgeRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -756,23 +635,10 @@ const styles = StyleSheet.create({
     rowGap: spacing.sm,
     marginBottom: spacing.base,
   },
-  buttonRow: {
-    flexDirection: 'row',
-    columnGap: spacing.md,
-    rowGap: spacing.md,
-  },
-  flexButton: {
-    flex: 1,
-  },
-  resetButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.xs,
-  },
-  footNote: {
-    textAlign: 'center',
-    marginTop: spacing.md,
-  },
+  buttonRow: { flexDirection: 'row', columnGap: spacing.md, rowGap: spacing.md },
+  flexButton: { flex: 1 },
+  resetButton: { flexDirection: 'row', alignItems: 'center', padding: spacing.xs },
+  footNote: { textAlign: 'center', marginTop: spacing.md },
 });
 
 export default FastingPrompt;

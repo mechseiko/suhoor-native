@@ -351,6 +351,8 @@ export const ar = {
   "common.back": "رجوع",
   "common.next": "التالي",
   "common.skip": "تخطي",
+  "common.unknown": "غير معروف",
+  "language.english": "الإنجليزية",
   "tour.welcome": "مرحبًا بك في Suhoor!",
   "tour.subtitle": "إليك جولة سريعة",
   "tour.intro.overview": "هذه صفحة النظرة العامة — يومك في لمحة.",

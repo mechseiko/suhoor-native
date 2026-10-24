@@ -134,7 +134,7 @@ export const SignupScreen = ({ navigation }) => {
 
     try {
       const locationDetails = await detectUserLocationDetails();
-      const userCountry = locationDetails.locationString || "Unknown";
+      const userCountry = locationDetails.locationString || t("common.unknown", "Unknown");
 
       // 1. Sign up user in Firebase Auth
       const userCredential = await signup(email.trim(), password);

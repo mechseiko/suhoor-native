@@ -389,7 +389,7 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
               }}
               multiline
               numberOfLines={4}
-              placeholder="Type your message here..."
+              placeholder={t('profile.typeMessage', 'Type your message here...')}
               placeholderTextColor={colors.textSecondary || '#9CA3AF'}
               value={feedbackMessage}
               onChangeText={setFeedbackMessage}
