@@ -3,7 +3,7 @@
 buildscript {
   ext {
     buildToolsVersion = "34.0.0"
-    minSdkVersion = 23
+    minSdkVersion = 24
     compileSdkVersion = 36
     targetSdkVersion = 36
     ndkVersion = "25.1.8937393"
@@ -30,14 +30,7 @@ buildscript {
 
 apply plugin: "com.facebook.react.rootproject"
 
-// Keep Gradle build outputs outside OneDrive. Files On-Demand keeps open handles on
-// freshly written intermediate files, which makes tasks like mergeReleaseResources
-// intermittently fail with "Unable to delete directory ...". Relocating every
-// module's buildDir to a local (non-synced) path avoids that entirely.
-def relocatedBuildRoot = new File(System.getenv("SUHOOR_BUILD_DIR") ?: "C:/AndroidBuilds/suhoor-native")
-allprojects { proj ->
-    proj.buildDir = new File(relocatedBuildRoot, proj.path.replaceAll(":", "_"))
-}
+// Build outputs are now in the standard project location after OneDrive sync was fixed
 
 allprojects {
   configurations.all {
