@@ -21,17 +21,7 @@ export const getCurrentVersion = () => {
       }
     }
   } catch (e) {
-    // DeviceInfo not available (e.g., web or Expo Go)
-  }
-  // Try expo-constants as fallback (works in Expo and web builds)
-  try {
-    const Constants = require('expo-constants').default;
-    const expoVersion = Constants?.expoConfig?.version || Constants?.manifest?.version;
-    if (expoVersion && typeof expoVersion === 'string' && expoVersion.trim().toLowerCase() !== 'unknown' && /^[0-9]/.test(expoVersion.trim())) {
-      return expoVersion.trim();
-    }
-  } catch (e) {
-    // expo-constants not available
+    // DeviceInfo not available (e.g., web)
   }
   // Fallback to app.json configuration if accessible
   try {

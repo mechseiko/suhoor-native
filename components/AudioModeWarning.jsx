@@ -5,7 +5,7 @@ import { Text, Button } from './ui';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { scheduleNotification } from '../services/notifications';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useFastingTimes } from '../hooks/useFastingTimes';
 
 export const AudioModeWarning = () => {

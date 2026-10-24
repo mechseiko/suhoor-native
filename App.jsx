@@ -32,9 +32,22 @@ import "./i18n";
 // Import global CSS for NativeWind
 import "./global.css";
 
-import { useFonts } from "expo-font";
-import { fontAssets } from "./theme/fonts";
 import LogoLoader from "./components/LogoLoader";
+
+// On bare React Native (Android/iOS) fonts are copied into the APK assets at
+// build time via android/app/src/main/assets/fonts/, so there is nothing to
+// load asynchronously — the families are available the moment Hermes starts.
+// On web we run a tiny 100 ms stub so the web path still gets a boolean.
+function useFontsNative() {
+  const [loaded, setLoaded] = useState(Platform.OS === 'android' || Platform.OS === 'ios');
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      const t = setTimeout(() => setLoaded(true), 100);
+      return () => clearTimeout(t);
+    }
+  }, []);
+  return [loaded];
+}
 
 // Web-specific viewport meta tag & fonts
 if (Platform.OS === "web" && typeof document !== "undefined") {
@@ -65,7 +78,7 @@ if (Platform.OS === "web" && typeof document !== "undefined") {
 }
 
 export default function App() {
-  const [fontsLoaded] = useFonts(fontAssets);
+  const [fontsLoaded] = useFontsNative();
   const [fontTimeout, setFontTimeout] = useState(false);
 
   // Configure push notifications on app start

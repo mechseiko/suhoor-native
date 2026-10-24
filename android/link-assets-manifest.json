@@ -1,0 +1,41 @@
+{
+  "migIndex": 1,
+  "data": [
+    {
+      "path": "assets/fonts/Ionicons.ttf",
+      "sha1": "86e07c3d974eb09099e6e5a9b3b8310303cf0feb"
+    },
+    {
+      "path": "assets/fonts/Quicksand-Bold.ttf",
+      "sha1": "b0fe4cb171ca5c53f3a685f9e333ec7160833d23"
+    },
+    {
+      "path": "assets/fonts/Quicksand-Medium.ttf",
+      "sha1": "6dc4e319aa6095c7a58be53e2c46ea23ab3a439e"
+    },
+    {
+      "path": "assets/fonts/Quicksand-Regular.ttf",
+      "sha1": "14be1241b8121411c912577f25fb12bb874491d8"
+    },
+    {
+      "path": "assets/fonts/Quicksand-SemiBold.ttf",
+      "sha1": "03cf255e61281ff0ba85aac1ea612ca1ca3a7c6b"
+    },
+    {
+      "path": "assets/fonts/SpaceGrotesk-Bold.ttf",
+      "sha1": "a9c030e3ebcd8ce7284f8382da8590609f1803c4"
+    },
+    {
+      "path": "assets/fonts/SpaceGrotesk-Medium.ttf",
+      "sha1": "cf888825e5dc27fb90422350958924f6048381b5"
+    },
+    {
+      "path": "assets/fonts/SpaceGrotesk-Regular.ttf",
+      "sha1": "a9f73f295d771a183ab23260d4406b7f33b53b18"
+    },
+    {
+      "path": "assets/fonts/SpaceGrotesk-SemiBold.ttf",
+      "sha1": "7a845daa4f73dace30a8035876a361d350c2d740"
+    }
+  ]
+}

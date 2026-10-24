@@ -6,7 +6,7 @@ import DuasScreen from '../screens/duas/DuasScreen'
 import BooksScreen from '../screens/books/BooksScreen'
 import { useTheme } from '../context/ThemeContext'
 import { useLanguage } from '../context/LanguageContext'
-import Ionicons from '@expo/vector-icons/Ionicons'
+import Ionicons from 'react-native-vector-icons/Ionicons'
 import { font, size, weight } from '../theme'
 
 const Stack = createNativeStackNavigator()

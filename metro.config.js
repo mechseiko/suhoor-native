@@ -25,6 +25,44 @@ config.resolver = {
   unstable_conditionNames: ["react-native", "require", "import", "default"],
   assetExts: [...config.resolver.assetExts, "svg"],
   sourceExts: [...config.resolver.sourceExts, "svg"],
+  // SAFETY NET: redirect expo-modules-core's NativeModule to a safe shim.
+  // This project runs on bare React Native Android where Expo's C++ JSI runtime
+  // (ExpoModulesCore native library) is NOT compiled into the APK.
+  // Without this alias, any remaining transitive import of expo-modules-core
+  // would crash with: TypeError: Cannot read property 'NativeModule' of undefined
+  extraNodeModules: {
+    ...config.resolver.extraNodeModules,
+  },
+  resolveRequest: (context, moduleName, platform) => {
+    // Intercept Platform on web where react-native's AssetSourceResolver looks for Utilities/Platform
+    if (platform === "web") {
+      if (
+        moduleName === "../Utilities/Platform" ||
+        moduleName.endsWith("Libraries/Utilities/Platform") ||
+        moduleName.endsWith("Utilities/Platform")
+      ) {
+        return {
+          filePath: require.resolve("react-native-web/dist/exports/Platform"),
+          type: "sourceFile",
+        };
+      }
+    }
+
+    // Intercept expo-modules-core on native platforms to prevent globalThis.expo crash
+    if (
+      platform !== "web" &&
+      (moduleName === "expo-modules-core" ||
+        moduleName.startsWith("expo-modules-core/") ||
+        moduleName.endsWith("expo-modules-core/build/NativeModule"))
+    ) {
+      return {
+        filePath: path.resolve(__dirname, "shims/ExpoNativeModuleShim.js"),
+        type: "sourceFile",
+      };
+    }
+    // Fall through to the default resolver for everything else
+    return context.resolveRequest(context, moduleName, platform);
+  },
 };
 
 config.transformer = {
@@ -38,6 +76,10 @@ config.transformer = {
   },
 };
 
-const nativeWindConfig = withNativeWind(config, { input: "./global.css" });
+const tailwindCliPath = path.resolve(__dirname, "node_modules/tailwindcss/lib/cli.js").replace(/\\/g, "/");
+const nativeWindConfig = withNativeWind(config, {
+  input: "./global.css",
+  cliCommand: `node ${tailwindCliPath}`,
+});
 
 module.exports = nativeWindConfig;

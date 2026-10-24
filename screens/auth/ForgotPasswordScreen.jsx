@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { View } from 'react-native'
 import { sendPasswordResetEmail } from 'firebase/auth'
-import Ionicons from '@expo/vector-icons/Ionicons'
+import Ionicons from 'react-native-vector-icons/Ionicons'
 import { auth } from '../../config/firebase'
 import { useTheme } from '../../context/ThemeContext'
 import { useLanguage } from '../../context/LanguageContext'

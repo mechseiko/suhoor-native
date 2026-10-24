@@ -260,6 +260,20 @@ export const getAlarmSoundUri = (soundKey) => {
   }
 };
 
+export const getAlarmSoundResourceName = (soundKey) => {
+  switch (soundKey) {
+    case 'apex':
+      return 'alarm_sound_apex';
+    case 'soft':
+      return 'alarm_sound_soft';
+    case 'pulse':
+      return 'alarm_sound_pulse';
+    case 'default':
+    default:
+      return 'alarm_sound';
+  }
+};
+
 export const ALARM_SOUND_OPTIONS = [
   {
     id: 'default',

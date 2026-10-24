@@ -17,7 +17,7 @@ import {
   getDefaultIntention,
 } from '../utils/fastingUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import Toast from './Toast';
 import { useAlarmState } from '../context/AlarmContext';
 import { useFastingTimes } from '../hooks/useFastingTimes';

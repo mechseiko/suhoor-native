@@ -4,7 +4,7 @@ import { Text } from './ui';
 import { useNetwork } from '../context/NetworkContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 const OfflineModeBanner = () => {
   const { isConnected } = useNetwork();

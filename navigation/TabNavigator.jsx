@@ -9,7 +9,7 @@ import LearnStack from './LearnStack'
 import MilestonesScreen from '../screens/milestones/MilestonesScreen'
 import { useTheme } from '../context/ThemeContext'
 import { useLanguage } from '../context/LanguageContext'
-import Ionicons from '@expo/vector-icons/Ionicons'
+import Ionicons from 'react-native-vector-icons/Ionicons'
 import { font, size, weight } from '../theme'
 
 // Only import safe area context on mobile platforms

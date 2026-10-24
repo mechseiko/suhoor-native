@@ -13,8 +13,8 @@ import {
   Vibration,
   View,
 } from 'react-native'
-import { Audio } from 'expo-av'
-import Ionicons from '@expo/vector-icons/Ionicons'
+import Sound from 'react-native-sound'
+import Ionicons from 'react-native-vector-icons/Ionicons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAlarm } from '../hooks/useAlarm'
 import { useAuth } from '../context/AuthContext'
@@ -27,7 +27,7 @@ import {
 } from '../utils/fastingUtils'
 import { brand, neutral } from '../theme'
 import { Button, Text } from './ui'
-import { getAlarmSoundUri } from '../utils/soundGenerator'
+import { getAlarmSoundUri, getAlarmSoundResourceName } from '../utils/soundGenerator'
 import { navigate } from '../services/NavigationService'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
@@ -82,62 +82,43 @@ export const AlarmOverlay = () => {
     if (visible && status === 'ringing') {
       if (soundAllowed) {
         try {
-          const setupAudio = async () => {
-            try {
-              await Audio.setAudioModeAsync({
-                playsInSilentModeIOS: true,
-                staysActiveInBackground: true,
-                shouldDuckAndroid: true,
-                volume: 1.0, // Maximum volume
+          // react-native-sound: enable playback in silent mode on iOS
+          Sound.setCategory('Playback', true)
+          Sound.setMode('Default')
+
+          const volume = userProfile?.preferences?.alarmVolume ?? 1.0
+          const soundRes = getAlarmSoundResourceName(selectedAlarmSound)
+
+          const playSound = (uri, isAsset) => {
+            const basePath = isAsset ? Sound.MAIN_BUNDLE : ''
+            const s = new Sound(uri, basePath, (err) => {
+              if (err) {
+                console.log('Sound load error, falling back to default:', err)
+                if (uri !== 'alarm_sound') {
+                  const fallback = new Sound('alarm_sound', Sound.MAIN_BUNDLE, (fallbackErr) => {
+                    if (fallbackErr) return console.log('Default sound load error:', fallbackErr)
+                    fallback.setVolume(volume)
+                    fallback.setNumberOfLoops(-1)
+                    fallback.play()
+                    soundRef.current = fallback
+                  })
+                }
+                return
+              }
+              s.setVolume(volume)
+              s.setNumberOfLoops(-1) // loop indefinitely
+              s.play((success) => {
+                if (!success) console.log('Sound playback failed')
               })
-
-              const volume = userProfile?.preferences?.alarmVolume ?? 1.0;
-
-              // Check if a synthesized code alarm sound is chosen (e.g. apex, soft, pulse)
-              const synthSoundUri = getAlarmSoundUri(selectedAlarmSound);
-
-              if (synthSoundUri) {
-                try {
-                  const { sound } = await Audio.Sound.createAsync(
-                    { uri: synthSoundUri },
-                    { shouldPlay: true, isLooping: true, volume }
-                  );
-                  soundRef.current = sound;
-                  return;
-                } catch (synthErr) {
-                  console.log('Synthesized sound playback failed, falling back:', synthErr);
-                }
-              }
-
-              // Load and play custom uploaded audio if available
-              if (alarmAudioMode === 'custom' && customAudioUrl) {
-                try {
-                  const { sound } = await Audio.Sound.createAsync(
-                    { uri: customAudioUrl },
-                    { shouldPlay: true, isLooping: true, volume }
-                  )
-                  soundRef.current = sound
-                  return;
-                } catch (customAudioError) {
-                  console.log('Custom audio load failed, falling back to default:', customAudioError)
-                }
-              }
-
-              // Default alarm sound using Android resource URI
-              try {
-                const { sound: defaultSound } = await Audio.Sound.createAsync(
-                  { uri: 'android.resource://com.mechseiko.suhoor/raw/alarm_sound' },
-                  { shouldPlay: true, isLooping: true, volume: 1.0 }
-                )
-                soundRef.current = defaultSound
-              } catch (defaultAudioError) {
-                console.log('Default audio load failed:', defaultAudioError)
-              }
-            } catch (audioError) {
-              console.log('Audio init failed:', audioError)
-            }
+              soundRef.current = s
+            })
           }
-          setupAudio()
+
+          if (alarmAudioMode === 'custom' && customAudioUrl) {
+            playSound(customAudioUrl, false)
+          } else {
+            playSound(soundRes, true)
+          }
         } catch (e) {
           console.log('Audio setup failed:', e)
         }
@@ -194,8 +175,8 @@ export const AlarmOverlay = () => {
           Vibration.cancel()
         }
         if (soundRef.current) {
-          soundRef.current.stopAsync()
-          soundRef.current.unloadAsync()
+          soundRef.current.stop()
+          soundRef.current.release()
           soundRef.current = null
         }
         pulse.stop()

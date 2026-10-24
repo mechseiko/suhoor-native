@@ -63,3 +63,11 @@
 -keepclassmembers class org.unimodules.** { *; }
 -dontwarn expo.modules.**
 -dontwarn org.unimodules.**
+
+# react-native-sound — replaces expo-av for alarm + audio preview
+-keep class com.zmxv.RNSound.** { *; }
+-keepclassmembers class com.zmxv.RNSound.** { *; }
+
+# react-native-vector-icons — replaces @expo/vector-icons
+-keep class com.oblador.vectoricons.** { *; }
+-keepclassmembers class com.oblador.vectoricons.** { *; }

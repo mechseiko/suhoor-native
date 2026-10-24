@@ -56,8 +56,8 @@
   },
   "scripts": {
     "start": "react-native start",
-    "web": "npx expo start --web --no-dev --minify",
-    "web:clean": "npx expo start --web --no-dev --minify --clear",
+    "web": "npx expo start --offline --web --no-dev --minify",
+    "web:clean": "npx expo start --offline --web --no-dev --minify --clear",
     "android": "react-native run-android",
     "ios": "react-native run-ios",
     "test": "jest",

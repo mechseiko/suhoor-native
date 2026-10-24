@@ -1,6 +1,6 @@
 import { FlatList, Image, Modal, RefreshControl, StyleSheet, TouchableOpacity, View, TextInput } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';

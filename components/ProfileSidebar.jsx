@@ -17,7 +17,7 @@ import {
 } from 'react-native'
 import { db } from '../config/firebase'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
-import Ionicons from '@expo/vector-icons/Ionicons'
+import Ionicons from 'react-native-vector-icons/Ionicons'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { useLanguage } from '../context/LanguageContext'

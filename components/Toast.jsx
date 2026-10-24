@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 import { Text, Animated, View, Platform, StyleSheet } from 'react-native'
 import { useTheme } from '../context/ThemeContext'
-import Ionicons from '@expo/vector-icons/Ionicons'
+import Ionicons from 'react-native-vector-icons/Ionicons'
 
 export const Toast = ({
   message,

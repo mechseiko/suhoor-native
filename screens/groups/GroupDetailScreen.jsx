@@ -40,7 +40,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import Colors from "../../constants/Colors";
-import Ionicons from "@expo/vector-icons/Ionicons";
+import Ionicons from "react-native-vector-icons/Ionicons";
 import Toast from "../../components/Toast";
 import GamificationCelebration from "../../components/GamificationCelebration";
 

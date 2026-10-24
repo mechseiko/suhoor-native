@@ -37,14 +37,14 @@ import {
   EmailAuthProvider,
   sendEmailVerification,
 } from "firebase/auth";
-import Ionicons from "@expo/vector-icons/Ionicons";
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { Colors } from "../../constants/Colors";
 import { COLLECTIONS } from "../../config/firestoreSchema";
 import Toast from "../../components/Toast";
 import LanguageSelector from "../../components/LanguageSelector";
 import { getCurrentVersion, getLatestPlayStoreVersion, compareVersions } from "../../services/versionService";
-import { Audio } from "expo-av";
-import { ALARM_SOUND_OPTIONS, getAlarmSoundUri } from "../../utils/soundGenerator";
+import Sound from 'react-native-sound';
+import { ALARM_SOUND_OPTIONS, getAlarmSoundUri, getAlarmSoundResourceName } from "../../utils/soundGenerator";
 
 const ProfileScreen = ({ route }) => {
   const { currentUser, userProfile, logout, deleteAccount } = useAuth();
@@ -165,11 +165,11 @@ const ProfileScreen = ({ route }) => {
   const [playingPreview, setPlayingPreview] = useState(null);
   const previewSoundRef = React.useRef(null);
 
-  const stopAudioPreview = async () => {
+  const stopAudioPreview = () => {
     if (previewSoundRef.current) {
       try {
-        await previewSoundRef.current.stopAsync();
-        await previewSoundRef.current.unloadAsync();
+        previewSoundRef.current.stop();
+        previewSoundRef.current.release();
       } catch (_) {}
       previewSoundRef.current = null;
     }
@@ -182,52 +182,45 @@ const ProfileScreen = ({ route }) => {
     };
   }, []);
 
-  const handleToggleAudioPreview = async (soundId) => {
+  const handleToggleAudioPreview = (soundId) => {
     if (playingPreview === soundId) {
-      await stopAudioPreview();
+      stopAudioPreview();
       return;
     }
-    await stopAudioPreview();
+    stopAudioPreview();
     try {
-      try {
-        await Audio.setAudioModeAsync({
-          playsInSilentModeIOS: true,
-          shouldDuckAndroid: true,
-        });
-      } catch (_) {}
+      Sound.setCategory('Playback', true);
+      Sound.setMode('Default');
 
-      const synthUri = getAlarmSoundUri(soundId);
-      let soundObj = null;
-
-      if (synthUri) {
-        const { sound } = await Audio.Sound.createAsync(
-          { uri: synthUri },
-          { shouldPlay: true, isLooping: true, volume: 1.0 }
-        );
-        soundObj = sound;
-      } else {
-        // Fallback for native Android raw resource or synthesized default
-        try {
-          const { sound } = await Audio.Sound.createAsync(
-            { uri: "android.resource://com.mechseiko.suhoor/raw/alarm_sound" },
-            { shouldPlay: true, isLooping: true, volume: 1.0 }
-          );
-          soundObj = sound;
-        } catch (_) {
-          const fallbackUri = getAlarmSoundUri("default");
-          const { sound } = await Audio.Sound.createAsync(
-            { uri: fallbackUri },
-            { shouldPlay: true, isLooping: true, volume: 1.0 }
-          );
-          soundObj = sound;
+      const resName = getAlarmSoundResourceName(soundId);
+      const s = new Sound(resName, Sound.MAIN_BUNDLE, (err) => {
+        if (err) {
+          console.log('Preview sound load error, falling back to default:', err);
+          const fallback = new Sound('alarm_sound', Sound.MAIN_BUNDLE, (fallbackErr) => {
+            if (fallbackErr) {
+              console.log('Fallback preview sound load error:', fallbackErr);
+              showToast('Could not preview this sound', 'error');
+              return;
+            }
+            fallback.setVolume(1.0);
+            fallback.setNumberOfLoops(-1);
+            fallback.play();
+            previewSoundRef.current = fallback;
+            setPlayingPreview(soundId);
+          });
+          return;
         }
-      }
-
-      previewSoundRef.current = soundObj;
-      setPlayingPreview(soundId);
+        s.setVolume(1.0);
+        s.setNumberOfLoops(-1);
+        s.play((success) => {
+          if (!success) console.log('Preview sound playback failed');
+        });
+        previewSoundRef.current = s;
+        setPlayingPreview(soundId);
+      });
     } catch (err) {
-      console.log("Preview sound error:", err);
-      showToast("Could not preview this sound", "error");
+      console.log('Preview sound error:', err);
+      showToast('Could not preview this sound', 'error');
     }
   };
 

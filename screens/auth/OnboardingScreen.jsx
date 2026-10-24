@@ -19,7 +19,7 @@ import {
 } from "react-native";
 import Geolocation from "@react-native-community/geolocation";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import Ionicons from "@expo/vector-icons/Ionicons";
+import Ionicons from "react-native-vector-icons/Ionicons";
 import { useLanguage } from "../../context/LanguageContext";
 import { Button, Text } from "../../components/ui";
 import { brand } from "../../theme";

@@ -29,7 +29,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { Text } from '../../components/ui';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import Toast from '../../components/Toast';
 import { copyToClipboard } from '../../utils/clipboard';
 import AsyncStorage from '@react-native-async-storage/async-storage';

@@ -91,9 +91,6 @@ android {
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
             def enablePngCrunchInRelease = findProperty('android.enablePngCrunchInReleaseBuilds') ?: 'true'
             crunchPngs enablePngCrunchInRelease.toBoolean()
-            ndk {
-                debugSymbolLevel 'FULL'
-            }
         }
     }
     packagingOptions {
@@ -107,7 +104,8 @@ android {
 
     sourceSets {
         main {
-            assets.srcDirs += ["${projectRoot}/assets"]
+            // Don't include root assets - fonts are already copied by react-native-asset
+            // assets.srcDirs += ["${projectRoot}/assets"]
         }
     }
 }
@@ -155,3 +153,10 @@ dependencies {
 
 apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesAppBuildGradle(project)
 
+// Disable state tracking on React Native bundle tasks because OneDrive reparse points
+// cause Gradle's Java NIO file snapshotting to fail with "not a regular file"
+afterEvaluate {
+    tasks.matching { it.name.contains("createBundle") || it.name.contains("bundle") }.configureEach {
+        doNotTrackState("OneDrive folder reparse points break Gradle NIO file snapshotting")
+    }
+}

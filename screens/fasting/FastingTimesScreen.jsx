@@ -23,7 +23,7 @@ import { useAlarmState } from '../../context/AlarmContext';
 import { hijriMonthName } from '../../config/languages';
 import { db } from '../../config/firebase';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import Toast from '../../components/Toast';
 import { getHijriDate } from '../../utils/fastingUtils';
 

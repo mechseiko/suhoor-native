@@ -1,4 +1,3 @@
-import './expo-polyfill'
 import 'react-native-get-random-values'
 
 // Suppress react-native-web deprecation warnings immediately before any modules load
