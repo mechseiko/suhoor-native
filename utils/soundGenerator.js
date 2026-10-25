@@ -106,24 +106,28 @@ export const generateApexSoundUri = () => {
   if (soundCache.apex) return soundCache.apex;
 
   const sampleRate = 22050;
-  const duration = 2.4; // seconds
+  const duration = 1.6; // tight, seamless 1.6s loop
   const totalSamples = Math.floor(sampleRate * duration);
   const samples = new Float32Array(totalSamples);
 
   for (let i = 0; i < totalSamples; i++) {
     const t = i / sampleRate;
-    // 3 pulses per second
-    const pulseCycle = (t % 0.35);
-    if (pulseCycle < 0.22) {
-      const pulseT = pulseCycle / 0.22;
-      const env = Math.sin(Math.PI * pulseT);
-      const freq = (t % 0.7 < 0.35) ? 960 : 1280;
+    // Rapid urgent pulses: 4 pulses per 0.8s pattern
+    const subCycle = t % 0.8;
+    const pulseIdx = Math.floor(subCycle / 0.18);
+    const pulseT = (subCycle % 0.18) / 0.14;
+
+    if (pulseIdx < 4 && pulseT <= 1.0) {
+      // Fast, crisp attack and sustained punch
+      const env = Math.sin(Math.PI * Math.min(1.0, pulseT * 1.2));
+      const freq = (pulseIdx % 2 === 0) ? 1046.5 : 1318.5; // C6 and E6 piercing sirens
       
-      // Fundamental + 2nd + 3rd harmonics for punchy apex wake-up
       const s1 = Math.sin(2 * Math.PI * freq * t);
-      const s2 = 0.35 * Math.sin(2 * Math.PI * freq * 2 * t);
-      const s3 = 0.15 * Math.sin(2 * Math.PI * freq * 3 * t);
-      samples[i] = (s1 + s2 + s3) * env * 0.85;
+      const s2 = 0.45 * Math.sin(2 * Math.PI * freq * 2 * t);
+      const s3 = 0.25 * Math.sin(2 * Math.PI * freq * 3 * t);
+      // Punchy saturation to pierce heavy sleep
+      const raw = (s1 + s2 + s3) * env;
+      samples[i] = Math.tanh(raw * 1.3) * 0.95;
     } else {
       samples[i] = 0;
     }
@@ -135,37 +139,38 @@ export const generateApexSoundUri = () => {
 
 /**
  * Generates "Soft" alarm:
- * A gentle, melodic, peaceful awakening sound with warm sine harmonics
- * and smooth fade-in / fade-out (E5 -> G#5 -> B5 major triad).
+ * Melodic, peaceful yet distinct and audible awakening sound.
+ * Plays a bright, resonant arpeggio (C5 -> E5 -> G5 -> C6) with warm presence
+ * and no sluggish dead silence.
  */
 export const generateSoftSoundUri = () => {
   if (soundCache.soft) return soundCache.soft;
 
   const sampleRate = 22050;
-  const duration = 3.2; // seconds
+  const duration = 2.0; // Steady 2.0s loop
   const totalSamples = Math.floor(sampleRate * duration);
   const samples = new Float32Array(totalSamples);
 
-  // 4 notes: E5 (659Hz), G#5 (830Hz), B5 (987Hz), E6 (1318Hz)
-  const notes = [659.25, 830.61, 987.77, 1318.51];
+  // C5, E5, G5, C6 (523Hz, 659Hz, 784Hz, 1046Hz)
+  const notes = [523.25, 659.25, 783.99, 1046.50];
 
   for (let i = 0; i < totalSamples; i++) {
     const t = i / sampleRate;
     let sampleVal = 0;
 
     notes.forEach((freq, noteIdx) => {
-      const noteStart = noteIdx * 0.65;
+      const noteStart = noteIdx * 0.42;
       const noteT = t - noteStart;
-      if (noteT >= 0 && noteT < 1.4) {
-        // Bell-like smooth attack and exponential decay
-        const env = Math.sin(Math.min(Math.PI / 2, noteT * 12)) * Math.exp(-noteT * 2.8);
+      if (noteT >= 0 && noteT < 1.0) {
+        const env = Math.sin(Math.min(Math.PI / 2, noteT * 20)) * Math.exp(-noteT * 3.2);
         const s1 = Math.sin(2 * Math.PI * freq * noteT);
-        const s2 = 0.25 * Math.sin(2 * Math.PI * freq * 2 * noteT);
-        sampleVal += (s1 + s2) * env * 0.35;
+        const s2 = 0.35 * Math.sin(2 * Math.PI * freq * 2 * noteT);
+        const s3 = 0.15 * Math.sin(2 * Math.PI * freq * 3 * noteT);
+        sampleVal += (s1 + s2 + s3) * env * 0.55;
       }
     });
 
-    samples[i] = Math.max(-1, Math.min(1, sampleVal));
+    samples[i] = Math.max(-0.95, Math.min(0.95, sampleVal));
   }
 
   soundCache.soft = createWavDataUri(samples, sampleRate);
@@ -174,24 +179,29 @@ export const generateSoftSoundUri = () => {
 
 /**
  * Generates "Pulse" alarm:
- * A modern, rhythmic dual-tone alert.
+ * Driving, rhythmic dual-tone alert with high presence and continuous momentum.
  */
 export const generatePulseSoundUri = () => {
   if (soundCache.pulse) return soundCache.pulse;
 
   const sampleRate = 22050;
-  const duration = 2.0;
+  const duration = 1.2; // 1.2s tight loop
   const totalSamples = Math.floor(sampleRate * duration);
   const samples = new Float32Array(totalSamples);
 
   for (let i = 0; i < totalSamples; i++) {
     const t = i / sampleRate;
-    const cycle = t % 1.0;
-    if (cycle < 0.15 || (cycle > 0.22 && cycle < 0.37)) {
-      const subT = cycle < 0.15 ? cycle / 0.15 : (cycle - 0.22) / 0.15;
+    const cycle = t % 0.6; // 2 double-pulses per duration
+    const isBeep1 = cycle < 0.13;
+    const isBeep2 = cycle > 0.18 && cycle < 0.31;
+
+    if (isBeep1 || isBeep2) {
+      const subT = isBeep1 ? cycle / 0.13 : (cycle - 0.18) / 0.13;
       const env = Math.sin(Math.PI * subT);
-      const freq = cycle < 0.15 ? 784 : 1046.5; // G5 and C6
-      samples[i] = Math.sin(2 * Math.PI * freq * t) * env * 0.8;
+      const freq = isBeep1 ? 880 : 1174.66; // A5 & D6
+      const s1 = Math.sin(2 * Math.PI * freq * t);
+      const s2 = 0.4 * Math.sin(2 * Math.PI * freq * 2 * t);
+      samples[i] = Math.tanh((s1 + s2) * env * 1.2) * 0.95;
     } else {
       samples[i] = 0;
     }
@@ -203,37 +213,38 @@ export const generatePulseSoundUri = () => {
 
 /**
  * Generates "Default Suhoor" alarm:
- * A classic, energetic, loud wake-up electronic tone with an alternating dual-frequency cadence.
+ * Classic, energetic, loud wake-up electronic tone with an alternating dual-frequency cadence.
+ * Maximally loud, urgent, and consistent over any duration.
  */
 export const generateDefaultSoundUri = () => {
   if (soundCache.default) return soundCache.default;
 
   const sampleRate = 22050;
-  const duration = 2.4; // seconds
+  const duration = 1.4; // 1.4s energetic loop
   const totalSamples = Math.floor(sampleRate * duration);
   const samples = new Float32Array(totalSamples);
 
   for (let i = 0; i < totalSamples; i++) {
     const t = i / sampleRate;
-    const cycle = t % 1.2;
-    const isBeep1 = cycle < 0.12;
-    const isBeep2 = cycle > 0.18 && cycle < 0.30;
-    const isBeep3 = cycle > 0.36 && cycle < 0.48;
-    const isBeep4 = cycle > 0.54 && cycle < 0.66;
+    const cycle = t % 0.7; // 2 cycles per loop
+    const isBeep1 = cycle < 0.10;
+    const isBeep2 = cycle > 0.14 && cycle < 0.24;
+    const isBeep3 = cycle > 0.28 && cycle < 0.38;
+    const isBeep4 = cycle > 0.42 && cycle < 0.52;
 
     if (isBeep1 || isBeep2 || isBeep3 || isBeep4) {
       let subT;
-      if (isBeep1) subT = cycle / 0.12;
-      else if (isBeep2) subT = (cycle - 0.18) / 0.12;
-      else if (isBeep3) subT = (cycle - 0.36) / 0.12;
-      else subT = (cycle - 0.54) / 0.12;
+      if (isBeep1) subT = cycle / 0.10;
+      else if (isBeep2) subT = (cycle - 0.14) / 0.10;
+      else if (isBeep3) subT = (cycle - 0.28) / 0.10;
+      else subT = (cycle - 0.42) / 0.10;
 
       const env = Math.sin(Math.PI * subT);
-      const freq = (isBeep1 || isBeep3) ? 880 : 1046.5; // A5 / C6
+      const freq = (isBeep1 || isBeep3) ? 987.77 : 1318.51; // B5 / E6
       const s1 = Math.sin(2 * Math.PI * freq * t);
-      const s2 = 0.3 * Math.sin(2 * Math.PI * freq * 2 * t);
-      const s3 = 0.15 * Math.sin(2 * Math.PI * freq * 3 * t);
-      samples[i] = (s1 + s2 + s3) * env * 0.85;
+      const s2 = 0.45 * Math.sin(2 * Math.PI * freq * 2 * t);
+      const s3 = 0.25 * Math.sin(2 * Math.PI * freq * 3 * t);
+      samples[i] = Math.tanh((s1 + s2 + s3) * env * 1.25) * 0.96;
     } else {
       samples[i] = 0;
     }

@@ -52,8 +52,8 @@ android {
         applicationId 'com.mechseiko.suhoor'
         minSdkVersion 24
         targetSdkVersion 36
-        versionCode 16
-        versionName "1.0.11"
+        versionCode 17
+        versionName "1.0.12"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
 
@@ -155,6 +155,10 @@ dependencies {
 
     // Gson for JSON serialization in alarm module
     implementation("com.google.code.gson:gson:2.10.1")
+
+    // Google Play In-App Updates
+    implementation("com.google.android.play:app-update:2.1.0")
+    implementation("com.google.android.play:app-update-ktx:2.1.0")
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

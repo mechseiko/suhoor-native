@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
   View,
@@ -6,12 +6,14 @@ import {
   TouchableOpacity,
   Linking,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { Text } from './ui';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { brand, radius, spacing } from '../theme';
+import { triggerImmediateUpdate } from '../services/inAppUpdates';
 
 export const UpdateModal = ({
   visible,
@@ -22,16 +24,22 @@ export const UpdateModal = ({
 }) => {
   const { colors, isDark } = useTheme();
   const { t } = useLanguage();
+  const [updating, setUpdating] = useState(false);
 
   if (!visible) return null;
 
-  const handleUpdate = () => {
-    const url =
-      playStoreUrl ||
-      'https://play.google.com/store/apps/details?id=com.mechseiko.suhoor';
-    Linking.openURL(url).catch((err) =>
-      console.error('[UpdateModal] Could not open Play Store URL:', err)
-    );
+  const handleUpdate = async () => {
+    setUpdating(true);
+    try {
+      const url =
+        playStoreUrl ||
+        'https://play.google.com/store/apps/details?id=com.mechseiko.suhoor';
+      await triggerImmediateUpdate(url);
+    } catch (err) {
+      console.error('[UpdateModal] Could not trigger in-app update:', err);
+    } finally {
+      setUpdating(false);
+    }
   };
 
   return (
@@ -131,16 +139,23 @@ export const UpdateModal = ({
           {/* Action Buttons */}
           <TouchableOpacity
             activeOpacity={0.85}
+            disabled={updating}
             style={[
               styles.primaryBtn,
-              { backgroundColor: brand.primary || '#F29F1D' },
+              { backgroundColor: brand.primary || '#F29F1D', opacity: updating ? 0.75 : 1 },
             ]}
             onPress={handleUpdate}
           >
-            <Ionicons name="logo-google-playstore" size={18} color="#FFFFFF" />
-            <Text style={styles.primaryBtnText}>
-              {t('update.button', 'Update on Play Store')}
-            </Text>
+            {updating ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <Ionicons name="cloud-download-outline" size={18} color="#FFFFFF" />
+                <Text style={styles.primaryBtnText}>
+                  {t('update.buttonNow', 'Update Now')}
+                </Text>
+              </>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity

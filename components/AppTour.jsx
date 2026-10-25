@@ -340,7 +340,7 @@ export const AppTour = ({ children, tabBarRef }) => {
               top: holeT,
               width: holeW,
               height: holeH,
-              borderRadius: 16,
+              borderRadius: 999,
               borderWidth: 2.5,
               borderColor: colors.primary,
               opacity: ringPulse,

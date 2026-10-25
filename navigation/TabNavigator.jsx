@@ -28,7 +28,8 @@ export const TabNavigator = ({ tabBarRef }) => {
   const { colors } = useTheme()
   const { t } = useLanguage()
   // Only use safe area insets on mobile (not web) to avoid SafeAreaProvider requirement
-  const insets = Platform.OS === 'web' ? { top: 0 } : (useSafeAreaInsets ? useSafeAreaInsets() : { top: 0 })
+  const insets = Platform.OS === 'web' ? { top: 0, bottom: 0 } : (useSafeAreaInsets ? useSafeAreaInsets() : { top: 0, bottom: 0 })
+  const bottomInset = Platform.OS === 'web' ? 0 : Math.max(insets?.bottom || 0, 0)
 
   return (
     <Tab.Navigator
@@ -86,9 +87,9 @@ export const TabNavigator = ({ tabBarRef }) => {
           backgroundColor: colors.surface,
           borderTopWidth: 1,
           borderTopColor: colors.border,
-          paddingBottom: Platform.OS === 'web' ? 8 : 6,
+          paddingBottom: Platform.OS === 'web' ? 8 : 6 + bottomInset,
           paddingTop: Platform.OS === 'web' ? 8 : 6,
-          height: Platform.OS === 'web' ? 70 : 62,
+          height: Platform.OS === 'web' ? 70 : 62 + bottomInset,
           elevation: 0,
           shadowOpacity: 0,
         },

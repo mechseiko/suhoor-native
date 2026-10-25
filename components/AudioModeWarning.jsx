@@ -57,11 +57,11 @@ export const AudioModeWarning = () => {
   const checkAudioMode = async () => {
     if (Platform.OS === 'android') {
       try {
-        // This would need a native module to check actual audio mode
-        // For now, we'll show the warning if the user hasn't explicitly dismissed it
+        // Without a dedicated native ringer module, do not falsely assume the user is on silent/DND.
+        // Keep isSilent and isDND false unless confirmed.
         const hasDismissedWarning = await AsyncStorage.getItem('suhoor_audio_warning_dismissed');
-        if (!hasDismissedWarning) {
-          setIsSilent(true); // Default to showing warning until we have native detection
+        if (hasDismissedWarning) {
+          setShowWarning(false);
         }
       } catch (error) {
         console.error('Error checking audio mode:', error);

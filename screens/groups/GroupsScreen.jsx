@@ -10,6 +10,7 @@ import {
   SafeAreaView,
   RefreshControl,
   Alert,
+  Linking,
 } from 'react-native'
 import { Text } from '../../components/ui'
 import { copyToClipboard } from '../../utils/clipboard'
@@ -35,7 +36,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons'
 import Toast from '../../components/Toast'
 import { useSocket } from '../../context/SocketContext'
 
-export const GroupsScreen = ({ navigation }) => {
+export const GroupsScreen = ({ navigation, route }) => {
   const { currentUser, userProfile } = useAuth()
   const { colors, isDark } = useTheme()
   const { t } = useLanguage()
@@ -91,6 +92,56 @@ export const GroupsScreen = ({ navigation }) => {
     setToastType(type)
     setToastVisible(true)
   }
+
+  // Handle opening join modal when coming from deep link / invite link
+  useEffect(() => {
+    if (route?.params?.groupKey) {
+      const cleanKey = String(route.params.groupKey).trim().toUpperCase()
+      setJoinGroupKey(cleanKey)
+      setShowJoinModal(true)
+    }
+  }, [route?.params?.groupKey])
+
+  useEffect(() => {
+    const checkPendingDeepLink = async () => {
+      try {
+        const storedKey = await AsyncStorage.getItem('pending_join_group_key')
+        if (storedKey) {
+          await AsyncStorage.removeItem('pending_join_group_key')
+          setJoinGroupKey(storedKey.trim().toUpperCase())
+          setShowJoinModal(true)
+          return
+        }
+
+        const initialUrl = await Linking.getInitialURL()
+        if (initialUrl && initialUrl.includes('groupKey=')) {
+          const match = initialUrl.match(/groupKey=([^&]+)/)
+          if (match && match[1]) {
+            setJoinGroupKey(decodeURIComponent(match[1]).trim().toUpperCase())
+            setShowJoinModal(true)
+          }
+        }
+      } catch (err) {
+        console.log('Error reading pending join key:', err)
+      }
+    }
+
+    checkPendingDeepLink()
+
+    const sub = Linking.addEventListener?.('url', (event) => {
+      if (event?.url && event.url.includes('groupKey=')) {
+        const match = event.url.match(/groupKey=([^&]+)/)
+        if (match && match[1]) {
+          setJoinGroupKey(decodeURIComponent(match[1]).trim().toUpperCase())
+          setShowJoinModal(true)
+        }
+      }
+    })
+
+    return () => {
+      sub?.remove?.()
+    }
+  }, [])
 
   // Calculate wake-up window
   useEffect(() => {

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { View, Platform, StyleSheet } from 'react-native'
+import { View, Platform, StyleSheet, Linking } from 'react-native'
 import { NavigationContainer } from '@react-navigation/native'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
@@ -14,6 +14,28 @@ import { COLLECTIONS } from '../config/firestoreSchema'
 import { doc, getDoc } from 'firebase/firestore'
 import { navigationRef } from '../services/NavigationService'
 import { useLanguage } from '../context/LanguageContext'
+
+const deepLinking = {
+  prefixes: ['suhoor://', 'https://suhoor-group.web.app'],
+  config: {
+    screens: {
+      MainTabs: {
+        screens: {
+          GroupsTab: {
+            screens: {
+              GroupsList: 'groups',
+            },
+          },
+        },
+      },
+      GroupsTab: {
+        screens: {
+          GroupsList: 'groups',
+        },
+      },
+    },
+  },
+}
 
 
 // Remembers that verification was confirmed at least once, so an offline
@@ -69,6 +91,24 @@ export const RootNavigator = () => {
       active = false
       clearTimeout(timer)
     }
+  }, [])
+
+  useEffect(() => {
+    const handleUrl = (url) => {
+      if (!url) return
+      try {
+        const match = url.match(/groupKey=([^&]+)/)
+        if (match && match[1]) {
+          AsyncStorage.setItem('pending_join_group_key', decodeURIComponent(match[1]).trim().toUpperCase()).catch(() => {})
+        }
+      } catch (e) {
+        console.log('Error parsing deep link url:', e)
+      }
+    }
+
+    Linking.getInitialURL().then(handleUrl).catch(() => {})
+    const sub = Linking.addEventListener?.('url', e => handleUrl(e?.url))
+    return () => sub?.remove?.()
   }, [])
 
   useEffect(() => {
@@ -165,7 +205,7 @@ export const RootNavigator = () => {
   } : {}
 
   return (
-    <NavigationContainer ref={navigationRef} style={navContainerStyle}>
+    <NavigationContainer ref={navigationRef} linking={deepLinking} style={navContainerStyle}>
       <View style={styles.container}>
         {currentUser && isVerified ? (
           <AppTour tabBarRef={tabBarRef}>

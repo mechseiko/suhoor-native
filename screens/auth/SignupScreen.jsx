@@ -170,6 +170,7 @@ export const SignupScreen = ({ navigation }) => {
         state: locationDetails.state || "",
         city: locationDetails.city || "",
         pin: alarmPin, // Save the alarm PIN from onboarding
+        authProvider: 'password',
         createdAt: serverTimestamp(),
         signupSource: 'mobile',
         platform: 'mobile',

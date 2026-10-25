@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Text,
   View,
@@ -8,10 +8,10 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
-  Dimensions,
   RefreshControl,
   Platform,
 } from 'react-native';
+import Slider from '@react-native-community/slider'; // 👈 NEW IMPORT
 
 import { useFastingTimes } from '../../hooks/useFastingTimes';
 import { useAuth } from '../../context/AuthContext';
@@ -32,144 +32,6 @@ import { getHijriDate } from '../../utils/fastingUtils';
 const DEFAULT_WAKE_MINUTES = 45;
 const MIN_WAKE_MINUTES = 15;
 const MAX_WAKE_MINUTES = 120;
-
-const WakeUpTimePicker = ({ value, onChange, colors, timeText, captionText }) => {
-  const [modalVisible, setModalVisible] = useState(false);
-  
-  // Generate 5-minute increments from 15 to 120
-  const options = [];
-  for (let i = MIN_WAKE_MINUTES; i <= MAX_WAKE_MINUTES; i += 5) {
-    options.push(i);
-  }
-
-  return (
-    <View style={{ alignItems: 'center', marginVertical: 20 }}>
-      <TouchableOpacity
-        onPress={() => setModalVisible(true)}
-        style={{
-          backgroundColor: colors.surfaceVariant,
-          borderWidth: 2,
-          borderColor: colors.border,
-          borderRadius: 16,
-          padding: 20,
-          alignItems: 'center',
-          minWidth: 200,
-        }}
-      >
-        <Text
-          style={{
-            fontSize: 28,
-            fontWeight: '800',
-            color: colors.text,
-            textAlign: 'center',
-          }}
-        >
-          {timeText}
-        </Text>
-        <Text
-          style={{
-            fontSize: 11,
-            color: colors.textSecondary,
-            textAlign: 'center',
-            marginTop: 4,
-          }}
-        >
-          {captionText}
-        </Text>
-        <Text style={{ marginTop: 8, fontSize: 12, color: colors.primary, fontWeight: '600' }}>
-          Tap to change
-        </Text>
-      </TouchableOpacity>
-
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: 20,
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: colors.surface,
-              borderRadius: 16,
-              padding: 20,
-              width: '100%',
-              maxHeight: '80%',
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: '700',
-                color: colors.text,
-                marginBottom: 16,
-                textAlign: 'center',
-              }}
-            >
-              Select Wake-Up Time
-            </Text>
-            
-            <ScrollView style={{ maxHeight: 300 }}>
-              {options.map((minutes) => (
-                <TouchableOpacity
-                  key={minutes}
-                  onPress={() => {
-                    onChange(minutes);
-                    setModalVisible(false);
-                  }}
-                  style={{
-                    padding: 16,
-                    borderBottomWidth: 1,
-                    borderBottomColor: colors.border,
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 16,
-                      color: colors.text,
-                      fontWeight: value === minutes ? '700' : '400',
-                    }}
-                  >
-                    {minutes} minutes before suhoor
-                  </Text>
-                  {value === minutes && (
-                    <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            <TouchableOpacity
-              onPress={() => setModalVisible(false)}
-              style={{
-                marginTop: 16,
-                padding: 16,
-                backgroundColor: colors.border,
-                borderRadius: 8,
-                alignItems: 'center',
-              }}
-            >
-              <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text }}>
-                Cancel
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-    </View>
-  );
-};
 
 export const FastingTimesScreen = ({ navigation }) => {
   const { currentUser, userProfile } = useAuth();
@@ -225,7 +87,6 @@ export const FastingTimesScreen = ({ navigation }) => {
     };
     loadWakeUpPreference();
   }, [currentUser]);
-
 
 
   const handleSaveWakeUpTime = async () => {
@@ -338,12 +199,6 @@ export const FastingTimesScreen = ({ navigation }) => {
   const defaultWakeUp = calculateWakeUpTime(suhoorTime, DEFAULT_WAKE_MINUTES);
   const personalWakeUp = calculateWakeUpTime(suhoorTime, personalWakeUpMinutes);
 
-  /**
-   * The location notice, shown when no location is available or when using
-   * a fallback location. When source is 'none', the user needs to set their
-   * location in settings. When source is 'profile', we're using their saved
-   * default location from their profile.
-   */
   const locationStatus =
     location?.loaded && location.source === 'none'
       ? {
@@ -581,13 +436,32 @@ export const FastingTimesScreen = ({ navigation }) => {
                 })}
               </Text>
 
-              <WakeUpTimePicker
-                value={personalWakeUpMinutes}
-                onChange={setPersonalWakeUpMinutes}
-                colors={colors}
-                timeText={personalWakeUp}
-                captionText={t('fastingTimes.minutesBeforeValue', { minutes: personalWakeUpMinutes })}
-              />
+              {/* 👇 REPLACED WALL CLOCK WITH SLIDER */}
+              <View style={{ alignItems: 'center', marginVertical: 20, paddingHorizontal: 10 }}>
+                <Text style={{ fontSize: 32, fontWeight: '900', color: colors.primary, marginBottom: 4 }}>
+                  {personalWakeUp}
+                </Text>
+                <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 16, fontWeight: '500' }}>
+                  {t('fastingTimes.minutesBeforeValue', { minutes: personalWakeUpMinutes })}
+                </Text>
+                
+                <Slider
+                  style={{ width: '100%', height: 40 }}
+                  minimumValue={MIN_WAKE_MINUTES}
+                  maximumValue={MAX_WAKE_MINUTES}
+                  step={5}
+                  value={personalWakeUpMinutes}
+                  onValueChange={setPersonalWakeUpMinutes}
+                  minimumTrackTintColor={colors.primary}
+                  maximumTrackTintColor={colors.border}
+                  thumbTintColor={colors.primary}
+                />
+                
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', paddingHorizontal: 5 }}>
+                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>{MIN_WAKE_MINUTES}m</Text>
+                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>{MAX_WAKE_MINUTES}m</Text>
+                </View>
+              </View>
 
               <Text style={{ fontSize: 13, fontWeight: '600', marginTop: 8, textAlign: 'center', color: colors.accent }}>
                 {t('fastingTimes.calculated', { time: personalWakeUp })}
@@ -657,7 +531,7 @@ export const FastingTimesScreen = ({ navigation }) => {
               <Text style={{ fontSize: 12, color: colors.textSecondary }}>
                 {userProfile?.preferences?.alarmSound && userProfile?.preferences?.alarmSound !== 'default'
                   ? `Active sound set in profile (${userProfile.preferences.alarmSound})`
-                  : t('fastingTimes.usingDefaultSound')}
+                  : t('usingDefaultSound')}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.primary} />

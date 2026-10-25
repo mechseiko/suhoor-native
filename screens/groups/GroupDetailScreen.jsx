@@ -494,21 +494,6 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     }
   };
 
-  const handleShareKey = async () => {
-    if (!group) return;
-    if (group?.only_admins_invite && !isCurrentUserAdmin) {
-      triggerToast(t('groups.onlyAdminsCanInvite', 'Only group admins can share the invite link'), "info");
-      return;
-    }
-    try {
-      await Share.share({
-        message: `Join my Suhoor group!\nGroup Name: ${group.name}\nGroup Key: ${group.group_key}\nLink: https://suhoor-group.web.app/groups?groupKey=${group.group_key}`,
-      });
-    } catch (error) {
-      console.error("Error sharing key:", error);
-    }
-  };
-
   const handleCopyKey = async () => {
     if (!group) return;
     if (group?.only_admins_invite && !isCurrentUserAdmin) {
@@ -521,8 +506,10 @@ export const GroupDetailScreen = ({ route, navigation }) => {
 
   const handleCopyInviteLink = async () => {
     if (!group) return;
-    const link = `https://suhoor-group.web.app/groups?groupKey=${group.group_key}`;
-    await copyToClipboard(link);
+    const link = `https://suhoorapp.cv/groups?groupKey=${group.group_key}`;
+    const prefix = t('groups.shareInviteMessage', "Let's wake up for suhoor together, Join my Group on Suhoor:");
+    const shareText = `${prefix}\n${link}`;
+    await copyToClipboard(shareText);
     triggerToast(t('groups.inviteLinkCopied'), "success");
   };
 

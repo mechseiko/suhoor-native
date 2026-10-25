@@ -32,7 +32,21 @@ export const getCurrentVersion = () => {
     }
   } catch (e) {}
 
-  return '1.0.9'; // Fallback matching Android versionName
+  return null;
+};
+
+/**
+ * Returns current installed app build number / version code (e.g., 9 or 10)
+ */
+export const getCurrentBuildNumber = () => {
+  try {
+    if (DeviceInfo && typeof DeviceInfo.getBuildNumber === 'function') {
+      const b = DeviceInfo.getBuildNumber();
+      const num = parseInt(b, 10);
+      if (!isNaN(num) && num > 0) return num;
+    }
+  } catch (e) {}
+  return 0;
 };
 
 /**

@@ -280,9 +280,11 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
     const origin =
       typeof window !== 'undefined' && window.location?.origin
         ? window.location.origin
-        : 'https://suhoor-group.web.app';
+        : 'https://suhoorapp.cv';
     const link = `${origin}/groups?groupKey=${key}`;
-    await copyToClipboard(link);
+    const prefix = t('groups.shareInviteMessage', "Let's wake up for suhoor together, Join my Group on Suhoor:");
+    const shareText = `${prefix}\n${link}`;
+    await copyToClipboard(shareText);
     triggerToast(t('groups.inviteLinkCopied', 'Invite link copied!'), 'success');
   };
 

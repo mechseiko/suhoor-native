@@ -35,6 +35,12 @@ export const AuthProvider = ({ children }) => {
 
   const signInWithGoogle = async () => {
     try {
+      if (typeof signInWithPopup !== 'function') {
+        throw new Error(
+          "Google Sign-In via popup is only supported on Web in this setup. Native mobile requires Google Sign-In SDK configuration."
+        );
+      }
+
       const provider = new GoogleAuthProvider();
       provider.addScope("profile");
       provider.addScope("email");
@@ -92,6 +98,7 @@ export const AuthProvider = ({ children }) => {
           state,
           city,
           pin: alarmPin,
+          authProvider: "google",
           createdAt: serverTimestamp(),
           signupSource: Platform.OS === "web" ? "web" : "mobile",
           platform: Platform.OS === "web" ? "web" : "mobile",
@@ -109,12 +116,12 @@ export const AuthProvider = ({ children }) => {
         }
       } else {
         // Sync avatar from Google if not yet set in profile
+        const updateData = { authProvider: "google" };
         if (user.photoURL && !profileDoc.data()?.avatar_url && !profileDoc.data()?.photoURL) {
-          await updateDoc(doc(db, "profiles", user.uid), {
-            avatar_url: user.photoURL,
-            photoURL: user.photoURL,
-          }).catch(() => {});
+          updateData.avatar_url = user.photoURL;
+          updateData.photoURL = user.photoURL;
         }
+        await updateDoc(doc(db, "profiles", user.uid), updateData).catch(() => {});
 
         // Sync alarm pin if set in local storage
         try {
