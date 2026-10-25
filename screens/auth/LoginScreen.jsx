@@ -129,7 +129,8 @@ export const LoginScreen = ({ navigation }) => {
 
       if (
         err.code === 'auth/popup-closed-by-user' ||
-        err.code === 'auth/cancelled-popup-request'
+        err.code === 'auth/cancelled-popup-request' ||
+        err.code === 'SIGN_IN_CANCELLED' // <-- ADDED THIS NATIVE ERROR CODE
       ) {
         errorMessage = t('auth.googleSignInCancelled', 'Sign-in cancelled')
       } else if (err.code === 'auth/popup-blocked') {

@@ -8,16 +8,24 @@ import {
   reload,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithCredential, // ADDED THIS
 } from "firebase/auth";
 import { auth, db } from "../config/firebase";
 import { doc, onSnapshot, updateDoc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { detectUserLocationDetails } from "../utils/country";
+import { GoogleSignin } from "@react-native-google-signin/google-signin"; // ADDED THIS
 
 const AuthContext = createContext({});
 
 export const useAuth = () => useContext(AuthContext);
+
+// Configure Google Sign-In outside the component
+GoogleSignin.configure({
+  webClientId: '436930754190-6m8r5cegt0pa6mil8ujb8n1d2r9pmvk3.apps.googleusercontent.com',
+  offlineAccess: true,
+});
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
@@ -35,17 +43,30 @@ export const AuthProvider = ({ children }) => {
 
   const signInWithGoogle = async () => {
     try {
-      if (typeof signInWithPopup !== 'function') {
-        throw new Error(
-          "Google Sign-In via popup is only supported on Web in this setup. Native mobile requires Google Sign-In SDK configuration."
-        );
+      let userCredential;
+
+      if (Platform.OS === 'web') {
+        // WEB FLOW
+        const provider = new GoogleAuthProvider();
+        provider.addScope("profile");
+        provider.addScope("email");
+        userCredential = await signInWithPopup(auth, provider);
+      } else {
+        // NATIVE MOBILE FLOW
+        await GoogleSignin.hasPlayServices();
+        const response = await GoogleSignin.signIn();
+        
+        // Handle different versions of the library
+        const idToken = response.data?.idToken || response.idToken;
+        
+        if (!idToken) {
+           throw new Error("No ID token returned from Google");
+        }
+        
+        const googleCredential = GoogleAuthProvider.credential(idToken);
+        userCredential = await signInWithCredential(auth, googleCredential);
       }
 
-      const provider = new GoogleAuthProvider();
-      provider.addScope("profile");
-      provider.addScope("email");
-
-      const userCredential = await signInWithPopup(auth, provider);
       const user = userCredential.user;
 
       // Check if user profile exists in Firestore, if not create it
@@ -152,6 +173,14 @@ export const AuthProvider = ({ children }) => {
     setCurrentUser(null);
     setUserProfile(null);
     await signOut(auth);
+    // Also sign out from Google if on native
+    if (Platform.OS !== 'web') {
+      try {
+        await GoogleSignin.signOut();
+      } catch (e) {
+        // Ignore error if not signed in
+      }
+    }
   };
 
   const deleteAccount = async () => {
