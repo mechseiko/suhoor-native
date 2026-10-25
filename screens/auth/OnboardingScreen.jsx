@@ -559,6 +559,40 @@ const LocationPermissionStep = ({ onStatusChange }) => {
         </Text>
       </Text>
 
+      {/* Why we need your location card */}
+      <View
+        style={{
+          backgroundColor: "rgba(21, 12, 51, 0.04)",
+          borderRadius: 12,
+          padding: 16,
+          marginBottom: 24,
+          borderWidth: 1,
+          borderColor: "rgba(21, 12, 51, 0.1)",
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 13,
+            fontWeight: "700",
+            color: brand.primary,
+            marginBottom: 8,
+            textAlign: "center",
+          }}
+        >
+          {t("onboarding.whyLocationTitle")}
+        </Text>
+        <Text
+          style={{
+            fontSize: 12,
+            color: "#6B7280",
+            lineHeight: 18,
+            textAlign: "center",
+          }}
+        >
+          {t("onboarding.whyLocationText")}
+        </Text>
+      </View>
+
       <Text
         variant="body"
         tone="secondary"

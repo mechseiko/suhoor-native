@@ -305,12 +305,12 @@ export const AlarmOverlay = () => {
               <Ionicons name="checkmark-circle" size={90} color="#00C2A8" />
             </View>
             <Text variant="hero" style={styles.mainTitle}>
-              {isBuzz ? "You're Checked In!" : 'Alarm Dismissed'}
+              {isBuzz ? t('alarm.checkedIn') : t('alarm.dismissed')}
             </Text>
             <Text variant="bodyLg" style={styles.subtitle}>
               {isBuzz
-                ? 'Your groups have been notified that you are awake.'
-                : 'May Allah bless your day and accept your fast.'}
+                ? t('alarm.groupsNotified')
+                : t('alarm.blessing')}
             </Text>
           </View>
         )}
@@ -369,13 +369,17 @@ export const AlarmOverlay = () => {
               )}
 
               <Text variant="hero" style={styles.mainTitle}>
-                {isBuzz ? "You're Being Buzzed!" : "It's time for suhoor"}
+                {isBuzz ? t('alarm.beingBuzzed') : t('alarm.timeForSuhoor')}
               </Text>
 
               <Text variant="bodyLg" style={styles.subtitle}>
                 {isBuzz
-                  ? `${alarmData?.fromUserName || 'A group member'}${alarmData?.groupName ? ` from ${alarmData.groupName}` : ''} is waking you for Suhoor. Check in on the Groups tab to stop being buzzed.`
-                  : "It's time to rise for Suhoor and eat your meal."}
+                  ? (alarmData?.fromUserName && alarmData?.groupName
+                    ? t('alarm.buzzMessage', { name: alarmData.fromUserName, group: alarmData.groupName })
+                    : alarmData?.fromUserName
+                    ? t('alarm.buzzMessageNoGroup', { name: alarmData.fromUserName })
+                    : t('alarm.buzzGeneric'))
+                  : t('alarm.riseForSuhoor')}
               </Text>
             </View>
 
@@ -383,7 +387,7 @@ export const AlarmOverlay = () => {
             <View style={styles.actionBlock}>
               {isBuzz ? (
                 <Button
-                  title="Dismiss Buzz"
+                  title={t('alarm.dismissBuzz')}
                   onPress={handleBuzzDismiss}
                   variant="outline"
                   style={styles.primaryCta}
@@ -391,7 +395,7 @@ export const AlarmOverlay = () => {
                 />
               ) : (
                 <Button
-                  title="Dismiss Alarm (Enter PIN)"
+                  title={t('alarm.dismissAlarm')}
                   onPress={() => setStatus('dismiss_challenge')}
                   variant="secondary"
                   style={styles.primaryCta}
@@ -406,10 +410,10 @@ export const AlarmOverlay = () => {
         {status === 'dismiss_challenge' && (
           <View style={styles.challengeContainer}>
             <Text variant="h2" style={styles.challengeTitle}>
-              Enter Wake-Up PIN
+              {t('alarm.enterWakeUpPin')}
             </Text>
             <Text variant="body" style={styles.challengeSubtitle}>
-              Enter your 4-digit wake-up PIN to stop and dismiss the alarm.
+              {t('alarm.enterPinDesc')}
             </Text>
 
             <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12, marginVertical: 24 }}>
@@ -445,7 +449,7 @@ export const AlarmOverlay = () => {
             ) : null}
 
             <Button
-              title="Stop Alarm"
+              title={t('alarm.stopAlarm')}
               onPress={() => handlePinVerify()}
               variant="secondary"
               style={{ marginTop: 12, width: '100%' }}

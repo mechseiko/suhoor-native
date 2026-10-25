@@ -30,7 +30,9 @@ export const FastingPrompt = () => {
   const { colors, isDark } = useTheme();
   const { t, locale, formatDate } = useLanguage();
   const { scheduleDailySuhoorAlarm, cancelDailySuhoorAlarm } = useAlarmState();
-  const { getDayData, getWakeStart, checkWakeUpWindow, wakeMinutes } = useFastingTimes();
+  
+  // ADDED: fastingTimesLoading to prevent premature hiding
+  const { getDayData, getWakeStart, checkWakeUpWindow, wakeMinutes, loading: fastingTimesLoading } = useFastingTimes();
 
   const [status, setStatus] = useState('idle');
   const [loading, setLoading] = useState(false);
@@ -84,7 +86,11 @@ export const FastingPrompt = () => {
   // Visibility rule: hide once wakeStart(target) has passed.
   // wakeStart = suhoor(target) - wakeMinutes (user setting, default 45).
   const wakeStart = targetKey ? getWakeStart(targetKey, wakeMinutes) : null;
-  const isPromptVisible = !!(wakeStart && nowTick < wakeStart.getTime());
+  
+  // CHANGED: Show prompt while loading, or if wakeStart hasn't passed yet
+  const isPromptVisible = fastingTimesLoading || !wakeStart 
+    ? true 
+    : nowTick < wakeStart.getTime();
 
   // ── Resolve status from Firestore / cache; re-run when targetKey flips ─
   useEffect(() => {

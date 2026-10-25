@@ -1059,7 +1059,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
               </Text>
               {item.role === "admin" ? (
                 <View style={[styles.adminRoleBadge, { backgroundColor: isDark ? 'rgba(251, 191, 36, 0.15)' : 'rgba(249, 168, 38, 0.15)' }]}>
-                  <Text style={[styles.adminRoleBadgeText, { color: colors.secondary }]}>Admin</Text>
+                  <Text style={[styles.adminRoleBadgeText, { color: colors.secondary }]}>{t('groups.admin', 'Admin')}</Text>
                 </View>
               ) : null}
               {isSelf ? (
@@ -1631,7 +1631,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                         { color: colors.error, fontWeight: "700" },
                       ]}
                     >
-                      Remove Member from Group
+                      {t('groups.removeMember', 'Remove Member from Group')}
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -1850,7 +1850,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 12,
+    paddingVertical: 16,
     borderBottomWidth: 1,
   },
   memberRowAwake: {

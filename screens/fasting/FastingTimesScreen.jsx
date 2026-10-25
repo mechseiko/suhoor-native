@@ -35,6 +35,9 @@ export const FastingTimesScreen = ({ navigation }) => {
   const { scheduleDailySuhoorAlarm } = useAlarmState();
   
   const [personalWakeUpMinutes, setPersonalWakeUpMinutes] = useState(DEFAULT_WAKE_MINUTES);
+  // NEW: Lightweight state for the slider to prevent UI freeze
+  const [sliderValue, setSliderValue] = useState(DEFAULT_WAKE_MINUTES); 
+  
   const [isSaving, setIsSaving] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
@@ -69,6 +72,7 @@ export const FastingTimesScreen = ({ navigation }) => {
           const pref = profileSnap.data().preferences?.wakeUpMinutesBeforeSuhoor;
           if (pref) {
             setPersonalWakeUpMinutes(pref);
+            setSliderValue(pref); // NEW: Sync the slider to the loaded value
           }
         }
       } catch (err) {
@@ -187,7 +191,9 @@ export const FastingTimesScreen = ({ navigation }) => {
   const suhoorTime = todayData?.time?.sahur || '--:--';
   const iftarTime = todayData?.time?.iftar || '--:--';
   const defaultWakeUp = calculateWakeUpTime(suhoorTime, DEFAULT_WAKE_MINUTES);
-  const personalWakeUp = calculateWakeUpTime(suhoorTime, personalWakeUpMinutes);
+  
+  // Use sliderValue for the live calculated text so it updates in real time
+  const personalWakeUp = calculateWakeUpTime(suhoorTime, sliderValue); 
 
   const locationStatus =
     location?.loaded && location.source === 'none'
@@ -215,8 +221,8 @@ export const FastingTimesScreen = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
         }
       >
-        {/* Location Status */}
-        {locationStatus && (
+        {/* Location Warning - only show when BOTH GPS is off AND no default location is set */}
+        {locationStatus && location.source === 'none' && (
           <View
             style={{
               backgroundColor: colors.surfaceVariant,
@@ -418,20 +424,14 @@ export const FastingTimesScreen = ({ navigation }) => {
               <Text style={{ fontSize: 13, color: colors.textSecondary }}>
                 {t('fastingTimes.personalWakeUpSub')}
               </Text>
-              <Text style={{ fontSize: 12, fontStyle: 'italic', color: colors.textSecondary }}>
-                {t('fastingTimes.allowedRange', {
-                  min: MIN_WAKE_MINUTES,
-                  max: MAX_WAKE_MINUTES,
-                })}
-              </Text>
 
-              {/* NATIVE SLIDER */}
+              {/* NATIVE SLIDER - NOW FIXED */}
               <View style={{ alignItems: 'center', marginVertical: 20, paddingHorizontal: 10 }}>
                 <Text style={{ fontSize: 32, fontWeight: '900', color: colors.primary, marginBottom: 4 }}>
                   {personalWakeUp}
                 </Text>
                 <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 16, fontWeight: '500' }}>
-                  {t('fastingTimes.minutesBeforeValue', { minutes: personalWakeUpMinutes })}
+                  {t('fastingTimes.minutesBeforeValue', { minutes: sliderValue })}
                 </Text>
                 
                 <Slider
@@ -439,8 +439,12 @@ export const FastingTimesScreen = ({ navigation }) => {
                   minimumValue={MIN_WAKE_MINUTES}
                   maximumValue={MAX_WAKE_MINUTES}
                   step={5}
-                  value={personalWakeUpMinutes}
-                  onValueChange={setPersonalWakeUpMinutes}
+                  value={sliderValue}
+                  onValueChange={(val) => setSliderValue(val)}
+                  onSlidingComplete={(val) => {
+                    setSliderValue(val);
+                    setPersonalWakeUpMinutes(val); // Syncs to the final state for saving
+                  }}
                   minimumTrackTintColor={colors.primary}
                   maximumTrackTintColor={colors.border}
                   thumbTintColor={colors.primary}

@@ -105,7 +105,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
     try {
       await AsyncStorage.setItem(`@suhoor_group_mute_${groupId}`, val ? 'true' : 'false');
       triggerToast(
-        val ? 'Notifications muted for this group' : 'Notifications unmuted for this group',
+        val ? t('groups.notificationsMuted', 'Notifications muted for this group') : t('groups.notificationsUnmuted', 'Notifications unmuted for this group'),
         'info'
       );
     } catch (_) {}
@@ -295,12 +295,12 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
       member.profiles?.display_name || member.profiles?.email || 'this member';
 
     Alert.alert(
-      'Make Group Admin',
-      `Add "${memberName}" as an admin of this group? They will be able to edit group info and manage group settings.`,
+      t('groups.makeAdminTitle', 'Make Group Admin'),
+      t('groups.makeAdminConfirm', `Add "${memberName}" as an admin of this group? They will be able to edit group info and manage group settings.`),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel', 'Cancel'), style: 'cancel' },
         {
-          text: 'Make Admin',
+          text: t('groups.makeAdmin', 'Make Admin'),
           onPress: async () => {
             setUpdatingAdminId(member.id);
             try {
@@ -313,10 +313,10 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
                 prev.map((m) => (m.id === member.id ? { ...m, role: 'admin' } : m))
               );
               setShowAddAdminModal(false);
-              triggerToast(`${memberName} is now a group admin!`, 'success');
+              triggerToast(t('groups.adminAssigned', `${memberName} is now a group admin!`), 'success');
             } catch (err) {
               console.error('Error promoting member to admin:', err);
-              triggerToast('Failed to assign admin permissions', 'error');
+              triggerToast(t('groups.adminAssignError', 'Failed to assign admin permissions'), 'error');
             } finally {
               setUpdatingAdminId(null);
             }
@@ -335,16 +335,16 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
 
     if (isSelf) {
       Alert.alert(
-        'Cannot Dismiss Yourself',
-        'You cannot dismiss yourself as admin. If you wish to leave, use Leave Group or transfer ownership.'
+        t('groups.cannotDismissSelf', 'Cannot Dismiss Yourself'),
+        t('groups.cannotDismissSelfMsg', 'You cannot dismiss yourself as admin. If you wish to leave, use Leave Group or transfer ownership.')
       );
       return;
     }
 
     if (adminList.length <= 1) {
       Alert.alert(
-        'Action Not Allowed',
-        'A group must have at least one admin. Add another admin first before removing this one.'
+        t('groups.actionNotAllowed', 'Action Not Allowed'),
+        t('groups.minAdminRequired', 'A group must have at least one admin. Add another admin first before removing this one.')
       );
       return;
     }
@@ -353,12 +353,12 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
       adminMember.profiles?.display_name || adminMember.profiles?.email || 'this admin';
 
     Alert.alert(
-      'Dismiss as Admin',
-      `Remove admin permissions from "${adminName}"? They will remain a regular member of the group.`,
+      t('groups.dismissAdminTitle', 'Dismiss as Admin'),
+      t('groups.dismissAdminConfirm', `Remove admin permissions from "${adminName}"? They will remain a regular member of the group.`),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel', 'Cancel'), style: 'cancel' },
         {
-          text: 'Dismiss',
+          text: t('groups.dismiss', 'Dismiss'),
           style: 'destructive',
           onPress: async () => {
             setUpdatingAdminId(adminMember.id);
@@ -371,10 +371,10 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
               setAllMembers((prev) =>
                 prev.map((m) => (m.id === adminMember.id ? { ...m, role: 'member' } : m))
               );
-              triggerToast(`${adminName} is no longer an admin`, 'info');
+              triggerToast(t('groups.adminDismissed', `${adminName} is no longer an admin`), 'info');
             } catch (err) {
               console.error('Error dismissing admin:', err);
-              triggerToast('Failed to remove admin status', 'error');
+              triggerToast(t('groups.adminDismissError', 'Failed to remove admin status'), 'error');
             } finally {
               setUpdatingAdminId(null);
             }
@@ -708,7 +708,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
             <View style={{ flexDirection: 'row', alignItems: 'center', columnGap: 8 }}>
               <Ionicons name="shield-checkmark" size={20} color={colors.primary} />
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Group Admins ({adminList.length})
+                {t('groups.groupAdmins', 'Group Admins')} ({adminList.length})
               </Text>
             </View>
 
@@ -729,7 +729,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
                     marginLeft: 4,
                   }}
                 >
-                  Add Admin
+                  {t('groups.addAdmin', 'Add Admin')}
                 </Text>
               </TouchableOpacity>
             )}
@@ -737,7 +737,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
 
           {adminList.length === 0 ? (
             <Text style={{ color: colors.textSecondary, fontSize: 13, paddingVertical: 8 }}>
-              No admins assigned yet.
+              {t('groups.noAdmins', 'No admins assigned yet.')}
             </Text>
           ) : (
             adminList.map((adminMember, index) => {
@@ -790,7 +790,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
                               fontStyle: 'italic',
                             }}
                           >
-                            (You)
+                            ({t('groups.you', 'You')})
                           </Text>
                         )}
                       </View>
@@ -823,7 +823,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
                       <Text
                         style={[styles.adminBadgeText, { color: colors.success }]}
                       >
-                        Admin
+                        {t('groups.admin', 'Admin')}
                       </Text>
                     </View>
 
@@ -838,7 +838,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
                           <ActivityIndicator size="small" color={colors.error} />
                         ) : (
                           <Text style={{ color: colors.error, fontSize: 12, fontWeight: '600' }}>
-                            Dismiss
+                            {t('groups.dismiss', 'Dismiss')}
                           </Text>
                         )}
                       </TouchableOpacity>
@@ -897,14 +897,14 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
             <View style={[styles.switchRow, { borderBottomColor: colors.border }]}>
               <View style={styles.switchLabelBlock}>
                 <Text style={[styles.switchTitle, { color: colors.text }]}>
-                  Send Wake-Up Buzzes
+                  {t('groups.sendWakeUpBuzzes', 'Send Wake-Up Buzzes')}
                 </Text>
                 <Text
                   style={[styles.switchSub, { color: colors.textSecondary }]}
                 >
                   {onlyAdminsBuzz
-                    ? 'Only admins can buzz and wake up members'
-                    : 'All members can buzz and wake up fellow fasters'}
+                    ? t('groups.adminsOnlyBuzz', 'Only admins can buzz and wake up members')
+                    : t('groups.allMembersBuzz', 'All members can buzz and wake up fellow fasters')}
                 </Text>
               </View>
               <Switch
@@ -966,34 +966,34 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
 
             <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
               <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
-                Editing Group Info
+                {t('groups.editingGroupInfo', 'Editing Group Info')}
               </Text>
               <Text
                 style={[styles.infoValue, { color: colors.text, fontSize: 13 }]}
               >
-                {onlyAdminsEdit ? 'Admins Only' : 'All Members'}
+                {onlyAdminsEdit ? t('groups.adminsOnlyShort', 'Admins Only') : t('groups.allMembersShort', 'All Members')}
               </Text>
             </View>
 
             <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
               <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
-                Wake-Up Buzzes
+                {t('groups.wakeUpBuzzes', 'Wake-Up Buzzes')}
               </Text>
               <Text
                 style={[styles.infoValue, { color: colors.text, fontSize: 13 }]}
               >
-                {onlyAdminsBuzz ? 'Admins Only' : 'All Members'}
+                {onlyAdminsBuzz ? t('groups.adminsOnlyShort', 'Admins Only') : t('groups.allMembersShort', 'All Members')}
               </Text>
             </View>
 
             <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
               <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
-                Inviting New Members
+                {t('groups.invitingNewMembers', 'Inviting New Members')}
               </Text>
               <Text
                 style={[styles.infoValue, { color: colors.text, fontSize: 13 }]}
               >
-                {onlyAdminsInvite ? 'Admins Only' : 'All Members'}
+                {onlyAdminsInvite ? t('groups.adminsOnlyShort', 'Admins Only') : t('groups.allMembersShort', 'All Members')}
               </Text>
             </View>
           </View>
@@ -1096,10 +1096,10 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
             <View style={styles.modalHeader}>
               <View>
                 <Text style={[styles.modalTitle, { color: colors.text }]}>
-                  Add Group Admin
+                  {t('groups.addAdmin', 'Add Group Admin')}
                 </Text>
                 <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                  Select a member to grant admin permissions
+                  {t('groups.makeAdminConfirm', 'Select a member to grant admin permissions')}
                 </Text>
               </View>
               <TouchableOpacity
@@ -1146,8 +1146,8 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
                   }}
                 >
                   {regularMembers.length === 0
-                    ? 'All group members are already admins.'
-                    : 'No matching members found.'}
+                    ? t('groups.allAdminsAlready', 'All group members are already admins.')
+                    : t('groups.noMatchingMembers', 'No matching members found.')}
                 </Text>
               </View>
             ) : (
@@ -1225,7 +1225,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
                               fontWeight: '700',
                             }}
                           >
-                            Make Admin
+                            {t('groups.makeAdmin', 'Make Admin')}
                           </Text>
                         </View>
                       )}

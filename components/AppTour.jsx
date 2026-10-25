@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -76,6 +77,7 @@ if (Platform.OS !== 'web') {
 export const AppTour = ({ children, tabBarRef }) => {
   const { t } = useLanguage();
   const { colors, isDark } = useTheme();
+  const navigation = useNavigation();
   const insets = Platform.OS === 'web'
     ? { top: 0 }
     : useSafeAreaInsets
@@ -93,7 +95,6 @@ export const AppTour = ({ children, tabBarRef }) => {
   const holeT = useRef(new Animated.Value(0)).current;
   const holeW = useRef(new Animated.Value(0)).current;
   const holeH = useRef(new Animated.Value(0)).current;
-  const summaryHeight = useRef(new Animated.Value(0)).current;
 
   const layoutRtl = I18nManager.isRTL;
   const isLastStep = step === TOUR_STEPS.length - 1;
@@ -116,6 +117,25 @@ export const AppTour = ({ children, tabBarRef }) => {
       active = false;
     };
   }, []);
+
+  // Check for pending tour when navigation focus changes
+  // This allows re-triggering the tour from the Learn screen
+  useEffect(() => {
+    const unsubscribe = navigation?.addListener('focus', async () => {
+      try {
+        const pending = await AsyncStorage.getItem(PENDING_KEY);
+        if (pending === 'true' && !visible) {
+          setVisible(true);
+        }
+      } catch (e) {
+        console.error('Error checking tab tour on focus:', e);
+      }
+    });
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, [navigation, visible]);
 
   useEffect(() => {
     if (!visible) return;
@@ -168,7 +188,6 @@ export const AppTour = ({ children, tabBarRef }) => {
     holeT.setValue(rect.t);
     holeW.setValue(rect.w);
     holeH.setValue(rect.h);
-    summaryHeight.setValue(frame.y);
     Animated.parallel([
       Animated.timing(overlayOpacity, {
         toValue: 1,
@@ -180,6 +199,26 @@ export const AppTour = ({ children, tabBarRef }) => {
         duration: 450,
         delay: 300,
         useNativeDriver: true,
+      }),
+      Animated.timing(holeL, {
+        toValue: rect.l,
+        duration: 400,
+        useNativeDriver: false,
+      }),
+      Animated.timing(holeT, {
+        toValue: rect.t,
+        duration: 400,
+        useNativeDriver: false,
+      }),
+      Animated.timing(holeW, {
+        toValue: rect.w,
+        duration: 400,
+        useNativeDriver: false,
+      }),
+      Animated.timing(holeH, {
+        toValue: rect.h,
+        duration: 400,
+        useNativeDriver: false,
       }),
     ]).start();
     const pulse = Animated.loop(
@@ -391,7 +430,7 @@ export const AppTour = ({ children, tabBarRef }) => {
               {renderControls()}
             </Animated.View>
           ) : (
-            <Animated.View style={[styles.summaryWrap, { opacity: textOpacity, height: summaryHeight }]}>
+            <Animated.View style={[styles.summaryWrap, { opacity: textOpacity }]}>
               <View
                 style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
               >
@@ -505,6 +544,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
+    bottom: 0,
     justifyContent: 'center',
     paddingHorizontal: 24,
   },

@@ -379,7 +379,7 @@ const ProfileScreen = ({ route }) => {
   const handleUpdateProfile = async () => {
     if (!currentUser) return;
     if (displayName.trim().length < 3 || displayName.trim().length > 15) {
-      showToast(t("profile.displayNameLengthError"), "error");
+      showToast(t("profile.displayNameLengthError", "Display name must be 3-15 characters"), "error");
       return;
     }
 
@@ -388,10 +388,10 @@ const ProfileScreen = ({ route }) => {
       const userRef = doc(db, COLLECTIONS.profiles, currentUser.uid);
       await updateDoc(userRef, { display_name: displayName.trim() });
       await updateProfile(currentUser, { displayName: displayName.trim() });
-      showToast(t("profile.updateSuccess"), "success");
+      showToast(t("profile.updateSuccess", "Profile updated successfully"), "success");
     } catch (err) {
       console.error(err);
-      showToast(t("profile.updateError"), "error");
+      showToast(t("profile.updateError", "Failed to update profile"), "error");
     } finally {
       setIsSavingProfile(false);
     }
@@ -400,17 +400,17 @@ const ProfileScreen = ({ route }) => {
   const handlePasswordChange = async () => {
     if (!currentUser) return;
     if (!currentPassword || !newPassword || !confirmPassword) {
-      showToast(t("profile.fillAllPasswordFields"), "error");
+      showToast(t("profile.fillAllPasswordFields", "Please fill in all password fields"), "error");
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      showToast(t("profile.newPasswordMismatch"), "error");
+      showToast(t("profile.newPasswordMismatch", "New passwords do not match"), "error");
       return;
     }
 
     if (newPassword.length < 6) {
-      showToast(t("profile.newPasswordTooShort"), "error");
+      showToast(t("profile.newPasswordTooShort", "Password must be at least 6 characters"), "error");
       return;
     }
 
@@ -422,16 +422,16 @@ const ProfileScreen = ({ route }) => {
       );
       await reauthenticateWithCredential(currentUser, credential);
       await updatePassword(currentUser, newPassword);
-      showToast(t("profile.passwordChanged"), "success");
+      showToast(t("profile.passwordChanged", "Password changed successfully"), "success");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
       console.error(err);
       if (err.code === "auth/wrong-password") {
-        showToast(t("profile.wrongCurrentPassword"), "error");
+        showToast(t("profile.wrongCurrentPassword", "Current password is incorrect"), "error");
       } else {
-        showToast(t("profile.passwordChangeError"), "error");
+        showToast(t("profile.passwordChangeError", "Failed to change password"), "error");
       }
     } finally {
       setIsChangingPassword(false);
@@ -529,10 +529,10 @@ const ProfileScreen = ({ route }) => {
       return;
     }
 
-    Alert.alert(t("settings.logout"), t("profile.logoutConfirmMessage"), [
-      { text: t("common.cancel"), style: "cancel" },
+    Alert.alert(t("settings.logout", "Logout"), t("profile.logoutConfirmMessage", "Are you sure you want to logout?"), [
+      { text: t("common.cancel", "Cancel"), style: "cancel" },
       {
-        text: t("settings.logout"),
+        text: t("settings.logout", "Logout"),
         style: "destructive",
         onPress: confirmLogout,
       },
@@ -541,7 +541,7 @@ const ProfileScreen = ({ route }) => {
 
   const runDeleteAccount = async (typedEmail) => {
     if (typedEmail?.trim() !== currentUser?.email) {
-      showToast(t("profile.emailMismatch"), "error");
+      showToast(t("profile.emailMismatch", "Email does not match"), "error");
       return;
     }
 
@@ -550,13 +550,13 @@ const ProfileScreen = ({ route }) => {
       await deleteAccount();
       setDeleteModalVisible(false);
       setDeleteEmailInput("");
-      showToast(t("profile.accountDeleted"), "success");
+      showToast(t("profile.accountDeleted", "Account deleted successfully"), "success");
     } catch (error) {
       console.error(error);
       if (error.code === "auth/requires-recent-login") {
-        showToast(t("profile.requiresRecentLogin"), "error");
+        showToast(t("profile.requiresRecentLogin", "Please log in again to perform this action"), "error");
       } else {
-        showToast(t("profile.deleteAccountError"), "error");
+        showToast(t("profile.deleteAccountError", "Failed to delete account"), "error");
       }
     } finally {
       setIsDeletingAccount(false);
@@ -796,7 +796,7 @@ const ProfileScreen = ({ route }) => {
           <View style={styles.headerInfo}>
             <View style={styles.nameRow}>
               <Text style={styles.headerName}>
-                {displayName || t("common.member", "Member")}
+                {displayName || t("profile.member", "Member")}
               </Text>
               {isVerified ? (
                 <View style={styles.verifiedBadge}>
@@ -1106,13 +1106,13 @@ const ProfileScreen = ({ route }) => {
             <View style={[styles.card, themedStyles.card]}>
               <View style={styles.cardHeader}>
                 <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
-                  {t("profile.accountInformation")}
+                  {t("profile.accountInformation", "Account Information")}
                 </Text>
               </View>
 
               <View style={styles.inputGroup}>
                 <Text style={[styles.label, themedStyles.label]}>
-                  {t("settings.emailAddress")}
+                  {t("settings.emailAddress", "Email Address")}
                 </Text>
                 <View
                   style={[
@@ -1137,7 +1137,7 @@ const ProfileScreen = ({ route }) => {
 
               <View style={styles.inputGroup}>
                 <Text style={[styles.label, themedStyles.label]}>
-                  {t("auth.displayName")}
+                  {t("auth.displayName", "Display Name")}
                 </Text>
                 <View
                   style={[styles.inputContainer, themedStyles.inputContainer]}
@@ -1152,7 +1152,7 @@ const ProfileScreen = ({ route }) => {
                     style={[styles.input, themedStyles.input]}
                     value={displayName}
                     onChangeText={setDisplayName}
-                    placeholder={t("profile.enterDisplayName")}
+                    placeholder={t("profile.enterDisplayName", "Enter display name")}
                     placeholderTextColor={colors.textSecondary}
                     maxLength={15}
                   />
@@ -1180,7 +1180,7 @@ const ProfileScreen = ({ route }) => {
                       color={Colors.white}
                     />
                     <Text style={styles.primaryButtonText}>
-                      {t("profile.updateProfile")}
+                      {t("profile.updateProfile", "Update Profile")}
                     </Text>
                   </>
                 )}
@@ -1210,7 +1210,7 @@ const ProfileScreen = ({ route }) => {
                   { color: isDark ? "#F87171" : "#DC2626" },
                 ]}
               >
-                {t("settings.logout")}
+                {t("settings.logout", "Logout")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -1222,7 +1222,7 @@ const ProfileScreen = ({ route }) => {
             <View style={[styles.card, themedStyles.card]}>
               <View style={styles.cardHeader}>
                 <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
-                  {t("settings.security")}
+                  {t("settings.security", "Security")}
                 </Text>
               </View>
 
@@ -1341,7 +1341,7 @@ const ProfileScreen = ({ route }) => {
 
               <View style={styles.inputGroup}>
                 <Text style={[styles.label, themedStyles.label]}>
-                  {t("profile.currentPassword")}
+                  {t("profile.currentPassword", "Current Password")}
                 </Text>
                 <View
                   style={[styles.inputContainer, themedStyles.inputContainer]}
@@ -1357,7 +1357,7 @@ const ProfileScreen = ({ route }) => {
                     secureTextEntry={!showCurrentPassword}
                     value={currentPassword}
                     onChangeText={setCurrentPassword}
-                    placeholder={t("profile.enterCurrentPassword")}
+                    placeholder={t("profile.enterCurrentPassword", "Enter current password")}
                     placeholderTextColor={colors.textSecondary}
                     autoCapitalize="none"
                   />
@@ -1377,7 +1377,7 @@ const ProfileScreen = ({ route }) => {
 
               <View style={styles.inputGroup}>
                 <Text style={[styles.label, themedStyles.label]}>
-                  {t("profile.newPassword")}
+                  {t("profile.newPassword", "New Password")}
                 </Text>
                 <View
                   style={[styles.inputContainer, themedStyles.inputContainer]}
@@ -1393,7 +1393,7 @@ const ProfileScreen = ({ route }) => {
                     secureTextEntry={!showNewPassword}
                     value={newPassword}
                     onChangeText={setNewPassword}
-                    placeholder={t("profile.enterNewPassword")}
+                    placeholder={t("profile.enterNewPassword", "Enter new password")}
                     placeholderTextColor={colors.textSecondary}
                     autoCapitalize="none"
                   />
@@ -1411,7 +1411,7 @@ const ProfileScreen = ({ route }) => {
 
               <View style={styles.inputGroup}>
                 <Text style={[styles.label, themedStyles.label]}>
-                  {t("profile.confirmNewPassword")}
+                  {t("profile.confirmNewPassword", "Confirm New Password")}
                 </Text>
                 <View
                   style={[styles.inputContainer, themedStyles.inputContainer]}
@@ -1427,7 +1427,7 @@ const ProfileScreen = ({ route }) => {
                     secureTextEntry={!showConfirmPassword}
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
-                    placeholder={t("profile.confirmNewPasswordPlaceholder")}
+                    placeholder={t("profile.confirmNewPasswordPlaceholder", "Confirm new password")}
                     placeholderTextColor={colors.textSecondary}
                     autoCapitalize="none"
                   />
@@ -1463,7 +1463,7 @@ const ProfileScreen = ({ route }) => {
                       color={Colors.white}
                     />
                     <Text style={styles.primaryButtonText}>
-                      {t("settings.changePassword")}
+                      {t("settings.changePassword", "Change Password")}
                     </Text>
                   </>
                 )}
@@ -1474,11 +1474,11 @@ const ProfileScreen = ({ route }) => {
             <View style={[styles.card, styles.dangerCard]}>
               <View style={styles.cardHeader}>
                 <Text style={[styles.cardTitle, { color: Colors.red }]}>
-                  {t("settings.deleteAccount")}
+                  {t("settings.deleteAccount", "Delete Account")}
                 </Text>
               </View>
               <Text style={styles.dangerSubtext}>
-                {t("profile.deleteAccountWarning")}
+                {t("profile.deleteAccountWarning", "This action cannot be undone. All your data will be permanently deleted.")}
               </Text>
 
               <TouchableOpacity
@@ -1487,7 +1487,7 @@ const ProfileScreen = ({ route }) => {
               >
                 <Ionicons name="trash-outline" size={18} color={Colors.white} />
                 <Text style={styles.dangerButtonText}>
-                  {t("settings.deleteAccount")}
+                  {t("settings.deleteAccount", "Delete Account")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1500,7 +1500,7 @@ const ProfileScreen = ({ route }) => {
             <View style={[styles.card, themedStyles.card]}>
               <View style={styles.cardHeader}>
                 <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
-                  {t("settings.appearance")}
+                  {t("settings.appearance", "Appearance")}
                 </Text>
               </View>
 
@@ -1624,10 +1624,10 @@ const ProfileScreen = ({ route }) => {
                   <Text
                     style={[styles.settingLabel, themedStyles.settingLabel]}
                   >
-                    {t("profile.audibleAlarms")}
+                    {t("profile.audibleAlarms", "Audible Alarms")}
                   </Text>
                   <Text style={[styles.settingSub, themedStyles.settingSub]}>
-                    {t("profile.audibleAlarmsSub")}
+                    {t("profile.audibleAlarmsSub", "Play sound when alarm triggers")}
                   </Text>
                 </View>
                 <Switch
@@ -1648,10 +1648,10 @@ const ProfileScreen = ({ route }) => {
               <View style={styles.cardHeader}>
                 <View>
                   <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
-                    {t("profile.alarmSound")}
+                    {t("profile.alarmSound", "Alarm Sound")}
                   </Text>
                   <Text style={[styles.settingSub, themedStyles.settingSub, { marginTop: 2 }]}>
-                    {t("profile.alarmSoundSub")}
+                    {t("profile.alarmSoundSub", "Choose your alarm sound")}
                   </Text>
                 </View>
               </View>
@@ -1980,8 +1980,8 @@ const ProfileScreen = ({ route }) => {
               <Ionicons name="locate-outline" size={18} color={Colors.white} />
               <Text style={styles.primaryButtonText}>
                 {isUpdatingSettings
-                  ? t("profile.detectingLocation")
-                  : t("profile.useCurrentLocation")}
+                  ? t("profile.detectingLocation", "Detecting location...")
+                  : t("profile.useCurrentLocation", "Use current location")}
               </Text>
             </TouchableOpacity>
 

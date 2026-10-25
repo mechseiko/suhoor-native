@@ -273,8 +273,8 @@ export const LearnScreen = ({ navigation }) => {
       // Trigger the onboarding tour again
       try {
         await AsyncStorage.setItem('suhoor-tab-tour-pending', 'true');
-        // Force navigation to home tab where tour starts
-        navigation.navigate('HomeTab');
+        // Navigate to the home tab in the parent tab navigator
+        navigation.getParent()?.navigate('HomeTab');
       } catch (e) {
         console.error('Failed to trigger tour:', e);
       }

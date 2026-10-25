@@ -25,19 +25,17 @@ if (Platform.OS !== 'web') {
 const getDeviceCoordinates = async () => {
   if (Platform.OS === "android") {
     try {
-      const result = await PermissionsAndroid.requestMultiple([
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-      ]);
-      console.log("Location permission request result:", result);
+      // Check if permission is already granted, don't request it automatically
+      const fine = await PermissionsAndroid.check(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+      );
       
-      const fineGranted = result[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED;
-      
-      if (!fineGranted) {
-        console.log("Fine location permission not granted:", result);
+      if (!fine) {
+        console.log("Fine location permission not yet granted, skipping auto-request");
         return null;
       }
     } catch (error) {
-      console.log("Error requesting location permission:", error);
+      console.log("Error checking location permission:", error);
       return null;
     }
   }

@@ -161,7 +161,7 @@ dependencies {
     implementation("com.google.android.play:app-update-ktx:2.1.0")
 
     // Google FIREBASE AUTH:
-    implementation platform('com.google.firebase:firebase-bom:35.1.0')
+    implementation platform('com.google.firebase:firebase-bom:32.7.0') 
     implementation 'com.google.firebase:firebase-auth'
 
     if (hermesEnabled.toBoolean()) {

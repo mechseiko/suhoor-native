@@ -131,7 +131,7 @@ export function useFastingTimes() {
 
     fetchFastingTimes();
     return () => { cancelled = true; };
-  }, [location.loaded, location.coordinates?.lat, location.coordinates?.lng, fastingData, currentDayKey]);
+  }, [location.loaded, location.coordinates?.lat, location.coordinates?.lng, fastingData]); // REMOVED currentDayKey from dependencies
 
   const fastingDays = fastingData?.fasting ?? [];
   const todayData = fastingDays[0] ?? null;
