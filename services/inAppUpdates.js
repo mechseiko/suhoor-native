@@ -1,5 +1,4 @@
 import { Platform, Linking } from 'react-native';
-import SpInAppUpdates, { IAUUpdateKind } from 'sp-react-native-in-app-updates';
 
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.mechseiko.suhoor';
 
@@ -23,7 +22,11 @@ export const triggerImmediateUpdate = async (fallbackUrl = PLAY_STORE_URL) => {
   }
 
   try {
-    const inAppUpdates = new SpInAppUpdates(false); // false = production, true = internal testing
+    // Dynamic import to avoid bundling issues on web
+    const SpInAppUpdates = await import('sp-react-native-in-app-updates');
+    const { IAUUpdateKind } = SpInAppUpdates;
+
+    const inAppUpdates = new SpInAppUpdates.default(false); // false = production, true = internal testing
 
     const result = await inAppUpdates.checkNeedsUpdate();
     console.log('[InAppUpdates] checkNeedsUpdate result:', result);

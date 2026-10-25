@@ -93,21 +93,19 @@ export const AppTour = ({ children, tabBarRef }) => {
   const holeT = useRef(new Animated.Value(0)).current;
   const holeW = useRef(new Animated.Value(0)).current;
   const holeH = useRef(new Animated.Value(0)).current;
+  const summaryHeight = useRef(new Animated.Value(0)).current;
 
   const layoutRtl = I18nManager.isRTL;
   const isLastStep = step === TOUR_STEPS.length - 1;
 
-  // The tour only runs for fresh signups: SignupScreen sets PENDING_KEY at
-  // account creation and the flag is cleared once the tour finishes.
+  // The tour runs when PENDING_KEY is set (by LearnScreen or SignupScreen).
+  // It can be re-triggered even if completed before.
   useEffect(() => {
     let active = true;
     (async () => {
       try {
-        const [done, pending] = await Promise.all([
-          AsyncStorage.getItem(DONE_KEY),
-          AsyncStorage.getItem(PENDING_KEY),
-        ]);
-        if (active && done !== 'true' && pending === 'true') {
+        const pending = await AsyncStorage.getItem(PENDING_KEY);
+        if (active && pending === 'true') {
           setVisible(true);
         }
       } catch (e) {
@@ -170,6 +168,7 @@ export const AppTour = ({ children, tabBarRef }) => {
     holeT.setValue(rect.t);
     holeW.setValue(rect.w);
     holeH.setValue(rect.h);
+    summaryHeight.setValue(frame.y);
     Animated.parallel([
       Animated.timing(overlayOpacity, {
         toValue: 1,
@@ -392,7 +391,7 @@ export const AppTour = ({ children, tabBarRef }) => {
               {renderControls()}
             </Animated.View>
           ) : (
-            <Animated.View style={[styles.summaryWrap, { opacity: textOpacity, height: frame.y }]}>
+            <Animated.View style={[styles.summaryWrap, { opacity: textOpacity, height: summaryHeight }]}>
               <View
                 style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
               >

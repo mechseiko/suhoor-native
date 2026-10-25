@@ -5,13 +5,11 @@ import {
   ScrollView,
   SafeAreaView,
   TouchableOpacity,
-  TextInput,
   ActivityIndicator,
-  Alert,
   RefreshControl,
   Platform,
 } from 'react-native';
-import Slider from '@react-native-community/slider'; // 👈 NEW IMPORT
+import Slider from '@react-native-community/slider'; // Native slider
 
 import { useFastingTimes } from '../../hooks/useFastingTimes';
 import { useAuth } from '../../context/AuthContext';
@@ -25,10 +23,6 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import Toast from '../../components/Toast';
 import { getHijriDate } from '../../utils/fastingUtils';
 
-
-// The wake-up window the README specifies: 45 minutes before suhoor ends by
-// default, user-configurable up to two hours. Named here so the copy, the
-// validation and the calculation can't drift apart the way they had.
 const DEFAULT_WAKE_MINUTES = 45;
 const MIN_WAKE_MINUTES = 15;
 const MAX_WAKE_MINUTES = 120;
@@ -36,16 +30,16 @@ const MAX_WAKE_MINUTES = 120;
 export const FastingTimesScreen = ({ navigation }) => {
   const { currentUser, userProfile } = useAuth();
   const { colors, isDark } = useTheme();
-  const { t, locale, formatDate, formatTime, isRTL } = useLanguage();
-  const { todayData, loading, error, location } = useFastingTimes();
+  const { t, locale, formatDate, formatTime } = useLanguage();
+  const { todayData, loading, error, location, checkWakeUpWindow } = useFastingTimes();
   const { scheduleDailySuhoorAlarm } = useAlarmState();
+  
   const [personalWakeUpMinutes, setPersonalWakeUpMinutes] = useState(DEFAULT_WAKE_MINUTES);
   const [isSaving, setIsSaving] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [toastType, setToastType] = useState('info');
   const [refreshing, setRefreshing] = useState(false);
-
 
   const triggerToast = (msg, type) => {
     setToastMsg(msg);
@@ -56,17 +50,13 @@ export const FastingTimesScreen = ({ navigation }) => {
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      // Clear cached fasting times so useFastingTimes re-fetches
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       await AsyncStorage.removeItem('suhoor_fasting_times');
-      // Also clear saved location so GPS is retried
       const { clearUserLocation } = require('../../utils/location');
       await clearUserLocation();
     } catch {}
-    // The hook re-runs on location change; give it a moment then stop spinner
     setTimeout(() => setRefreshing(false), 1500);
   }, []);
-
 
   // Load user's preferred wake-up time
   useEffect(() => {
@@ -88,14 +78,10 @@ export const FastingTimesScreen = ({ navigation }) => {
     loadWakeUpPreference();
   }, [currentUser]);
 
-
   const handleSaveWakeUpTime = async () => {
     if (!currentUser) return;
 
-    if (
-      personalWakeUpMinutes < MIN_WAKE_MINUTES ||
-      personalWakeUpMinutes > MAX_WAKE_MINUTES
-    ) {
+    if (personalWakeUpMinutes < MIN_WAKE_MINUTES || personalWakeUpMinutes > MAX_WAKE_MINUTES) {
       triggerToast(
         t('fastingTimes.rangeError', { min: MIN_WAKE_MINUTES, max: MAX_WAKE_MINUTES }),
         'error'
@@ -110,21 +96,30 @@ export const FastingTimesScreen = ({ navigation }) => {
         'preferences.wakeUpMinutesBeforeSuhoor': personalWakeUpMinutes,
       });
 
-      // Schedule background alarm for Suhoor wake-up
+      // Schedule background alarm
       if (todayData?.time?.sahur && scheduleDailySuhoorAlarm) {
         const [hours, minutes] = todayData.time.sahur.split(':').map(Number);
         const alarmDate = new Date();
         alarmDate.setHours(hours, minutes - personalWakeUpMinutes, 0, 0);
+        
+        // If the time has already passed today, schedule for tomorrow
         if (alarmDate.getTime() < Date.now()) {
           alarmDate.setDate(alarmDate.getDate() + 1);
         }
+        
         await scheduleDailySuhoorAlarm(
           alarmDate,
           t('fastingTimes.alarmLabel', { minutes: personalWakeUpMinutes })
         );
       }
 
-      triggerToast(t('fastingTimes.saveSuccess'), 'success');
+      // Check if they are currently in or past their wake-up window for today
+      if (checkWakeUpWindow && checkWakeUpWindow(personalWakeUpMinutes)) {
+        triggerToast("Saved for tomorrow. Today's wake-up window has already started.", 'info');
+      } else {
+        triggerToast(t('fastingTimes.saveSuccess'), 'success');
+      }
+      
     } catch (err) {
       console.error('Error saving wake-up time:', err);
       triggerToast(t('fastingTimes.saveError'), 'error');
@@ -139,13 +134,11 @@ export const FastingTimesScreen = ({ navigation }) => {
     const suhoorDate = new Date();
     suhoorDate.setHours(hours, minutes, 0, 0);
     const wakeUpDate = new Date(suhoorDate.getTime() - minutesBefore * 60000);
-    // 12h/24h and the AM/PM wording follow the chosen language, not en-US.
     return formatTime(wakeUpDate, { hour: '2-digit', minute: '2-digit' });
   };
 
   const today = new Date();
   const hijri = getHijriDate(today);
-
 
   if (loading) {
     return (
@@ -186,9 +179,6 @@ export const FastingTimesScreen = ({ navigation }) => {
           >
             <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>{t('common.retry')}</Text>
           </TouchableOpacity>
-          <Text style={{ marginTop: 12, fontSize: 11, color: colors.textSecondary, textAlign: 'center' }}>
-            {t('fastingTimes.errorHint')}
-          </Text>
         </ScrollView>
       </SafeAreaView>
     );
@@ -225,7 +215,6 @@ export const FastingTimesScreen = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
         }
       >
-
         {/* Location Status */}
         {locationStatus && (
           <View
@@ -436,7 +425,7 @@ export const FastingTimesScreen = ({ navigation }) => {
                 })}
               </Text>
 
-              {/* 👇 REPLACED WALL CLOCK WITH SLIDER */}
+              {/* NATIVE SLIDER */}
               <View style={{ alignItems: 'center', marginVertical: 20, paddingHorizontal: 10 }}>
                 <Text style={{ fontSize: 32, fontWeight: '900', color: colors.primary, marginBottom: 4 }}>
                   {personalWakeUp}
@@ -478,33 +467,10 @@ export const FastingTimesScreen = ({ navigation }) => {
               <Text style={{ fontWeight: '700', fontSize: 17, color: colors.text }}>{t('fastingTimes.alarmSound')}</Text>
               <Text style={{ fontSize: 12, color: colors.textSecondary }}>{t('fastingTimes.defaultAlarmSub')}</Text>
             </View>
-            <TouchableOpacity
-              onPress={() => {
-                if (Platform.OS === 'web' && typeof window !== 'undefined' && window.history) {
-                  try {
-                    const url = new URL(window.location.href);
-                    url.searchParams.set('tab', 'preferences');
-                    window.history.pushState({}, '', url.toString());
-                  } catch (_) {}
-                }
-                navigation?.navigate?.('ProfileTab', { tab: 'preferences', screen: 'ProfileTab', params: { tab: 'preferences' } }) ||
-                navigation?.navigate?.('Profile', { tab: 'preferences' });
-              }}
-              style={{ backgroundColor: colors.primary + '15', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 }}
-            >
-              <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary }}>Change Sound</Text>
-            </TouchableOpacity>
           </View>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => {
-              if (Platform.OS === 'web' && typeof window !== 'undefined' && window.history) {
-                try {
-                  const url = new URL(window.location.href);
-                  url.searchParams.set('tab', 'preferences');
-                  window.history.pushState({}, '', url.toString());
-                } catch (_) {}
-              }
               navigation?.navigate?.('ProfileTab', { tab: 'preferences', screen: 'ProfileTab', params: { tab: 'preferences' } }) ||
               navigation?.navigate?.('Profile', { tab: 'preferences' });
             }}
@@ -531,7 +497,7 @@ export const FastingTimesScreen = ({ navigation }) => {
               <Text style={{ fontSize: 12, color: colors.textSecondary }}>
                 {userProfile?.preferences?.alarmSound && userProfile?.preferences?.alarmSound !== 'default'
                   ? `Active sound set in profile (${userProfile.preferences.alarmSound})`
-                  : t('usingDefaultSound')}
+                  : t('fastingTimes.usingDefaultSound')}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.primary} />
@@ -540,7 +506,7 @@ export const FastingTimesScreen = ({ navigation }) => {
 
         <TouchableOpacity
             style={[
-              { flexDirection: 'row', alignItems: 'center', columnGap: 12, paddingVertical: 14, paddingHorizontal: 14, borderRadius: 12, marginTop: 8 },
+              { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', columnGap: 12, paddingVertical: 16, paddingHorizontal: 14, borderRadius: 12, marginTop: 8 },
               { backgroundColor: colors.primary },
             ]}
             onPress={handleSaveWakeUpTime}
@@ -561,6 +527,5 @@ export const FastingTimesScreen = ({ navigation }) => {
     </SafeAreaView>
   );
 };
-
 
 export default FastingTimesScreen;

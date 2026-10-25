@@ -182,7 +182,7 @@ export const AlarmOverlay = () => {
         pulse.stop()
       }
     }
-  }, [visible, status, soundAllowed])
+  }, [visible, soundAllowed])
 
   // 1-Click dismiss for buzz alarms
   const handleBuzzDismiss = () => {
@@ -450,15 +450,6 @@ export const AlarmOverlay = () => {
               variant="secondary"
               style={{ marginTop: 12, width: '100%' }}
             />
-
-            <View style={styles.challengeBottom}>
-              <Button
-                title="Cancel (Back to Alarm)"
-                onPress={() => setStatus('ringing')}
-                variant="ghost"
-                textStyle={{ color: '#9CA3AF' }}
-              />
-            </View>
           </View>
         )}
       </SafeAreaView>
@@ -646,10 +637,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 6,
     textAlign: 'center',
-  },
-  challengeBottom: {
-    width: '100%',
-    marginTop: 30,
   },
 })
 

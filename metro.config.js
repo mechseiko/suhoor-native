@@ -46,6 +46,14 @@ config.resolver = {
           type: "sourceFile",
         };
       }
+
+      // Intercept sp-react-native-in-app-updates on web (package doesn't support web)
+      if (moduleName === "sp-react-native-in-app-updates") {
+        return {
+          filePath: path.resolve(__dirname, "shims/InAppUpdatesPackageShim/index.js"),
+          type: "sourceFile",
+        };
+      }
     }
 
     // Intercept expo-modules-core on native platforms to prevent globalThis.expo crash

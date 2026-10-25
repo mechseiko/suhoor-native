@@ -454,9 +454,9 @@ const LocationPermissionStep = ({ onStatusChange }) => {
         const fine = await PermissionsAndroid.check(
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
         );
-        
+
         console.log("Location permission check - fine:", fine);
-        
+
         if (!fine) {
           setDetected(false);
           onStatusChange?.(false);
@@ -485,16 +485,6 @@ const LocationPermissionStep = ({ onStatusChange }) => {
     }
   };
 
-  useEffect(() => {
-    checkStatus();
-    const sub = AppState.addEventListener("change", (state) => {
-      if (state === "active") {
-        checkStatus();
-      }
-    });
-    return () => sub.remove();
-  }, []);
-
   const handleAction = async () => {
     try {
       if (Platform.OS === "android") {
@@ -504,9 +494,9 @@ const LocationPermissionStep = ({ onStatusChange }) => {
         const fine =
           res[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] ===
           PermissionsAndroid.RESULTS.GRANTED;
-        
+
         console.log("Permission request result - fine:", fine);
-        
+
         if (fine) {
           Geolocation.getCurrentPosition(
             (position) => {

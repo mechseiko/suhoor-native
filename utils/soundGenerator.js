@@ -138,39 +138,37 @@ export const generateApexSoundUri = () => {
 };
 
 /**
- * Generates "Soft" alarm:
- * Melodic, peaceful yet distinct and audible awakening sound.
- * Plays a bright, resonant arpeggio (C5 -> E5 -> G5 -> C6) with warm presence
- * and no sluggish dead silence.
+ * Generates "Chime" alarm:
+ * Crisp, bright, active awakening sound with a punchy cadence.
+ * Plays a quick, energetic two-tone pattern (C6 -> E6) that's distinct and awakening
+ * without being harsh. Tight loop with no long silent gaps.
  */
 export const generateSoftSoundUri = () => {
   if (soundCache.soft) return soundCache.soft;
 
   const sampleRate = 22050;
-  const duration = 2.0; // Steady 2.0s loop
+  const duration = 1.2; // Tight 1.2s loop for continuous, punchy rhythm
   const totalSamples = Math.floor(sampleRate * duration);
   const samples = new Float32Array(totalSamples);
 
-  // C5, E5, G5, C6 (523Hz, 659Hz, 784Hz, 1046Hz)
-  const notes = [523.25, 659.25, 783.99, 1046.50];
-
   for (let i = 0; i < totalSamples; i++) {
     const t = i / sampleRate;
-    let sampleVal = 0;
+    const cycle = t % 0.6; // 2 chimes per loop
+    const isChime1 = cycle < 0.12;
+    const isChime2 = cycle > 0.16 && cycle < 0.28;
 
-    notes.forEach((freq, noteIdx) => {
-      const noteStart = noteIdx * 0.42;
-      const noteT = t - noteStart;
-      if (noteT >= 0 && noteT < 1.0) {
-        const env = Math.sin(Math.min(Math.PI / 2, noteT * 20)) * Math.exp(-noteT * 3.2);
-        const s1 = Math.sin(2 * Math.PI * freq * noteT);
-        const s2 = 0.35 * Math.sin(2 * Math.PI * freq * 2 * noteT);
-        const s3 = 0.15 * Math.sin(2 * Math.PI * freq * 3 * noteT);
-        sampleVal += (s1 + s2 + s3) * env * 0.55;
-      }
-    });
-
-    samples[i] = Math.max(-0.95, Math.min(0.95, sampleVal));
+    if (isChime1 || isChime2) {
+      const subT = isChime1 ? cycle / 0.12 : (cycle - 0.16) / 0.12;
+      // Quick attack, medium decay for crisp but pleasant sound
+      const env = Math.sin(Math.PI * subT) * Math.exp(-subT * 1.5);
+      const freq = isChime1 ? 1046.5 : 1318.5; // C6 and E6 bright chimes
+      const s1 = Math.sin(2 * Math.PI * freq * t);
+      const s2 = 0.4 * Math.sin(2 * Math.PI * freq * 2 * t);
+      const s3 = 0.2 * Math.sin(2 * Math.PI * freq * 3 * t);
+      samples[i] = Math.tanh((s1 + s2 + s3) * env * 1.1) * 0.92;
+    } else {
+      samples[i] = 0;
+    }
   }
 
   soundCache.soft = createWavDataUri(samples, sampleRate);
@@ -300,8 +298,8 @@ export const ALARM_SOUND_OPTIONS = [
   },
   {
     id: 'soft',
-    title: 'Soft Chime',
-    description: 'Gentle, melodious morning awakening',
+    title: 'Chime',
+    description: 'Crisp, bright morning awakening',
     badge: 'Custom',
   },
   {
