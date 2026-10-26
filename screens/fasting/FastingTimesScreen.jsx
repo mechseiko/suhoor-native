@@ -9,7 +9,6 @@ import {
   RefreshControl,
   Platform,
 } from 'react-native';
-import Slider from '@react-native-community/slider'; // Native slider
 
 import { useFastingTimes } from '../../hooks/useFastingTimes';
 import { useAuth } from '../../context/AuthContext';
@@ -31,13 +30,10 @@ export const FastingTimesScreen = ({ navigation }) => {
   const { currentUser, userProfile } = useAuth();
   const { colors, isDark } = useTheme();
   const { t, locale, formatDate, formatTime } = useLanguage();
-  const { todayData, loading, error, location, checkWakeUpWindow } = useFastingTimes();
+  const { todayData, loading, error, location, checkWakeUpWindow, setRefreshKey } = useFastingTimes();
   const { scheduleDailySuhoorAlarm } = useAlarmState();
-  
+
   const [personalWakeUpMinutes, setPersonalWakeUpMinutes] = useState(DEFAULT_WAKE_MINUTES);
-  // NEW: Lightweight state for the slider to prevent UI freeze
-  const [sliderValue, setSliderValue] = useState(DEFAULT_WAKE_MINUTES); 
-  
   const [isSaving, setIsSaving] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
@@ -57,9 +53,13 @@ export const FastingTimesScreen = ({ navigation }) => {
       await AsyncStorage.removeItem('suhoor_fasting_times');
       const { clearUserLocation } = require('../../utils/location');
       await clearUserLocation();
-    } catch {}
-    setTimeout(() => setRefreshing(false), 1500);
-  }, []);
+      // Force a re-fetch by incrementing the key
+      setRefreshKey(prev => prev + 1);
+      setTimeout(() => setRefreshing(false), 500);
+    } catch {
+      setTimeout(() => setRefreshing(false), 500);
+    }
+  }, [setRefreshKey]);
 
   // Load user's preferred wake-up time
   useEffect(() => {
@@ -72,7 +72,6 @@ export const FastingTimesScreen = ({ navigation }) => {
           const pref = profileSnap.data().preferences?.wakeUpMinutesBeforeSuhoor;
           if (pref) {
             setPersonalWakeUpMinutes(pref);
-            setSliderValue(pref); // NEW: Sync the slider to the loaded value
           }
         }
       } catch (err) {
@@ -192,8 +191,7 @@ export const FastingTimesScreen = ({ navigation }) => {
   const iftarTime = todayData?.time?.iftar || '--:--';
   const defaultWakeUp = calculateWakeUpTime(suhoorTime, DEFAULT_WAKE_MINUTES);
   
-  // Use sliderValue for the live calculated text so it updates in real time
-  const personalWakeUp = calculateWakeUpTime(suhoorTime, sliderValue); 
+  const personalWakeUp = calculateWakeUpTime(suhoorTime, personalWakeUpMinutes); 
 
   const locationStatus =
     location?.loaded && location.source === 'none'
@@ -405,7 +403,7 @@ export const FastingTimesScreen = ({ navigation }) => {
           </View>
 
           <View style={{ rowGap: 18 }}>
-            <View style={{ rowGap: 6 }}>
+            {/* <View style={{ rowGap: 6 }}>
               <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>
                 {t('fastingTimes.defaultWakeUp')}
               </Text>
@@ -413,7 +411,7 @@ export const FastingTimesScreen = ({ navigation }) => {
                 {t('fastingTimes.defaultWakeUpSub', { minutes: DEFAULT_WAKE_MINUTES })}
               </Text>
               <Text style={{ fontSize: 28, fontWeight: '900', color: colors.primary, marginTop: 4 }}>{defaultWakeUp}</Text>
-            </View>
+            </View> */}
 
             <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 4 }} />
 
@@ -425,34 +423,44 @@ export const FastingTimesScreen = ({ navigation }) => {
                 {t('fastingTimes.personalWakeUpSub')}
               </Text>
 
-              {/* NATIVE SLIDER - NOW FIXED */}
+              {/* SAFE PRESET BUTTONS */}
               <View style={{ alignItems: 'center', marginVertical: 20, paddingHorizontal: 10 }}>
                 <Text style={{ fontSize: 32, fontWeight: '900', color: colors.primary, marginBottom: 4 }}>
                   {personalWakeUp}
                 </Text>
                 <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 16, fontWeight: '500' }}>
-                  {t('fastingTimes.minutesBeforeValue', { minutes: sliderValue })}
+                  {t('fastingTimes.minutesBeforeValue', { minutes: personalWakeUpMinutes })}
                 </Text>
                 
-                <Slider
-                  style={{ width: '100%', height: 40 }}
-                  minimumValue={MIN_WAKE_MINUTES}
-                  maximumValue={MAX_WAKE_MINUTES}
-                  step={5}
-                  value={sliderValue}
-                  onValueChange={(val) => setSliderValue(val)}
-                  onSlidingComplete={(val) => {
-                    setSliderValue(val);
-                    setPersonalWakeUpMinutes(val); // Syncs to the final state for saving
-                  }}
-                  minimumTrackTintColor={colors.primary}
-                  maximumTrackTintColor={colors.border}
-                  thumbTintColor={colors.primary}
-                />
-                
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', paddingHorizontal: 5 }}>
-                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>{MIN_WAKE_MINUTES}m</Text>
-                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>{MAX_WAKE_MINUTES}m</Text>
+                {/* Button Grid */}
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10 }}>
+                  {[15, 30, 45, 60, 90, 120].map((mins) => {
+                    const isActive = personalWakeUpMinutes === mins;
+                    return (
+                      <TouchableOpacity
+                        key={mins}
+                        onPress={() => setPersonalWakeUpMinutes(mins)}
+                        style={{
+                          paddingVertical: 10,
+                          paddingHorizontal: 20,
+                          borderRadius: 20,
+                          borderWidth: 1.5,
+                          borderColor: isActive ? colors.primary : colors.border,
+                          backgroundColor: isActive ? colors.primary + '15' : colors.surface,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 14,
+                            fontWeight: isActive ? '700' : '500',
+                            color: isActive ? colors.primary : colors.textSecondary,
+                          }}
+                        >
+                          {mins} min
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               </View>
 

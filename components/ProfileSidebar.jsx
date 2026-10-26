@@ -273,6 +273,21 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
               <TouchableOpacity
                 style={styles.menuRow}
                 onPress={() => {
+                  Linking.openURL('mailto:suhoorapp@gmail.com')
+                }}
+              >
+                <View style={[styles.menuIconBox, { backgroundColor: 'rgba(34, 197, 94, 0.12)' }]}>
+                  <Ionicons name="mail-outline" size={18} color="#22C55E" />
+                </View>
+                <Text variant="body" style={styles.menuLabel}>
+                  {t('profile.contactSupport', 'Contact Support')}
+                </Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary || '#9CA3AF'} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.menuRow}
+                onPress={() => {
                   onClose()
                   Linking.openURL('https://play.google.com/store/apps/details?id=com.mechseiko.suhoor')
                 }}
@@ -361,7 +376,7 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
                   <Ionicons name="chatbubble-ellipses" size={20} color="#3B82F6" />
                 </View>
                 <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text || '#111827' }}>
-                  Send Us Feedback
+                  {t('profile.sendFeedback', 'Send Us Feedback')}
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setShowFeedbackModal(false)} hitSlop={10}>
@@ -523,7 +538,7 @@ const styles = StyleSheet.create({
   },
   menuSection: {
     columnGap: 4,
-    rowGap: 4,
+    rowGap: 8,
   },
   menuRow: {
     flexDirection: 'row',

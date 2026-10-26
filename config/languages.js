@@ -1,21 +1,14 @@
 /**
- * The language feature's single source of truth — shared by the web app and
- * the mobile app (suhoor-native).
+ * Language configuration for the mobile app (suhoor-native).
  *
- * Before this file existed, each app hardcoded its own answer to the same four
- * questions and the answers disagreed: the web list carried `dir` but
- * anglicised native names ('Espanol', 'Turkey'), the native list carried
- * correct native names but no `dir` at all, the two apps persisted the choice
- * under different storage keys, and the native app had no RTL handling despite
- * shipping Arabic and Urdu. Anything language-related — the list, the storage
- * key, direction, device detection, Intl locale tags — belongs here and
- * nowhere else.
- *
- * This file has a twin that must stay byte-for-byte identical:
- *   src/config/languages.js            (web)
+ * This file is shared with the native app and must stay byte-for-byte identical:
+ *   src/config/languages.js            (web - this file)
  *   suhoor-native/config/languages.js  (mobile)
  * Change one, copy it over the other, and verify with:
  *   diff src/config/languages.js suhoor-native/config/languages.js
+ *
+ * The web app no longer uses the i18n system - this file is kept only for
+ * compatibility with the native app's translation system.
  */
 
 /**
@@ -23,10 +16,8 @@
  *
  * To add one:
  *   1. Add an entry here (in BOTH twins).
- *   2. Create public/locales/{code}/translation.json.
- *   3. Run `npm run i18n:sync` to generate the mobile dictionary.
- * The web switcher, the native switcher, and both detectors pick it up with no
- * further changes.
+ *   2. Add translations to suhoor-native/translations/{code}.js
+ * The native switcher and detector will pick it up with no further changes.
  *
  * - `code`       BCP-47 primary subtag; the key used everywhere in code.
  * - `name`       English name, for the "(Arabic)" hint beside the native name.

@@ -6,62 +6,83 @@ const isNative = Platform.OS !== 'web'
 
 /**
  * NewUserSplash
- * Shown once when a brand-new user opens the app for the very first time
- * (before they've gone through onboarding). Pure brand moment — white
- * background, logo fades in, then the whole screen fades out.
- *
- * Props:
- *   onFinish  — callback fired when the animation is complete
- *   duration  — total display duration in ms (default 2200)
+ * Smooth cascade effect: Logo slides from left, Text slides from right.
  */
-const NewUserSplash = ({ onFinish, duration = 2200 }) => {
-  // Start with logo partially visible on frame 1 to eliminate any white lag
-  const logoOpacity = useRef(new Animated.Value(0.2)).current
-  const logoScale = useRef(new Animated.Value(0.88)).current
+const NewUserSplash = ({ onFinish, duration = 2400 }) => {
+  // Animation values
+  const logoOpacity = useRef(new Animated.Value(0)).current
+  const logoTranslateX = useRef(new Animated.Value(-30)).current // Starts 30px to the left
+  
+  const textOpacity = useRef(new Animated.Value(0)).current
+  const textTranslateX = useRef(new Animated.Value(30)).current // Starts 30px to the right
+  
   const screenOpacity = useRef(new Animated.Value(1)).current
 
   useEffect(() => {
-    // 1. Logo rapidly smooths to 100% opacity and scales in
+    // 1. Logo slides in from left
     Animated.parallel([
       Animated.timing(logoOpacity, {
         toValue: 1,
-        duration: 350,
+        duration: 600,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: Platform.OS !== 'web',
+        useNativeDriver: isNative,
       }),
-      Animated.timing(logoScale, {
-        toValue: 1,
-        duration: 400,
-        easing: Easing.out(Easing.back(1.1)),
-        useNativeDriver: Platform.OS !== 'web',
+      Animated.timing(logoTranslateX, {
+        toValue: 0,
+        duration: 700,
+        easing: Easing.out(Easing.back(1.2)), // Gentle wave-like settle
+        useNativeDriver: isNative,
       }),
     ]).start()
 
-    // 2. After hold, entire screen fades out
-    const timer = setTimeout(() => {
+    // 2. Text slides in from right (staggered by 150ms)
+    const textTimer = setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(textOpacity, {
+          toValue: 1,
+          duration: 500,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: isNative,
+        }),
+        Animated.timing(textTranslateX, {
+          toValue: 0,
+          duration: 600,
+          easing: Easing.out(Easing.back(1.1)),
+          useNativeDriver: isNative,
+        }),
+      ]).start()
+    }, 150)
+
+    // 3. Fade out the whole screen
+    const fadeOutTimer = setTimeout(() => {
       Animated.timing(screenOpacity, {
         toValue: 0,
-        duration: 400,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: Platform.OS !== 'web',
+        duration: 450,
+        easing: Easing.inOut(Easing.ease), // Smoother fade out
+        useNativeDriver: isNative,
       }).start(({ finished }) => {
         if (finished && onFinish) {
           onFinish()
         }
       })
-    }, Math.max(0, duration - 400))
+    }, Math.max(0, duration - 450))
 
-    return () => clearTimeout(timer)
-  }, [duration, onFinish, logoOpacity, logoScale, screenOpacity])
+    return () => {
+      clearTimeout(textTimer)
+      clearTimeout(fadeOutTimer)
+    }
+  }, [duration, onFinish, logoOpacity, logoTranslateX, textOpacity, textTranslateX, screenOpacity])
 
   return (
     <Animated.View style={[styles.container, { opacity: screenOpacity }]}>
+      
+      {/* Logo Wrapper - Slides from Left */}
       <Animated.View
         style={[
           styles.logoWrap,
           {
             opacity: logoOpacity,
-            transform: [{ scale: logoScale }],
+            transform: [{ translateX: logoTranslateX }],
           },
         ]}
       >
@@ -72,11 +93,13 @@ const NewUserSplash = ({ onFinish, duration = 2200 }) => {
         />
       </Animated.View>
 
+      {/* Text Wrapper - Slides from Right */}
       <Animated.View
         style={[
           styles.bottomBrandWrap,
           {
-            opacity: logoOpacity,
+            opacity: textOpacity,
+            transform: [{ translateX: textTranslateX }],
           },
         ]}
       >
@@ -98,6 +121,7 @@ const styles = StyleSheet.create({
   logoWrap: {
     alignItems: 'center',
     justifyContent: 'center',
+    // No extra styles needed, the animation handles the position
   },
   logo: {
     width: width * 0.38,

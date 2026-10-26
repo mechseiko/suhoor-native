@@ -140,13 +140,14 @@ export const SignupScreen = ({ navigation }) => {
       const userCredential = await signup(email.trim(), password);
       const user = userCredential.user;
 
-      // 2. Get alarm PIN and fasting defaults from AsyncStorage (set during onboarding)
+      // 2. Get alarm PIN, fasting defaults, and location from AsyncStorage (set during onboarding)
       let alarmPin = "";
       let fastingDefaults = {
         sunnah: true,
         whiteDays: true,
         ramadan: true,
       };
+      let onboardingLocation = null;
 
       try {
         alarmPin = (await AsyncStorage.getItem("suhoor_alarm_pin")) || "";
@@ -156,12 +157,18 @@ export const SignupScreen = ({ navigation }) => {
         if (storedDefaults) {
           fastingDefaults = JSON.parse(storedDefaults);
         }
+        const storedLocation = await AsyncStorage.getItem("onboarding_location");
+        if (storedLocation) {
+          onboardingLocation = JSON.parse(storedLocation);
+          // Clean up the temporary storage
+          await AsyncStorage.removeItem("onboarding_location");
+        }
       } catch (storageErr) {
         console.log("Error reading from AsyncStorage:", storageErr);
       }
 
       // 3. Create User Profile document in Firestore
-      await setDoc(doc(db, "profiles", user.uid), {
+      const profileData = {
         uid: user.uid,
         email: email.trim(),
         display_name: email.trim().split("@")[0],
@@ -179,7 +186,14 @@ export const SignupScreen = ({ navigation }) => {
           soundEnabled: true,
           alarmSound: "default",
         },
-      });
+      };
+
+      // Add default location if it was detected during onboarding
+      if (onboardingLocation) {
+        profileData.preferences.defaultLocation = onboardingLocation;
+      }
+
+      await setDoc(doc(db, "profiles", user.uid), profileData);
 
       // Triggers the one-time tab tour when the new user first enters the app
       try {

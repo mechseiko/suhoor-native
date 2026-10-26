@@ -4,6 +4,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useGamification } from '../../hooks/useGamification';
 import { db } from '../../config/firebase';
 import { COLLECTIONS } from '../../config/firestoreSchema';
 import { collection, query, where, getDocs, orderBy, limit, onSnapshot, doc, updateDoc } from 'firebase/firestore';
@@ -12,6 +13,7 @@ import AudioModeWarning from '../../components/AudioModeWarning';
 import StatsCard from '../../components/StatsCard';
 import ProfileSidebar from '../../components/ProfileSidebar';
 import UpdateModal from '../../components/UpdateModal';
+import GamificationCelebration from '../../components/GamificationCelebration';
 import { checkAppUpdate } from '../../services/versionService';
 import { presentNotification } from '../../services/notifications';
 import { Badge, Button, Card, IconTile, Screen, Text } from '../../components/ui';
@@ -30,12 +32,13 @@ export const HomeScreen = ({ navigation }) => {
   const { currentUser, userProfile } = useAuth();
   const { colors } = useTheme();
   const { t, formatDate } = useLanguage();
+  const { celebration, dismissCelebration } = useGamification();
   const [refreshing, setRefreshing] = useState(false);
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [lastSeenNotifications, setLastSeenNotifications] = useState(0);
-  
+
   // PIN setup modal state
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinDigits, setPinDigits] = useState(['', '', '', '']);
@@ -772,6 +775,14 @@ export const HomeScreen = ({ navigation }) => {
         playStoreUrl={updateInfo.playStoreUrl}
         onClose={handleDismissUpdate}
       />
+
+      {/* Gamification Celebration */}
+      {celebration && (
+        <GamificationCelebration
+          celebration={celebration}
+          onDismiss={dismissCelebration}
+        />
+      )}
     </Screen>
   );
 };

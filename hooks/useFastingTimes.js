@@ -26,6 +26,7 @@ export function useFastingTimes() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [currentDayKey, setCurrentDayKey] = useState(todayKey());
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Live clock tick so time-derived values stay fresh while the app is open.
   const [nowTick, setNowTick] = useState(Date.now());
@@ -80,7 +81,7 @@ export function useFastingTimes() {
       setLocation({ loaded: true, coordinates, source, error: locationError });
     });
     return () => { cancelled = true; };
-  }, [currentUser?.uid]);
+  }, [currentUser?.uid, refreshKey]);
 
   // Fetch times once coordinates are known
   useEffect(() => {
@@ -215,6 +216,8 @@ export function useFastingTimes() {
     checkWakeUpWindow,
     hasSuhoorEnded,
     wakeMinutes,
+    refreshKey,
+    setRefreshKey,
     // NEW — used by FastingPrompt to resolve the target day's suhoor/wakeStart
     getDayData,
     getSuhoor,

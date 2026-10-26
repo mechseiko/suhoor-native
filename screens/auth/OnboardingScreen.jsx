@@ -23,6 +23,9 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 import { useLanguage } from "../../context/LanguageContext";
 import { Button, Text } from "../../components/ui";
 import { brand } from "../../theme";
+import { db } from "../../config/firebase";
+import { doc, updateDoc } from "firebase/firestore";
+import { useAuth } from "../../context/AuthContext";
 
 const S1 = (t) => t("onboarding.typewriter1");
 const S2 = (t) => t("onboarding.typewriter2");
@@ -444,9 +447,40 @@ const NotificationPermissionStep = ({ onStatusChange }) => {
   );
 };
 
-const LocationPermissionStep = ({ onStatusChange }) => {
+const LocationPermissionStep = ({ onStatusChange, currentUser }) => {
   const { t } = useLanguage();
   const [detected, setDetected] = useState(false);
+
+  const saveLocationToProfile = async (position) => {
+    if (!currentUser) {
+      // Save to AsyncStorage temporarily for later use
+      try {
+        await AsyncStorage.setItem(
+          "onboarding_location",
+          JSON.stringify({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          })
+        );
+        console.log("Location saved to AsyncStorage temporarily");
+      } catch (e) {
+        console.error("Error saving location to AsyncStorage:", e);
+      }
+      return;
+    }
+    try {
+      const profileRef = doc(db, "profiles", currentUser.uid);
+      await updateDoc(profileRef, {
+        "preferences.defaultLocation": {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        },
+      });
+      console.log("Location saved to profile successfully");
+    } catch (e) {
+      console.error("Error saving location to profile:", e);
+    }
+  };
 
   const checkStatus = async () => {
     try {
@@ -470,6 +504,8 @@ const LocationPermissionStep = ({ onStatusChange }) => {
             console.log("Location detected successfully:", position);
             setDetected(true);
             onStatusChange?.(true);
+            // Save location immediately
+            saveLocationToProfile(position);
           },
           (error) => {
             console.warn("Location detection failed, but permission granted:", error);
@@ -484,6 +520,16 @@ const LocationPermissionStep = ({ onStatusChange }) => {
       console.warn("Error checking location permission", e);
     }
   };
+
+  useEffect(() => {
+    checkStatus();
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        checkStatus();
+      }
+    });
+    return () => sub.remove();
+  }, [currentUser]);
 
   const handleAction = async () => {
     try {
@@ -503,6 +549,10 @@ const LocationPermissionStep = ({ onStatusChange }) => {
               console.log("Location detected successfully:", position);
               setDetected(true);
               onStatusChange?.(true);
+              // Save to profile if user is signed in
+              if (currentUser) {
+                saveLocationToProfile(position);
+              }
             },
             (error) => {
               console.warn("Location detection failed, but permission granted:", error);
@@ -547,12 +597,6 @@ const LocationPermissionStep = ({ onStatusChange }) => {
       <Text variant="hero" style={{ textAlign: "center", marginBottom: 10 }}>
         <Text
           variant="inherit"
-          style={{ color: brand.primary, fontWeight: "800" }}
-        >
-          {t("onboarding.precise")}{" "}
-        </Text>
-        <Text
-          variant="inherit"
           style={{ color: brand.secondary, fontWeight: "800" }}
         >
           {t("onboarding.location")}
@@ -592,20 +636,6 @@ const LocationPermissionStep = ({ onStatusChange }) => {
           {t("onboarding.whyLocationText")}
         </Text>
       </View>
-
-      <Text
-        variant="body"
-        tone="secondary"
-        style={{
-          textAlign: "center",
-          maxWidth: 320,
-          lineHeight: 21,
-          fontSize: 13,
-          marginBottom: 24,
-        }}
-      >
-        {t("onboarding.locationPermission")}
-      </Text>
 
       {/* Status Pill */}
       <View
@@ -1222,7 +1252,8 @@ const AlarmPinStep = ({ alarmPin, setAlarmPin, pinError, setPinError, t }) => {
 };
 
 export const OnboardingScreen = ({ onComplete }) => {
-  const { t, changeLanguage, languages, locale } = useLanguage();
+  const { t, changeLanguage, languages, locale, isLoadingLocale } = useLanguage();
+  const { currentUser } = useAuth();
   const [langModalVisible, setLangModalVisible] = useState(false);
   const [step, setStep] = useState(0);
   const [alarmPin, setAlarmPin] = useState(["", "", "", ""]);
@@ -1332,6 +1363,14 @@ export const OnboardingScreen = ({ onComplete }) => {
     setStep((value) => value - 1);
   };
 
+  if (isLoadingLocale) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF", justifyContent: "center", alignItems: "center" }}>
+        <LogoLoader />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
       <View
@@ -1429,6 +1468,7 @@ export const OnboardingScreen = ({ onComplete }) => {
                 location: value,
               }))
             }
+            currentUser={currentUser}
           />
         ) : current.isBattery ? (
           <BatteryOptimizationStep

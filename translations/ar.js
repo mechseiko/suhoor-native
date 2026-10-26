@@ -190,7 +190,6 @@ export const ar = {
   "groups.nameCopied": "تم نسخ الاسم إلى الحافظة",
   "groups.groupSettings": "إعدادات المجموعة",
   "groups.groupInfo": "معلومات المجموعة",
-  "groups.groupKey": "مفتاح المجموعة",
   "groups.inviteSettings": "إعدادات الدعوة",
   "groups.copyInviteLink": "نسخ رابط الدعوة",
   "groups.regenerateLink": "إعادة إنشاء الرابط",

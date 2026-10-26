@@ -157,6 +157,7 @@ const ProfileScreen = ({ route }) => {
   const [locationSearch, setLocationSearch] = useState("");
   const [locationResults, setLocationResults] = useState([]);
   const [isSearchingLocation, setIsSearchingLocation] = useState(false);
+  const [isDetectingCurrentLocation, setIsDetectingCurrentLocation] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(
     userProfile?.preferences?.defaultLocation || null
   );
@@ -278,7 +279,7 @@ const ProfileScreen = ({ route }) => {
   const searchLocation = React.useCallback(
     async (query) => {
       if (!query || query.length < 3) {
-        setLocationResults([]);
+        // Don't clear results on empty input, just stop searching
         return;
       }
 
@@ -321,8 +322,6 @@ const ProfileScreen = ({ route }) => {
     const timeoutId = setTimeout(() => {
       if (locationSearch.length >= 3) {
         searchLocation(locationSearch);
-      } else {
-        setLocationResults([]);
       }
     }, 500);
 
@@ -466,7 +465,7 @@ const ProfileScreen = ({ route }) => {
   };
 
   const handleUseCurrentLocation = async () => {
-    setIsUpdatingSettings(true);
+    setIsDetectingCurrentLocation(true);
     try {
       await clearUserLocation();
       const result = await getCurrentCoordinates(currentUser?.uid);
@@ -492,7 +491,7 @@ const ProfileScreen = ({ route }) => {
       console.error("Error detecting current location:", err);
       showToast(t("profile.locationDetectFail", "Could not detect your current location"), "error");
     } finally {
-      setIsUpdatingSettings(false);
+      setIsDetectingCurrentLocation(false);
     }
   };
 
@@ -1975,11 +1974,11 @@ const ProfileScreen = ({ route }) => {
             <TouchableOpacity
               style={[styles.primaryButton, { marginBottom: 12 }]}
               onPress={handleUseCurrentLocation}
-              disabled={isUpdatingSettings}
+              disabled={isDetectingCurrentLocation}
             >
               <Ionicons name="locate-outline" size={18} color={Colors.white} />
               <Text style={styles.primaryButtonText}>
-                {isUpdatingSettings
+                {isDetectingCurrentLocation
                   ? t("profile.detectingLocation", "Detecting location...")
                   : t("profile.useCurrentLocation", "Use current location")}
               </Text>
@@ -2009,39 +2008,49 @@ const ProfileScreen = ({ route }) => {
                 placeholderTextColor={colors.textSecondary}
               />
               {isSearchingLocation && (
-                <ActivityIndicator size="small" color={Colors.primary} />
+                <ActivityIndicator size="small" color={Colors.primary} style={{ marginRight: 8 }} />
               )}
             </View>
 
             <ScrollView style={{ maxHeight: 300 }}>
-              {locationResults.map((item, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  style={styles.locationItem}
-                  onPress={() => handleSelectLocation(item)}
-                >
-                  <Ionicons
-                    name="location-outline"
-                    size={18}
-                    color={Colors.primary}
-                  />
-                  <Text
-                    style={[
-                      styles.locationItemText,
-                      themedStyles.locationResultText,
-                    ]}
+              {isSearchingLocation && locationSearch.length >= 3 ? (
+                <View style={{ padding: 20, alignItems: 'center' }}>
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                  <Text style={{ marginTop: 8, color: colors.textSecondary, fontSize: 13 }}>
+                    {t("profile.searching", "Searching...")}
+                  </Text>
+                </View>
+              ) : locationResults.length > 0 ? (
+                locationResults.map((item, idx) => (
+                  <TouchableOpacity
+                    key={idx}
+                    style={styles.locationItem}
+                    onPress={() => handleSelectLocation(item)}
                   >
-                    {item.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-              {!isSearchingLocation &&
-                locationSearch.length >= 3 &&
-                locationResults.length === 0 && (
-                  <Text style={[styles.noResults, themedStyles.noResultsText]}>
-                    {t("profile.noLocationsFound", "No locations found")}
-                  </Text>
-                )}
+                    <Ionicons
+                      name="location-outline"
+                      size={18}
+                      color={Colors.primary}
+                    />
+                    <Text
+                      style={[
+                        styles.locationItemText,
+                        themedStyles.locationResultText,
+                      ]}
+                    >
+                      {item.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))
+              ) : locationSearch.length >= 3 ? (
+                <Text style={[styles.noResults, themedStyles.noResultsText]}>
+                  {t("profile.noLocationsFound", "No locations found")}
+                </Text>
+              ) : (
+                <Text style={[styles.noResults, themedStyles.noResultsText]}>
+                  {t("profile.typeToSearch", "Type at least 3 characters to search")}
+                </Text>
+              )}
             </ScrollView>
           </View>
         </View>

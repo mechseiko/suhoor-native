@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { NativeModules, Platform } from 'react-native';
+import { AppState, NativeModules, Platform } from 'react-native';
 import {
   subscribeToNotifications,
   scheduleNotification,
@@ -23,6 +23,20 @@ export const AlarmProvider = ({ children }) => {
   const [scheduledAlarmTime, setScheduledAlarmTime] = useState(null);
   const { currentUser, userProfile } = useAuth();
   const { on, off } = useSocket();
+
+  // Reset alarm state when app comes to foreground (after swipe-close)
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState) => {
+      if (nextAppState === 'active') {
+        console.log('App came to foreground, resetting alarm state');
+        setIsAlarmActive(false);
+        setAlarmData(null);
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription?.remove();
+  }, []);
 
   useEffect(() => {
     const handleGetBuzzed = (data) => {
@@ -54,10 +68,29 @@ export const AlarmProvider = ({ children }) => {
       }
     });
 
-    // Check stored alarm time
+    // Check stored alarm time and reset stale alarm state on app start
     AsyncStorage.getItem(DAILY_ALARM_KEY).then((timeStr) => {
-      if (timeStr) setScheduledAlarmTime(new Date(timeStr));
-    }).catch(() => {});
+      if (timeStr) {
+        const alarmDate = new Date(timeStr);
+        const now = Date.now();
+        const diff = now - alarmDate.getTime();
+        
+        // If alarm was more than 1 hour ago, clear it (stale)
+        if (diff > 60 * 60 * 1000) {
+          console.log('Clearing stale alarm time from', alarmDate.toISOString());
+          AsyncStorage.removeItem(DAILY_ALARM_KEY).catch(() => {});
+          setScheduledAlarmTime(null);
+        } else {
+          setScheduledAlarmTime(alarmDate);
+        }
+      }
+    }).catch((err) => {
+      console.error('Error checking stored alarm time:', err);
+    });
+
+    // Reset alarm state on mount to prevent stale triggers
+    setIsAlarmActive(false);
+    setAlarmData(null);
 
     return unsubscribe;
   }, [currentUser]);
@@ -71,12 +104,14 @@ export const AlarmProvider = ({ children }) => {
       const alarmMs = scheduledAlarmTime.getTime();
       const diff = now - alarmMs;
 
-      // Within 2.5 hours past alarm time, trigger if not already dismissed today
-      if (diff >= 0 && diff < 2.5 * 3600 * 1000) {
+      // Within 5 minutes past alarm time, trigger if not already dismissed today
+      // Reduced from 2.5 hours to prevent late triggers
+      if (diff >= 0 && diff < 5 * 60 * 1000) {
         const todayStr = new Date().toLocaleDateString('en-CA');
         const dismissedKey = `suhoor_alarm_dismissed_${todayStr}`;
         const alreadyDismissed = await AsyncStorage.getItem(dismissedKey);
         if (!alreadyDismissed) {
+          console.log('⏰ Foreground alarm trigger at', new Date(now).toISOString(), 'scheduled for', scheduledAlarmTime.toISOString());
           setIsAlarmActive(true);
           setAlarmData({
             type: 'wake_up_alarm',
@@ -86,7 +121,7 @@ export const AlarmProvider = ({ children }) => {
       }
     };
 
-    const interval = setInterval(checkAlarmTrigger, 2000);
+    const interval = setInterval(checkAlarmTrigger, 1000);
     checkAlarmTrigger();
     return () => clearInterval(interval);
   }, [scheduledAlarmTime, isAlarmActive]);

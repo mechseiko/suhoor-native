@@ -52,8 +52,8 @@ android {
         applicationId 'com.mechseiko.suhoor'
         minSdkVersion 24
         targetSdkVersion 36
-        versionCode 18
-        versionName "1.0.13"
+        versionCode 20
+        versionName "1.0.15"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
 
@@ -164,11 +164,18 @@ dependencies {
     implementation platform('com.google.firebase:firebase-bom:32.7.0') 
     implementation 'com.google.firebase:firebase-auth'
 
+    // 🔥 FORCE PATCH: Override the vulnerable reCAPTCHA SDK version
+    implementation 'com.google.android.recaptcha:recaptcha:18.4.0'
+
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {
         implementation jscFlavor
     }
+}
+
+configurations.all {
+    exclude group: 'com.google.android.gms', module: 'play-services-safetynet'
 }
 
 apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesAppBuildGradle(project)

@@ -248,11 +248,19 @@ export const GroupDetailScreen = ({ route, navigation }) => {
   };
 
   // Check if wakeup status should be displayed:
-  // Shows only from 5:00 PM (17:00) in the evening through midnight up to 8:00 AM morning
+  // Shows from midnight (00:00) until the end of the wake-up window,
+  // which is Suhoor time from the API (todayData.time.sahur).
   const isStatusVisibleNow = () => {
+    if (!todayData?.time?.sahur) return false;
+
     const now = new Date();
-    const currentHour = now.getHours();
-    return currentHour >= 17 || currentHour < 8;
+    const [suhoorH, suhoorM] = todayData.time.sahur.split(":").map(Number);
+    if (isNaN(suhoorH) || isNaN(suhoorM)) return false;
+
+    const suhoorTime = new Date();
+    suhoorTime.setHours(suhoorH, suhoorM, 0, 0);
+
+    return now <= suhoorTime;
   };
 
   // Check if a specific member is currently in their individual wake-up window
@@ -331,11 +339,16 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     }
   }, [groupId, currentUser, members]);
 
+  // Local calendar day key (YYYY-MM-DD). When it changes (midnight rollover
+  // while the app is open), refetch today's logs/intentions so we never show
+  // yesterday's wake-up status or time.
+  const todayKey = new Date().toLocaleDateString("en-CA");
+
   useEffect(() => {
     if (members.length > 0) {
       fetchTodayLogsAndIntentions();
     }
-  }, [members, fetchTodayLogsAndIntentions]);
+  }, [members, fetchTodayLogsAndIntentions, todayKey]);
 
   // 3. Socket.IO connections and listeners
   useEffect(() => {
@@ -1341,19 +1354,21 @@ export const GroupDetailScreen = ({ route, navigation }) => {
             <Text style={[styles.trackerTitle, { color: colors.text }]}>{t('groups.wakeUpTracker')}</Text>
           </View>
 
-          {hasWokenUp ? (
-            <View style={styles.awakeSuccess}>
-              <Ionicons
-                name="checkmark-circle"
-                size={16}
-                color={colors.secondary}
-              />
-              <Text style={[styles.awakeSuccessText, { color: colors.secondary }]}>{t('groups.awake', 'Awake')}</Text>
-            </View>
-          ) : wantsToFast ? (
-            <View style={[styles.sleepingBadge, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}>
-              <Text style={[styles.sleepingBadgeText, { color: isDark ? '#60A5FA' : '#3B82F6' }]}>{t('groups.sleeping', 'Asleep')}</Text>
-            </View>
+          {isStatusVisibleNow() ? (
+            hasWokenUp ? (
+              <View style={styles.awakeSuccess}>
+                <Ionicons
+                  name="checkmark-circle"
+                  size={16}
+                  color={colors.secondary}
+                />
+                <Text style={[styles.awakeSuccessText, { color: colors.secondary }]}>{t('groups.awake', 'Awake')}</Text>
+              </View>
+            ) : wantsToFast ? (
+              <View style={[styles.sleepingBadge, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}>
+                <Text style={[styles.sleepingBadgeText, { color: isDark ? '#60A5FA' : '#3B82F6' }]}>{t('groups.sleeping', 'Asleep')}</Text>
+              </View>
+            ) : null
           ) : null}
         </View>
 

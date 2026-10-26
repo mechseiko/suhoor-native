@@ -124,9 +124,9 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
         setGroup(data);
         setEditedName(data.name || groupName);
         setOnlyAdminsEdit(data.only_admins_edit ?? true);
-        setOnlyAdminsInvite(data.only_admins_invite ?? false);
-        setOnlyAdminsBuzz(data.only_admins_buzz ?? false);
-        setRequireApproval(data.require_approval ?? false);
+        setOnlyAdminsInvite(data.only_admins_invite ?? true);
+        setOnlyAdminsBuzz(data.only_admins_buzz ?? true);
+        setRequireApproval(data.require_approval ?? true);
       }
 
       // 2. Fetch all members with profiles
@@ -296,7 +296,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
 
     Alert.alert(
       t('groups.makeAdminTitle', 'Make Group Admin'),
-      t('groups.makeAdminConfirm', `Add "${memberName}" as an admin of this group? They will be able to edit group info and manage group settings.`),
+      t('groups.makeAdminConfirmSelected', { name: memberName }),
       [
         { text: t('common.cancel', 'Cancel'), style: 'cancel' },
         {
@@ -354,7 +354,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
 
     Alert.alert(
       t('groups.dismissAdminTitle', 'Dismiss as Admin'),
-      t('groups.dismissAdminConfirm', `Remove admin permissions from "${adminName}"? They will remain a regular member of the group.`),
+      t('groups.dismissAdminConfirm', { name: adminName }),
       [
         { text: t('common.cancel', 'Cancel'), style: 'cancel' },
         {
@@ -827,7 +827,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
                       </Text>
                     </View>
 
-                    {isAdmin && !isCurrentUserItem && (
+                    {isAdmin && !isCurrentUserItem && adminMember.user_id !== group?.created_by && (
                       <TouchableOpacity
                         onPress={() => handleDismissAdmin(adminMember)}
                         disabled={updatingAdminId === adminMember.id}
@@ -871,14 +871,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
             <View style={[styles.switchRow, { borderBottomColor: colors.border }]}>
               <View style={styles.switchLabelBlock}>
                 <Text style={[styles.switchTitle, { color: colors.text }]}>
-                  {t('groups.editGroupSettings', 'Edit Group Settings')}
-                </Text>
-                <Text
-                  style={[styles.switchSub, { color: colors.textSecondary }]}
-                >
-                  {onlyAdminsEdit
-                    ? t('groups.adminsOnly', 'Only admins can change group name & photo')
-                    : t('groups.allMembers', 'All members can change group name & photo')}
+                  {t('groups.editGroupSettings')}
                 </Text>
               </View>
               <Switch
@@ -897,11 +890,6 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
             <View style={[styles.switchRow, { borderBottomColor: colors.border }]}>
               <View style={styles.switchLabelBlock}>
                 <Text style={[styles.switchTitle, { color: colors.text }]}>
-                  {t('groups.sendWakeUpBuzzes', 'Send Wake-Up Buzzes')}
-                </Text>
-                <Text
-                  style={[styles.switchSub, { color: colors.textSecondary }]}
-                >
                   {onlyAdminsBuzz
                     ? t('groups.adminsOnlyBuzz', 'Only admins can buzz and wake up members')
                     : t('groups.allMembersBuzz', 'All members can buzz and wake up fellow fasters')}
@@ -923,11 +911,6 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
             <View style={[styles.switchRow, { borderBottomColor: colors.border }]}>
               <View style={styles.switchLabelBlock}>
                 <Text style={[styles.switchTitle, { color: colors.text }]}>
-                  {t('groups.addMembers', 'Invite & Add Members')}
-                </Text>
-                <Text
-                  style={[styles.switchSub, { color: colors.textSecondary }]}
-                >
                   {onlyAdminsInvite
                     ? t('groups.adminsOnlyInvite', 'Only admins can share invite code')
                     : t('groups.allMembersInvite', 'All members can share invite code')}

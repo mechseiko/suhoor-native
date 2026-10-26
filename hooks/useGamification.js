@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../config/firebase";
 import {
@@ -185,11 +186,16 @@ export function useGamification() {
         const previousLevel = getBarakahLevel(stats.points);
         const updatedLevel = getBarakahLevel(points);
         if (updatedLevel.level > previousLevel.level) {
-          setCelebration({
-            level: updatedLevel.level,
-            name: updatedLevel.name,
-            points,
-          });
+          // Check if we've already celebrated this level
+          const lastCelebratedLevel = await AsyncStorage.getItem('suhoor_last_celebrated_level');
+          if (lastCelebratedLevel !== String(updatedLevel.level)) {
+            await AsyncStorage.setItem('suhoor_last_celebrated_level', String(updatedLevel.level));
+            setCelebration({
+              level: updatedLevel.level,
+              name: updatedLevel.name,
+              points,
+            });
+          }
         }
       } catch (err) {
         console.error("Error recording gamification activity:", err);

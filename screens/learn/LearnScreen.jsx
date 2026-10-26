@@ -7,13 +7,23 @@ import {
   SafeAreaView,
   StyleSheet,
   Modal,
+  Linking,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTheme } from "../../context/ThemeContext";
 import { useLanguage } from "../../context/LanguageContext";
 
 const TOPICS = [
+  {
+    id: "howItWorks",
+    icon: "compass-outline",
+    color: "#F59E0B",
+    titleKey: "learn.topic.howItWorks",
+    titleDefault: "How Suhoor Works",
+    subtitleKey: "learn.topic.howItWorksSub",
+    subtitleDefault: "Walk through the tabs and see how everything connects",
+    isTourTrigger: true,
+  },
   {
     id: "conditions",
     icon: "shield-checkmark",
@@ -251,16 +261,6 @@ const TOPICS = [
       },
     ],
   },
-    {
-    id: "howItWorks",
-    icon: "compass-outline",
-    color: "#F59E0B",
-    titleKey: "learn.topic.howItWorks",
-    titleDefault: "How Suhoor Works",
-    subtitleKey: "learn.topic.howItWorksSub",
-    subtitleDefault: "Walk through the tabs and see how everything connects",
-    isTourTrigger: true,
-  }
 ];
 
 export const LearnScreen = ({ navigation }) => {
@@ -268,16 +268,9 @@ export const LearnScreen = ({ navigation }) => {
   const { t } = useLanguage();
   const [selectedTopic, setSelectedTopic] = useState(null);
 
-  const handleCardPress = async (topic) => {
+  const handleCardPress = (topic) => {
     if (topic.isTourTrigger) {
-      // Trigger the onboarding tour again
-      try {
-        await AsyncStorage.setItem('suhoor-tab-tour-pending', 'true');
-        // Navigate to the home tab in the parent tab navigator
-        navigation.getParent()?.navigate('HomeTab');
-      } catch (e) {
-        console.error('Failed to trigger tour:', e);
-      }
+      Linking.openURL('https://suhoorapp.cv/howitworks');
     } else if (topic.isInteractiveDuas) {
       navigation.navigate("Duas");
     } else if (topic.isBooks) {
