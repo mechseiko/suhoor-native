@@ -279,10 +279,10 @@ export const BADGES = {
 
 export const BARAKAH_TIERS = [
   { level: 1, name: 'Barakah Seeker', minPoints: 0, icon: '🌱' },
-  { level: 2, name: 'Steadfast Riser', minPoints: 250, icon: '🌿' },
-  { level: 3, name: 'Suhoor Guardian', minPoints: 600, icon: '⭐' },
-  { level: 4, name: 'Fajr Vanguard', minPoints: 1200, icon: '🌙' },
-  { level: 5, name: 'Barakah Master', minPoints: 2500, icon: '👑' },
+  { level: 2, name: 'Steadfast Riser', minPoints: 500, icon: '🌿' },
+  { level: 3, name: 'Suhoor Guardian', minPoints: 1200, icon: '⭐' },
+  { level: 4, name: 'Fajr Vanguard', minPoints: 2500, icon: '🌙' },
+  { level: 5, name: 'Barakah Master', minPoints: 5000, icon: '👑' },
 ]
 
 export const getBarakahLevel = (points = 0) => {

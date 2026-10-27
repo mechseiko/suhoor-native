@@ -11,6 +11,7 @@ import {
   RefreshControl,
   Alert,
   Linking,
+  Image,
 } from 'react-native'
 import { Text } from '../../components/ui'
 import { copyToClipboard } from '../../utils/clipboard'
@@ -150,32 +151,23 @@ export const GroupsScreen = ({ navigation, route }) => {
     const checkTime = () => {
       const now = new Date()
 
-      // The user's saved offset from FastingTimesScreen (45 min is the
-      // app-wide default). There is no writer for the old customWakeUpTime
-      // field, so honoring it here only ever produced the fallback anyway.
       const wakeMinutes =
         userProfile?.preferences?.wakeUpMinutesBeforeSuhoor || 45
 
       const [suhoorH, suhoorM] = todayData.time.sahur.split(':').map(Number)
-      const suhoorTime = new Date()
-      suhoorTime.setHours(suhoorH, suhoorM, 0, 0)
-      suhoorTime.setMinutes(suhoorTime.getMinutes() - wakeMinutes)
-      const targetHour = suhoorTime.getHours()
-      const targetMinute = suhoorTime.getMinutes()
-
-      const targetTime = new Date()
-      targetTime.setHours(targetHour, targetMinute, 0, 0)
-      if (targetTime < now && now.getHours() > 12) {
-        targetTime.setDate(targetTime.getDate() + 1)
-      }
-
+      
+      // 1. Window end time (Suhoor)
       const endTime = new Date()
       endTime.setHours(suhoorH, suhoorM, 0, 0)
       if (endTime < now && now.getHours() > 12) {
         endTime.setDate(endTime.getDate() + 1)
       }
 
-      const active = now >= targetTime && now <= endTime
+      // 2. Window start time (Wake-up time)
+      const startTime = new Date(endTime.getTime() - wakeMinutes * 60000)
+
+      // Active only if we are between start and end
+      const active = now >= startTime && now <= endTime
       setIsInWakeUpWindow(active)
     }
 
@@ -219,9 +211,6 @@ export const GroupsScreen = ({ navigation, route }) => {
         if (docSnap.exists()) {
           setWantsToFast(docSnap.data().wantsToFast !== false)
         } else {
-          // No recorded answer for today — apply the same default the prompt
-          // does: special days follow the user's fasting defaults, ordinary
-          // days default to not fasting (so the check-in banner stays hidden).
           setWantsToFast(getDefaultIntention(new Date(), userProfile))
         }
       } catch (err) {
@@ -232,7 +221,7 @@ export const GroupsScreen = ({ navigation, route }) => {
     fetchFastingIntention()
   }, [currentUser])
 
-  // Handle direct 1-tap check-in on the Groups tab
+  // Handle actual DB check-in (called AFTER PIN verification)
   const handleDirectCheckIn = async () => {
     if (!currentUser) return
     setLoading(true)
@@ -240,8 +229,6 @@ export const GroupsScreen = ({ navigation, route }) => {
       const todayStr = new Date().toLocaleDateString('en-CA')
       const wakeUpTime = new Date().toISOString()
 
-      // Add wake up log — deterministic per-user-per-day ID so a re-check-in
-      // merges instead of stacking duplicate logs for the same day.
       await setDoc(
         doc(db, COLLECTIONS.wakeUpLogs, wakeUpLogId(currentUser.uid, todayStr)),
         {
@@ -252,7 +239,6 @@ export const GroupsScreen = ({ navigation, route }) => {
         { merge: true }
       )
 
-      // Update daily_fasting_status to record completion
       const statusRef = doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${todayStr}`)
       await setDoc(statusRef, {
         userId: currentUser.uid,
@@ -262,7 +248,6 @@ export const GroupsScreen = ({ navigation, route }) => {
         wokeUpAt: wakeUpTime,
       }, { merge: true })
 
-      // Notify all current groups via socket
       if (emitWakeUp && groups.length > 0) {
         const userName =
           userProfile?.display_name ||
@@ -284,32 +269,6 @@ export const GroupsScreen = ({ navigation, route }) => {
     }
   }
 
-  // Handle check-in with PIN verification
-  const handleCheckIn = async () => {
-    if (!currentUser) return
-
-    // Read saved PIN from AsyncStorage
-    let savedPin = ''
-    try {
-      savedPin = (await AsyncStorage.getItem('suhoor_alarm_pin')) || ''
-    } catch {}
-
-    const entered = pinDigits.join('')
-    if (entered.length < 4) {
-      setPinError(t('groups.enterPin'))
-      return
-    }
-    if (savedPin && entered !== savedPin) {
-      setPinError(t('alarm.incorrectPin'))
-      setPinDigits(['', '', '', ''])
-      setTimeout(() => pinRefs[0]?.current?.focus(), 100)
-      return
-    }
-
-    setShowPinModal(false)
-    await handleDirectCheckIn()
-  }
-
   const openPinModal = () => {
     setPinDigits(['', '', '', ''])
     setPinError('')
@@ -328,7 +287,6 @@ export const GroupsScreen = ({ navigation, route }) => {
       pinRefs[index + 1]?.current?.focus()
     }
     if (digit && index === 3) {
-      // auto-submit
       const entered = [...next.slice(0, 3), digit].join('')
       handlePinSubmit(entered)
     }
@@ -356,34 +314,28 @@ export const GroupsScreen = ({ navigation, route }) => {
       setTimeout(() => pinRefs[0]?.current?.focus(), 100)
       return
     }
-    handleCheckIn()
+    
+    setShowPinModal(false)
+    await handleDirectCheckIn()
   }
 
   const fetchGroups = async () => {
     if (!currentUser) return
     try {
-      console.log('[GroupsScreen] Fetching groups for user:', currentUser.uid);
-      
       const membersRef = collection(db, COLLECTIONS.groupMembers)
       const q = query(membersRef, where('user_id', '==', currentUser.uid))
       const querySnapshot = await getDocs(q)
-
-      console.log('[GroupsScreen] Group members query result size:', querySnapshot.size);
 
       const groupIds = []
       querySnapshot.forEach(doc => {
         groupIds.push(doc.data().group_id)
       })
 
-      console.log('[GroupsScreen] Group IDs:', groupIds);
-
       const groupsData = []
-      // One card per group even if legacy duplicate membership rows exist
       for (const groupId of [...new Set(groupIds)]) {
         const groupRef = doc(db, COLLECTIONS.groups, groupId)
         const groupSnap = await getDoc(groupRef)
         if (groupSnap.exists()) {
-          // Fetch member count
           const memberCountQuery = query(
             membersRef,
             where('group_id', '==', groupId)
@@ -394,6 +346,7 @@ export const GroupsScreen = ({ navigation, route }) => {
             id: groupSnap.id,
             name: groupSnap.data().name || t('groups.unnamedGroup'),
             group_key: groupSnap.data().group_key || '',
+            group_picture_url: groupSnap.data().group_picture_url || null, // <--- Added group picture
             member_count: new Set(
               memberCountSnap.docs.map((m) => m.data().user_id)
             ).size,
@@ -401,7 +354,6 @@ export const GroupsScreen = ({ navigation, route }) => {
         }
       }
       setGroups(groupsData)
-      console.log('[GroupsScreen] Groups data loaded:', groupsData);
     } catch (err) {
       console.error('[GroupsScreen] Error fetching groups:', err)
     } finally {
@@ -439,7 +391,6 @@ export const GroupsScreen = ({ navigation, route }) => {
 
     setModalLoading(true)
     try {
-      // 8-character unique uppercase key
       const key = Math.random().toString(36).substring(2, 10).toUpperCase()
 
       const groupRef = doc(collection(db, COLLECTIONS.groups))
@@ -451,8 +402,6 @@ export const GroupsScreen = ({ navigation, route }) => {
         created_at: serverTimestamp(),
       })
 
-      // Deterministic membership doc id — (group, user) can only ever have one
-      // membership row, so a repeated create can't duplicate the admin.
       const memberRef = doc(
         db,
         COLLECTIONS.groupMembers,
@@ -470,7 +419,6 @@ export const GroupsScreen = ({ navigation, route }) => {
       triggerToast(t('groups.createdSuccess'), 'success')
       fetchGroups()
 
-      // Navigate to detail
       navigation.navigate('GroupDetail', {
         groupId: groupRef.id,
         groupName: newGroupName.trim(),
@@ -494,7 +442,6 @@ export const GroupsScreen = ({ navigation, route }) => {
     setModalLoading(true)
 
     try {
-      // 1. Query groups matching the key
       const groupsRef = collection(db, COLLECTIONS.groups)
       const q = query(groupsRef, where('group_key', '==', cleanedKey))
       const groupSnap = await getDocs(q)
@@ -510,7 +457,6 @@ export const GroupsScreen = ({ navigation, route }) => {
       const groupData = groupDoc.data()
       const groupName = groupData.name
 
-      // 2. Check if user was previously removed or left (permanent exclusion)
       const exclusionRef = doc(
         db,
         COLLECTIONS.groupExclusions,
@@ -529,7 +475,6 @@ export const GroupsScreen = ({ navigation, route }) => {
         return
       }
 
-      // 3. Check if already a member
       const membersRef = collection(db, COLLECTIONS.groupMembers)
       const memberQ = query(
         membersRef,
@@ -547,8 +492,6 @@ export const GroupsScreen = ({ navigation, route }) => {
         return
       }
 
-      // 4. Join the group — deterministic doc id, so double-taps and racing
-      // joins can't create a second membership row for the same user.
       const newMemberRef = doc(
         db,
         COLLECTIONS.groupMembers,
@@ -581,7 +524,6 @@ export const GroupsScreen = ({ navigation, route }) => {
       g.group_key.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  // Group card skeleton loader
   const GroupSkeleton = () => (
     <View
       style={[
@@ -637,9 +579,16 @@ export const GroupsScreen = ({ navigation, route }) => {
         <View
           style={[styles.avatar, { backgroundColor: colors.primary + '14' }]}
         >
-          <Text style={[styles.avatarText, { color: colors.primary }]}>
-            {item.name.charAt(0).toUpperCase()}
-          </Text>
+          {item.group_picture_url ? (
+            <Image
+              source={{ uri: item.group_picture_url }}
+              style={styles.avatarImage}
+            />
+          ) : (
+            <Text style={[styles.avatarText, { color: colors.primary }]}>
+              {item.name.charAt(0).toUpperCase()}
+            </Text>
+          )}
         </View>
         <View style={styles.cardInfo}>
           <Text style={[styles.groupName, { color: colors.text }]}>
@@ -681,7 +630,6 @@ export const GroupsScreen = ({ navigation, route }) => {
     </TouchableOpacity>
   )
 
-  // Custom themed variables
   const themedStyles = {
     screen: {
       backgroundColor: colors.background,
@@ -775,23 +723,24 @@ export const GroupsScreen = ({ navigation, route }) => {
         </View>
       </View>
 
-      {/* Wake-up Check-in Banner */}
+      {/* ONE Check-in Banner */}
       {isInWakeUpWindow && wantsToFast && !hasCheckedInToday && (
         <View style={[styles.checkInBanner, { backgroundColor: colors.primary }]}>
           <View style={styles.checkInContent}>
             <Ionicons name="alarm-outline" size={20} color={colors.white} />
             <View style={styles.checkInText}>
-              <Text style={styles.checkInTitle}>{t('groups.areYouAwake') || 'Are you Awake?'}</Text>
-              <Text style={styles.checkInSubtitle}>{t('groups.checkInSubtitle') || 'Check in to prevent buzzing from group members'}</Text>
+              <Text style={styles.checkInTitle}>
+                {t('groups.areYouAwake') || 'Are you awake?'}
+              </Text>
             </View>
           </View>
           <TouchableOpacity
             style={styles.checkInBtn}
-            onPress={handleDirectCheckIn}
+            onPress={openPinModal}
             disabled={loading}
           >
             <Text style={styles.checkInBtnText}>
-              {loading ? (t('groups.checkingInBtn') || 'Checking in…') : (t('groups.checkInBtn') || 'Check in')}
+              {loading ? 'Checking in…' : t('groups.checkInBtn') || 'Check in'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -1211,6 +1160,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   avatarText: {
     fontSize: 18,
@@ -1375,11 +1330,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
-    marginBottom: 2,
-  },
-  checkInSubtitle: {
-    fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.85)',
   },
   checkInBtn: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',

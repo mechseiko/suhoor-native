@@ -26,7 +26,9 @@ export const triggerImmediateUpdate = async (fallbackUrl = PLAY_STORE_URL) => {
     const SpInAppUpdates = await import('sp-react-native-in-app-updates');
     const { IAUUpdateKind } = SpInAppUpdates;
 
-    const inAppUpdates = new SpInAppUpdates.default(false); // false = production, true = internal testing
+    // Use true for internal testing/closed testing to allow updates from internal tracks
+    // This enables in-app updates even when app is not in production
+    const inAppUpdates = new SpInAppUpdates.default(true);
 
     const result = await inAppUpdates.checkNeedsUpdate();
     console.log('[InAppUpdates] checkNeedsUpdate result:', result);

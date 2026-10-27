@@ -42,7 +42,7 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
 
   const handleSubmitFeedback = async () => {
     if (!feedbackMessage.trim()) {
-      Alert.alert('Empty Message', 'Please enter your message before sending.')
+      Alert.alert(t('common.emptyMessage'), t('common.enterMessage'))
       return
     }
     setSubmittingFeedback(true)
@@ -59,12 +59,12 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
       setFeedbackMessage('')
       setShowFeedbackModal(false)
       Alert.alert(
-        'Feedback Sent',
-        'Thank you! Your feedback has been sent directly to the admin dashboard.'
+        t('common.feedbackSent'),
+        t('common.feedbackSentMessage')
       )
     } catch (err) {
       console.error('Error submitting feedback:', err)
-      Alert.alert('Error', 'Failed to send feedback. Please try again.')
+      Alert.alert(t('common.error'), t('common.feedbackError'))
     } finally {
       setSubmittingFeedback(false)
     }
@@ -213,7 +213,7 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
                 )}
                 <View style={{ marginTop: 4, flexDirection: 'row' }}>
                   <Badge
-                    label={`Lv. ${currentLevel.level} • ${currentLevel.name}`}
+                    label={`${t('common.levelAbbr')} ${currentLevel.level} • ${currentLevel.name}`}
                     tone="secondary"
                     bordered
                   />
@@ -421,7 +421,7 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
                   backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6',
                 }}
               >
-                <Text style={{ fontWeight: '600', fontSize: 14, color: colors.text || '#111827' }}>Cancel</Text>
+                <Text style={{ fontWeight: '600', fontSize: 14, color: colors.text || '#111827' }}>{t('common.cancel')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -439,7 +439,7 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
                 {submittingFeedback ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={{ fontWeight: '700', fontSize: 14, color: '#FFFFFF' }}>Submit</Text>
+                  <Text style={{ fontWeight: '700', fontSize: 14, color: '#FFFFFF' }}>{t('common.submit')}</Text>
                 )}
               </TouchableOpacity>
             </View>

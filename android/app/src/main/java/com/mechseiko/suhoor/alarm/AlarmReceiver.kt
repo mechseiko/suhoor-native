@@ -80,8 +80,20 @@ class AlarmReceiver : BroadcastReceiver() {
         // Build notification
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.notification_icon)
-            .setContentTitle("It's time for suhoor")
-            .setContentText("It's time for Suhoor! Wake up and enter PIN to dismiss")
+            .setContentTitle(
+                if (alarmData.type == "remote_buzz") {
+                    context.getString(R.string.alarm_buzz_notification_title)
+                } else {
+                    context.getString(R.string.alarm_notification_title)
+                }
+            )
+            .setContentText(
+                if (alarmData.type == "remote_buzz") {
+                    context.getString(R.string.alarm_buzz_notification_text)
+                } else {
+                    context.getString(R.string.alarm_notification_text)
+                }
+            )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setOngoing(true)

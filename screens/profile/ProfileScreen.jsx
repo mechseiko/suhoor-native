@@ -1618,6 +1618,133 @@ const ProfileScreen = ({ route }) => {
 
               <View style={styles.sectionDivider} />
 
+              <View style={styles.cardHeader}>
+                <View>
+                  <Text style={[styles.cardTitle, themedStyles.cardTitle]}>
+                    {t("settings.fastingDefaults", "Fasting Defaults")}
+                  </Text>
+                  <Text style={[styles.settingSub, themedStyles.settingSub, { marginTop: 2 }]}>
+                    {t("settings.fastingDefaultsHint", "Choose if the daily prompt answers Yes by default on these days")}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={{ rowGap: 4, marginTop: 4 }}>
+                <View style={styles.settingRow}>
+                  <View style={styles.settingInfo}>
+                    <Text style={[styles.settingLabel, themedStyles.settingLabel]}>
+                      {t("settings.sunnahDays", "Sunnah Days")}
+                    </Text>
+                    <Text style={[styles.settingSub, themedStyles.settingSub]}>
+                      {t("settings.sunnahDaysDesc", "Monday & Thursday")}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={userProfile?.fastingDefaults?.sunnah ?? true}
+                    onValueChange={async (val) => {
+                      if (!currentUser?.uid) return;
+                      try {
+                        await updateDoc(doc(db, COLLECTIONS.profiles, currentUser.uid), {
+                          "fastingDefaults.sunnah": val,
+                        });
+                        showToast(t("settings.fastingDefaultsUpdated", "Fasting defaults updated"), "success");
+                      } catch (err) {
+                        console.error("Failed to update fasting defaults:", err);
+                        showToast(t("settings.fastingDefaultsError", "Failed to update fasting defaults"), "error");
+                      }
+                    }}
+                    trackColor={{ false: "#767577", true: Colors.primary }}
+                    thumbColor={(userProfile?.fastingDefaults?.sunnah ?? true) ? Colors.secondary : "#f4f3f4"}
+                  />
+                </View>
+
+                <View style={styles.settingRow}>
+                  <View style={styles.settingInfo}>
+                    <Text style={[styles.settingLabel, themedStyles.settingLabel]}>
+                      {t("settings.whiteDays", "White Days")}
+                    </Text>
+                    <Text style={[styles.settingSub, themedStyles.settingSub]}>
+                      {t("settings.whiteDaysDesc", "13th, 14th, 15th of Hijri month")}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={userProfile?.fastingDefaults?.whiteDays ?? true}
+                    onValueChange={async (val) => {
+                      if (!currentUser?.uid) return;
+                      try {
+                        await updateDoc(doc(db, COLLECTIONS.profiles, currentUser.uid), {
+                          "fastingDefaults.whiteDays": val,
+                        });
+                        showToast(t("settings.fastingDefaultsUpdated", "Fasting defaults updated"), "success");
+                      } catch (err) {
+                        console.error("Failed to update fasting defaults:", err);
+                        showToast(t("settings.fastingDefaultsError", "Failed to update fasting defaults"), "error");
+                      }
+                    }}
+                    trackColor={{ false: "#767577", true: Colors.primary }}
+                    thumbColor={(userProfile?.fastingDefaults?.whiteDays ?? true) ? Colors.secondary : "#f4f3f4"}
+                  />
+                </View>
+
+                <View style={styles.settingRow}>
+                  <View style={styles.settingInfo}>
+                    <Text style={[styles.settingLabel, themedStyles.settingLabel]}>
+                      {t("settings.ramadan", "Ramadan")}
+                    </Text>
+                    <Text style={[styles.settingSub, themedStyles.settingSub]}>
+                      {t("settings.ramadanDesc", "Every day of Ramadan")}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={userProfile?.fastingDefaults?.ramadan ?? true}
+                    onValueChange={async (val) => {
+                      if (!currentUser?.uid) return;
+                      try {
+                        await updateDoc(doc(db, COLLECTIONS.profiles, currentUser.uid), {
+                          "fastingDefaults.ramadan": val,
+                        });
+                        showToast(t("settings.fastingDefaultsUpdated", "Fasting defaults updated"), "success");
+                      } catch (err) {
+                        console.error("Failed to update fasting defaults:", err);
+                        showToast(t("settings.fastingDefaultsError", "Failed to update fasting defaults"), "error");
+                      }
+                    }}
+                    trackColor={{ false: "#767577", true: Colors.primary }}
+                    thumbColor={(userProfile?.fastingDefaults?.ramadan ?? true) ? Colors.secondary : "#f4f3f4"}
+                  />
+                </View>
+
+                <View style={styles.settingRow}>
+                  <View style={styles.settingInfo}>
+                    <Text style={[styles.settingLabel, themedStyles.settingLabel]}>
+                      {t("settings.dhulHijjah", "Dhul-Hijjah")}
+                    </Text>
+                    <Text style={[styles.settingSub, themedStyles.settingSub]}>
+                      {t("settings.dhulHijjahDesc", "First 9 days of Dhul-Hijjah")}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={userProfile?.fastingDefaults?.dhulHijjah ?? true}
+                    onValueChange={async (val) => {
+                      if (!currentUser?.uid) return;
+                      try {
+                        await updateDoc(doc(db, COLLECTIONS.profiles, currentUser.uid), {
+                          "fastingDefaults.dhulHijjah": val,
+                        });
+                        showToast(t("settings.fastingDefaultsUpdated", "Fasting defaults updated"), "success");
+                      } catch (err) {
+                        console.error("Failed to update fasting defaults:", err);
+                        showToast(t("settings.fastingDefaultsError", "Failed to update fasting defaults"), "error");
+                      }
+                    }}
+                    trackColor={{ false: "#767577", true: Colors.primary }}
+                    thumbColor={(userProfile?.fastingDefaults?.dhulHijjah ?? true) ? Colors.secondary : "#f4f3f4"}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.sectionDivider} />
+
               <View style={styles.settingRow}>
                 <View style={styles.settingInfo}>
                   <Text

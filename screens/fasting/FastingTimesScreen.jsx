@@ -39,6 +39,13 @@ export const FastingTimesScreen = ({ navigation }) => {
   const [toastMsg, setToastMsg] = useState('');
   const [toastType, setToastType] = useState('info');
   const [refreshing, setRefreshing] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date()); // Used to trigger re-renders for lock state
+
+  // 1-second ticker to ensure the lock/unlock happens exactly on time
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const triggerToast = (msg, type) => {
     setToastMsg(msg);
@@ -116,12 +123,7 @@ export const FastingTimesScreen = ({ navigation }) => {
         );
       }
 
-      // Check if they are currently in or past their wake-up window for today
-      if (checkWakeUpWindow && checkWakeUpWindow(personalWakeUpMinutes)) {
-        triggerToast("Saved for tomorrow. Today's wake-up window has already started.", 'info');
-      } else {
-        triggerToast(t('fastingTimes.saveSuccess'), 'success');
-      }
+      triggerToast(t('fastingTimes.saveSuccess'), 'success');
       
     } catch (err) {
       console.error('Error saving wake-up time:', err);
@@ -142,6 +144,32 @@ export const FastingTimesScreen = ({ navigation }) => {
 
   const today = new Date();
   const hijri = getHijriDate(today);
+  const suhoorTime = todayData?.time?.sahur || '--:--';
+  const iftarTime = todayData?.time?.iftar || '--:--';
+  const personalWakeUp = calculateWakeUpTime(suhoorTime, personalWakeUpMinutes);
+
+  // --- LOCK LOGIC ---
+  // Locked from 12:00 Midnight until Suhoor ends.
+  const isPickerLocked = () => {
+    if (!todayData?.time?.sahur) return false; // Don't lock if we don't have the time yet
+    
+    const now = currentTime;
+    const currentHour = now.getHours();
+    
+    // If it's past noon, it's definitely unlocked (evening)
+    if (currentHour >= 12) return false;
+
+    // It's between midnight and noon. Check if we are past Suhoor.
+    const [suhoorH, suhoorM] = todayData.time.sahur.split(':').map(Number);
+    const suhoorDate = new Date();
+    suhoorDate.setHours(suhoorH, suhoorM, 0, 0);
+
+    // If it's currently BEFORE Suhoor, it's locked.
+    // If it's AFTER Suhoor (e.g. 6:00 AM), it's unlocked for tomorrow.
+    return now < suhoorDate;
+  };
+
+  const locked = isPickerLocked();
 
   if (loading) {
     return (
@@ -187,12 +215,6 @@ export const FastingTimesScreen = ({ navigation }) => {
     );
   }
 
-  const suhoorTime = todayData?.time?.sahur || '--:--';
-  const iftarTime = todayData?.time?.iftar || '--:--';
-  const defaultWakeUp = calculateWakeUpTime(suhoorTime, DEFAULT_WAKE_MINUTES);
-  
-  const personalWakeUp = calculateWakeUpTime(suhoorTime, personalWakeUpMinutes); 
-
   const locationStatus =
     location?.loaded && location.source === 'none'
       ? {
@@ -219,7 +241,7 @@ export const FastingTimesScreen = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
         }
       >
-        {/* Location Warning - only show when BOTH GPS is off AND no default location is set */}
+        {/* Location Warning */}
         {locationStatus && location.source === 'none' && (
           <View
             style={{
@@ -374,7 +396,7 @@ export const FastingTimesScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Wake Up Times Section */}
+        {/* Alarms Section */}
         <View
           style={{
             backgroundColor: colors.surface,
@@ -402,73 +424,172 @@ export const FastingTimesScreen = ({ navigation }) => {
             </Text>
           </View>
 
-          <View style={{ rowGap: 18 }}>
-            {/* <View style={{ rowGap: 6 }}>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>
-                {t('fastingTimes.defaultWakeUp')}
+          {locked ? (
+            /* LOCKED STATE */
+            <View style={{ alignItems: 'center', paddingVertical: 20 }}>
+              <View
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: 32,
+                  backgroundColor: colors.primary + '15',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 16,
+                }}
+              >
+                <Ionicons name="lock-closed" size={32} color={colors.primary} />
+              </View>
+              <Text
+                style={{
+                  fontSize: 16,
+                  fontWeight: '700',
+                  color: colors.text,
+                  textAlign: 'center',
+                  marginBottom: 8,
+                }}
+              >
+                Alarm Time Locked
               </Text>
-              <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-                {t('fastingTimes.defaultWakeUpSub', { minutes: DEFAULT_WAKE_MINUTES })}
+              <Text
+                style={{
+                  fontSize: 13,
+                  color: colors.textSecondary,
+                  textAlign: 'center',
+                  lineHeight: 20,
+                  paddingHorizontal: 20,
+                }}
+              >
+                Your alarm time is saved as {personalWakeUp}. You can only edit it before midnight. The selector will reappear after Suhoor ends at {suhoorTime}.
               </Text>
-              <Text style={{ fontSize: 28, fontWeight: '900', color: colors.primary, marginTop: 4 }}>{defaultWakeUp}</Text>
-            </View> */}
-
-            <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 4 }} />
-
-            <View style={{ rowGap: 6 }}>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>
-                {t('fastingTimes.personalWakeUp')}
-              </Text>
-              <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-                {t('fastingTimes.personalWakeUpSub')}
-              </Text>
-
-              {/* SAFE PRESET BUTTONS */}
-              <View style={{ alignItems: 'center', marginVertical: 20, paddingHorizontal: 10 }}>
-                <Text style={{ fontSize: 32, fontWeight: '900', color: colors.primary, marginBottom: 4 }}>
-                  {personalWakeUp}
+            </View>
+          ) : (
+            /* UNLOCKED STATE */
+            <View style={{ rowGap: 18 }}>
+              <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 4 }} />
+              <View style={{ rowGap: 6 }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>
+                  {t('fastingTimes.personalWakeUp')}
                 </Text>
-                <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 16, fontWeight: '500' }}>
-                  {t('fastingTimes.minutesBeforeValue', { minutes: personalWakeUpMinutes })}
+                <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+                  {t('fastingTimes.personalWakeUpSub')}
                 </Text>
-                
-                {/* Button Grid */}
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10 }}>
-                  {[15, 30, 45, 60, 90, 120].map((mins) => {
-                    const isActive = personalWakeUpMinutes === mins;
-                    return (
+
+                <View style={{ alignItems: 'center', marginVertical: 20, paddingHorizontal: 10 }}>
+                  <Text style={{ fontSize: 32, fontWeight: '900', color: colors.primary, marginBottom: 4 }}>
+                    {personalWakeUp}
+                  </Text>
+                  <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 16, fontWeight: '500' }}>
+                    {t('fastingTimes.minutesBeforeValue', { minutes: personalWakeUpMinutes })}
+                  </Text>
+                  
+                  <View style={{ width: '100%' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', columnGap: 8 }}>
                       <TouchableOpacity
-                        key={mins}
-                        onPress={() => setPersonalWakeUpMinutes(mins)}
+                        onPress={() =>
+                          setPersonalWakeUpMinutes((prev) =>
+                            Math.max(MIN_WAKE_MINUTES, prev - 5)
+                          )
+                        }
+                        disabled={personalWakeUpMinutes <= MIN_WAKE_MINUTES}
                         style={{
-                          paddingVertical: 10,
-                          paddingHorizontal: 20,
-                          borderRadius: 20,
+                          width: 40, height: 40, borderRadius: 20,
+                          alignItems: 'center', justifyContent: 'center',
                           borderWidth: 1.5,
-                          borderColor: isActive ? colors.primary : colors.border,
-                          backgroundColor: isActive ? colors.primary + '15' : colors.surface,
+                          borderColor: personalWakeUpMinutes <= MIN_WAKE_MINUTES ? colors.border : colors.primary,
+                          opacity: personalWakeUpMinutes <= MIN_WAKE_MINUTES ? 0.4 : 1,
                         }}
                       >
-                        <Text
-                          style={{
-                            fontSize: 14,
-                            fontWeight: isActive ? '700' : '500',
-                            color: isActive ? colors.primary : colors.textSecondary,
-                          }}
-                        >
-                          {mins} min
-                        </Text>
+                        <Ionicons name="remove" size={20} color={colors.primary} />
                       </TouchableOpacity>
-                    );
-                  })}
+
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={{ paddingHorizontal: 4, columnGap: 6 }}
+                        style={{ flex: 1 }}
+                      >
+                        {Array.from(
+                          { length: (MAX_WAKE_MINUTES - MIN_WAKE_MINUTES) / 5 + 1 },
+                          (_, i) => MIN_WAKE_MINUTES + i * 5
+                        ).map((mins) => {
+                          const isActive = personalWakeUpMinutes === mins;
+                          return (
+                            <TouchableOpacity
+                              key={`picker-${mins}`}
+                              onPress={() => setPersonalWakeUpMinutes(mins)}
+                              style={{
+                                minWidth: 44,
+                                paddingVertical: 8,
+                                paddingHorizontal: 10,
+                                borderRadius: 10,
+                                alignItems: 'center',
+                                borderWidth: 1,
+                                borderColor: isActive ? colors.primary : 'transparent',
+                                backgroundColor: isActive ? colors.primary + '20' : colors.surfaceVariant,
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  fontSize: 13,
+                                  fontWeight: isActive ? '800' : '500',
+                                  color: isActive ? colors.primary : colors.textSecondary,
+                                }}
+                              >
+                                {mins}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </ScrollView>
+
+                      <TouchableOpacity
+                        onPress={() =>
+                          setPersonalWakeUpMinutes((prev) =>
+                            Math.min(MAX_WAKE_MINUTES, prev + 5)
+                          )
+                        }
+                        disabled={personalWakeUpMinutes >= MAX_WAKE_MINUTES}
+                        style={{
+                          width: 40, height: 40, borderRadius: 20,
+                          alignItems: 'center', justifyContent: 'center',
+                          borderWidth: 1.5,
+                          borderColor: personalWakeUpMinutes >= MAX_WAKE_MINUTES ? colors.border : colors.primary,
+                          opacity: personalWakeUpMinutes >= MAX_WAKE_MINUTES ? 0.4 : 1,
+                        }}
+                      >
+                        <Ionicons name="add" size={20} color={colors.primary} />
+                      </TouchableOpacity>
+                    </View>
+
+                    <Text style={{ fontSize: 11, color: colors.textSecondary, textAlign: 'center', marginTop: 8 }}>
+                      Allowed: {MIN_WAKE_MINUTES}–{MAX_WAKE_MINUTES} minutes before Suhoor ends
+                    </Text>
+                  </View>
                 </View>
               </View>
 
-              <Text style={{ fontSize: 13, fontWeight: '600', marginTop: 8, textAlign: 'center', color: colors.accent }}>
-                {t('fastingTimes.calculated', { time: personalWakeUp })}
-              </Text>
+              <TouchableOpacity
+                style={[
+                  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', columnGap: 12, paddingVertical: 16, paddingHorizontal: 14, borderRadius: 12, marginTop: 8 },
+                  { backgroundColor: colors.primary },
+                ]}
+                onPress={handleSaveWakeUpTime}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <ActivityIndicator color={colors.white} size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="save-outline" size={18} color={colors.white} />
+                    <Text style={{ color: colors.white, fontWeight: '700', fontSize: 15 }}>
+                      {t('fastingTimes.saveWakeUp')}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </View>
-          </View>
+          )}
         </View>
 
         {/* Alarm Sound Section */}
@@ -516,26 +637,7 @@ export const FastingTimesScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-            style={[
-              { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', columnGap: 12, paddingVertical: 16, paddingHorizontal: 14, borderRadius: 12, marginTop: 8 },
-              { backgroundColor: colors.primary },
-            ]}
-            onPress={handleSaveWakeUpTime}
-            disabled={isSaving}
-          >
-            {isSaving ? (
-              <ActivityIndicator color={colors.white} size="small" />
-            ) : (
-              <>
-                <Ionicons name="save-outline" size={18} color={colors.white} />
-                <Text style={{ color: colors.white, fontWeight: '700', fontSize: 15 }}>
-                  {t('fastingTimes.saveWakeUp')}
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </ScrollView>
+      </ScrollView>
     </SafeAreaView>
   );
 };

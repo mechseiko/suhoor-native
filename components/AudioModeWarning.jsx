@@ -8,6 +8,17 @@ import { scheduleNotification } from '../services/notifications';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useFastingTimes } from '../hooks/useFastingTimes';
 
+// Safe import for the volume manager
+let VolumeManager = null;
+let RINGER_MODE = null;
+try {
+  const VolumeModule = require('react-native-volume-manager');
+  VolumeManager = VolumeModule.VolumeManager;
+  RINGER_MODE = VolumeModule.RINGER_MODE;
+} catch (e) {
+  // Library not installed, fail silently
+}
+
 export const AudioModeWarning = () => {
   const { colors } = useTheme();
   const { t } = useLanguage();
@@ -17,32 +28,78 @@ export const AudioModeWarning = () => {
   const [showWarning, setShowWarning] = useState(false);
   const [notificationSent, setNotificationSent] = useState(false);
 
+  // Check ringer mode and DND status
   useEffect(() => {
-    if (Platform.OS === 'android') {
-      checkAudioMode();
-      
-      // Check audio mode every 30 seconds
-      const interval = setInterval(checkAudioMode, 30000);
-      return () => clearInterval(interval);
-    }
+    if (Platform.OS !== 'android' || !VolumeManager) return;
+
+    let isMounted = true;
+    let subscription = null;
+
+    const checkStatus = async () => {
+      try {
+        // 1. Get Ringer Mode (silent, vibrate, normal)
+        const mode = await VolumeManager.getRingerMode();
+        if (isMounted) {
+          setIsSilent(mode === RINGER_MODE.silent || mode === RINGER_MODE.vibrate);
+        }
+
+        // 2. Check if device is in a silent state (includes DND)
+        const deviceSilent = await VolumeManager.isAndroidDeviceSilent();
+        if (isMounted) {
+          setIsDND(deviceSilent);
+        }
+      } catch (e) {
+        // Silently fail
+      }
+    };
+
+    // Subscribe to real-time changes
+    const subscribe = () => {
+      try {
+        subscription = VolumeManager.addRingerListener((status) => {
+          if (isMounted) {
+            // Correct property is status.ringerMode
+            const currentMode = status.ringerMode;
+            setIsSilent(currentMode === RINGER_MODE.silent || currentMode === RINGER_MODE.vibrate);
+            
+            // Re-check DND when ringer mode changes
+            VolumeManager.isAndroidDeviceSilent().then((silent) => {
+              if (isMounted) setIsDND(silent);
+            }).catch(() => {});
+          }
+        });
+      } catch (e) {}
+    };
+
+    checkStatus();
+    subscribe();
+
+    // Fallback polling every 30 seconds
+    const interval = setInterval(checkStatus, 30000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      if (subscription) {
+        try {
+          VolumeManager.removeRingerListener(subscription);
+        } catch (e) {}
+      }
+    };
   }, []);
 
+  // Show warning logic (8 PM to Fajr)
   useEffect(() => {
     if (todayData && (isSilent || isDND)) {
       const now = new Date();
       const currentHour = now.getHours();
       
-      // Check if we're in the critical period (8 PM to Fajr)
       const fajrTime = todayData.fajr ? new Date(todayData.fajr) : new Date();
-      fajrTime.setHours(4, 30, 0, 0); // Default to 4:30 AM if no specific time
-      
-      const eightPM = new Date();
-      eightPM.setHours(20, 0, 0, 0);
+      fajrTime.setHours(4, 30, 0, 0);
       
       if (currentHour >= 20 || currentHour < fajrTime.getHours()) {
         setShowWarning(true);
         
-        // Send notification if not already sent
         if (!notificationSent) {
           sendSilentModeNotification();
           setNotificationSent(true);
@@ -51,23 +108,10 @@ export const AudioModeWarning = () => {
         setShowWarning(false);
         setNotificationSent(false);
       }
+    } else {
+      setShowWarning(false);
     }
-  }, [isSilent, isDND, todayData]);
-
-  const checkAudioMode = async () => {
-    if (Platform.OS === 'android') {
-      try {
-        // Without a dedicated native ringer module, do not falsely assume the user is on silent/DND.
-        // Keep isSilent and isDND false unless confirmed.
-        const hasDismissedWarning = await AsyncStorage.getItem('suhoor_audio_warning_dismissed');
-        if (hasDismissedWarning) {
-          setShowWarning(false);
-        }
-      } catch (error) {
-        console.error('Error checking audio mode:', error);
-      }
-    }
-  };
+  }, [isSilent, isDND, todayData, notificationSent]);
 
   const sendSilentModeNotification = async () => {
     try {
@@ -90,7 +134,7 @@ export const AudioModeWarning = () => {
 
   const handleOpenSettings = () => {
     Linking.openSettings().catch(() => {
-      Alert.alert('Error', 'Could not open settings');
+      Alert.alert(t('common.error'), t('common.settingsError'));
     });
   };
 

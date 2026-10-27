@@ -11,6 +11,8 @@ import {
   TextInput,
   Modal,
   FlatList,
+  Image,
+  Platform,
 } from 'react-native';
 import {
   doc,
@@ -33,6 +35,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import Toast from '../../components/Toast';
 import { copyToClipboard } from '../../utils/clipboard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { uploadGroupPicture, deleteProfilePicture } from '../../services/cloudinary';
 
 export const GroupSettingsScreen = ({ route, navigation }) => {
   const {
@@ -75,6 +78,9 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
   const [adminSearch, setAdminSearch] = useState('');
   const [updatingAdminId, setUpdatingAdminId] = useState(null);
 
+  // Group picture upload state
+  const [isUploadingGroupPicture, setIsUploadingGroupPicture] = useState(false);
+
   // Toast state
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
@@ -97,7 +103,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
       .then((val) => {
         if (val === 'true') setMuteNotifications(true);
       })
-      .catch((_) => {});
+      .catch((_) => { });
   }, [groupId]);
 
   const handleToggleMute = async (val) => {
@@ -108,7 +114,107 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
         val ? t('groups.notificationsMuted', 'Notifications muted for this group') : t('groups.notificationsUnmuted', 'Notifications unmuted for this group'),
         'info'
       );
-    } catch (_) {}
+    } catch (_) { }
+  };
+
+  // Group picture handling
+  const pickImage = async () => {
+    if (Platform.OS === 'web') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      return new Promise((resolve) => {
+        input.onchange = (e) => {
+          const file = e.target.files[0];
+          if (file) resolve(file);
+          else resolve(null);
+        };
+        input.click();
+      });
+    } else {
+      try {
+        const DocumentPicker =
+          require("react-native-document-picker").default ||
+          require("react-native-document-picker");
+        const res = await DocumentPicker.pickSingle({
+          type: [DocumentPicker.types.images],
+          copyTo: "cachesDirectory",
+        });
+        return {
+          uri: res.fileCopyUri || res.uri,
+          type: res.type || "image/jpeg",
+          name: res.name || "group.jpg",
+        };
+      } catch (err) {
+        if (err?.code !== "DOCUMENT_PICKER_CANCELED") {
+          console.error("Image pick error:", err);
+        }
+        return null;
+      }
+    }
+  };
+
+  const handleUploadGroupPicture = async () => {
+    if (!groupId || !isAdmin) return;
+    try {
+      const file = await pickImage();
+      if (!file) return;
+
+      setIsUploadingGroupPicture(true);
+      const { url, publicId } = await uploadGroupPicture(file, groupId);
+
+      await updateDoc(doc(db, COLLECTIONS.groups, groupId), {
+        group_picture_url: url,
+        group_picture_public_id: publicId,
+        updated_at: serverTimestamp(),
+      });
+
+      setGroup((prev) => ({ ...prev, group_picture_url: url, group_picture_public_id: publicId }));
+      triggerToast(t('groups.groupPictureUpdated', 'Group picture updated successfully!'), 'success');
+    } catch (error) {
+      console.error("Group picture upload failed:", error);
+      triggerToast(error.message || t('groups.uploadFailed', 'Failed to upload group picture'), 'error');
+    } finally {
+      setIsUploadingGroupPicture(false);
+    }
+  };
+
+  const handleRemoveGroupPicture = async () => {
+    if (!groupId || !isAdmin) return;
+    Alert.alert(
+      t('groups.removeGroupPictureTitle', 'Remove Group Picture'),
+      t('groups.removeGroupPictureConfirm', 'Are you sure you want to remove the group picture?'),
+      [
+        { text: t('common.cancel', 'Cancel'), style: 'cancel' },
+        {
+          text: t('common.remove', 'Remove'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsUploadingGroupPicture(true);
+              const publicId = group?.group_picture_public_id;
+              if (publicId) {
+                await deleteProfilePicture(publicId);
+              }
+
+              await updateDoc(doc(db, COLLECTIONS.groups, groupId), {
+                group_picture_url: null,
+                group_picture_public_id: null,
+                updated_at: serverTimestamp(),
+              });
+
+              setGroup((prev) => ({ ...prev, group_picture_url: null, group_picture_public_id: null }));
+              triggerToast(t('groups.groupPictureRemoved', 'Group picture removed'), 'success');
+            } catch (error) {
+              console.error("Group picture removal failed:", error);
+              triggerToast(error.message || t('groups.removeFailed', 'Failed to remove group picture'), 'error');
+            } finally {
+              setIsUploadingGroupPicture(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const fetchGroupDetailsAndMembers = async () => {
@@ -124,9 +230,9 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
         setGroup(data);
         setEditedName(data.name || groupName);
         setOnlyAdminsEdit(data.only_admins_edit ?? true);
-        setOnlyAdminsInvite(data.only_admins_invite ?? true);
-        setOnlyAdminsBuzz(data.only_admins_buzz ?? true);
-        setRequireApproval(data.require_approval ?? true);
+        setOnlyAdminsInvite(data.only_admins_invite ?? false);
+        setOnlyAdminsBuzz(data.only_admins_buzz ?? false);
+        setRequireApproval(data.require_approval ?? false);
       }
 
       // 2. Fetch all members with profiles
@@ -158,7 +264,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
 
       // Determine if current user is admin
       if (currentUser) {
-        if (data?.creator_id === currentUser.uid) {
+        if (data?.created_by === currentUser.uid) {
           setIsAdmin(true);
         } else {
           const currentMembership = memberArray.find(
@@ -296,7 +402,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
 
     Alert.alert(
       t('groups.makeAdminTitle', 'Make Group Admin'),
-      t('groups.makeAdminConfirmSelected', { name: memberName }),
+      t('groups.makeAdminConfirm', { name: memberName }),
       [
         { text: t('common.cancel', 'Cancel'), style: 'cancel' },
         {
@@ -529,6 +635,51 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               {t('groups.groupInfo', 'Group Information')}
             </Text>
+          </View>
+
+          {/* Group Picture */}
+          <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
+              {t('groups.groupPicture', 'Group Picture')}
+            </Text>
+            <View style={styles.groupPictureRow}>
+              {group?.group_picture_url ? (
+                <Image
+                  source={{ uri: group.group_picture_url }}
+                  style={styles.groupPicturePreview}
+                />
+              ) : (
+                <View style={[styles.groupPicturePlaceholder, { backgroundColor: colors.primary + '20' }]}>
+                  <Text style={[styles.groupPicturePlaceholderText, { color: colors.primary }]}>
+                    {(group?.name || groupName || '?')[0].toUpperCase()}
+                  </Text>
+                </View>
+              )}
+              {isAdmin && (
+                <View style={styles.groupPictureActions}>
+                  <TouchableOpacity
+                    onPress={handleUploadGroupPicture}
+                    disabled={isUploadingGroupPicture}
+                    style={styles.groupPictureActionBtn}
+                  >
+                    {isUploadingGroupPicture ? (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    ) : (
+                      <Ionicons name="camera" size={18} color={colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                  {group?.group_picture_url && (
+                    <TouchableOpacity
+                      onPress={handleRemoveGroupPicture}
+                      disabled={isUploadingGroupPicture}
+                      style={styles.groupPictureActionBtn}
+                    >
+                      <Ionicons name="trash" size={18} color={colors.error} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+            </View>
           </View>
 
           <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
@@ -831,15 +982,13 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
                       <TouchableOpacity
                         onPress={() => handleDismissAdmin(adminMember)}
                         disabled={updatingAdminId === adminMember.id}
-                        style={styles.dismissBtn}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={{ padding: 6, marginLeft: 8 }}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                       >
                         {updatingAdminId === adminMember.id ? (
                           <ActivityIndicator size="small" color={colors.error} />
                         ) : (
-                          <Text style={{ color: colors.error, fontSize: 12, fontWeight: '600' }}>
-                            {t('groups.dismiss', 'Dismiss')}
-                          </Text>
+                          <Ionicons name="trash-outline" size={18} color={colors.error} />
                         )}
                       </TouchableOpacity>
                     )}
@@ -890,9 +1039,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
             <View style={[styles.switchRow, { borderBottomColor: colors.border }]}>
               <View style={styles.switchLabelBlock}>
                 <Text style={[styles.switchTitle, { color: colors.text }]}>
-                  {onlyAdminsBuzz
-                    ? t('groups.adminsOnlyBuzz', 'Only admins can buzz and wake up members')
-                    : t('groups.allMembersBuzz', 'All members can buzz and wake up fellow fasters')}
+                  {t('groups.adminsOnlyBuzz', 'Only admins can buzz and wake up members')}
                 </Text>
               </View>
               <Switch
@@ -911,9 +1058,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
             <View style={[styles.switchRow, { borderBottomColor: colors.border }]}>
               <View style={styles.switchLabelBlock}>
                 <Text style={[styles.switchTitle, { color: colors.text }]}>
-                  {onlyAdminsInvite
-                    ? t('groups.adminsOnlyInvite', 'Only admins can share invite code')
-                    : t('groups.allMembersInvite', 'All members can share invite code')}
+                  {t('groups.adminsOnlyInvite', 'Only admins can share invite code')}
                 </Text>
               </View>
               <Switch
@@ -1082,7 +1227,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
                   {t('groups.addAdmin', 'Add Group Admin')}
                 </Text>
                 <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
-                  {t('groups.makeAdminConfirm', 'Select a member to grant admin permissions')}
+                  Select a member to grant admin permissions
                 </Text>
               </View>
               <TouchableOpacity
@@ -1301,6 +1446,36 @@ const styles = StyleSheet.create({
   },
   cancelBtn: {
     padding: 4,
+  },
+  groupPictureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    columnGap: 12,
+  },
+  groupPicturePreview: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  groupPicturePlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  groupPicturePlaceholderText: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  groupPictureActions: {
+    flexDirection: 'row',
+    columnGap: 8,
+  },
+  groupPictureActionBtn: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
   },
   keyRow: {
     flexDirection: 'row',

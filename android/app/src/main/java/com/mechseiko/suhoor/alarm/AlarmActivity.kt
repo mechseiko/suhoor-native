@@ -119,10 +119,17 @@ class AlarmActivity : AppCompatActivity() {
         val alarmRoot = findViewById<View>(R.id.alarm_root)
 
         titleTextView?.text = when (alarmData?.type) {
-            "wake_up" -> "Wake Up, It's time for suhoor"
-            "recheck" -> "You haven't checked in, check in now to stop being buzzed"
-            "remote_buzz" -> "A member of your group is buzzing you"
-            else -> "Alarm"
+            "wake_up" -> getString(R.string.alarm_type_wake_up)
+            "remote_buzz" -> getString(R.string.alarm_type_remote_buzz)
+            else -> getString(R.string.alarm_type_default)
+        }
+
+        // For remote buzz, display who is buzzing if available in alarm data
+        // AlarmData can be extended to include fromUserName and groupName
+        if (alarmData?.type == "remote_buzz") {
+            timeTextView?.text = "Tap to enter PIN and dismiss"
+        } else {
+            timeTextView?.text = alarmData?.let { Date(it.triggerTime).toString() } ?: "Now"
         }
 
         timeTextView?.text = alarmData?.let { Date(it.triggerTime).toString() } ?: "Now"

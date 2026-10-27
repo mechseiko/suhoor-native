@@ -59,7 +59,7 @@ class AlarmBridgeModule(reactContext: ReactApplicationContext) : ReactContextBas
      * @param triggerTime Time when alarm should trigger (timestamp in milliseconds)
      * @param userId User ID for logging purposes
      * @param groupId Group ID for logging purposes
-     * @param alarmType Type of alarm (wake_up, recheck, remote_buzz)
+     * @param alarmType Type of alarm (wake_up, remote_buzz)
      * @param promise Promise to resolve with success status
      */
     @ReactMethod

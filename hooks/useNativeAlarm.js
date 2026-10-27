@@ -45,7 +45,7 @@ export function useNativeAlarm() {
    * @param {number} triggerTime - Time when alarm should trigger (timestamp in milliseconds)
    * @param {string} userId - User ID for logging purposes
    * @param {string} groupId - Group ID for logging purposes
-   * @param {string} alarmType - Type of alarm (wake_up, recheck, remote_buzz)
+   * @param {string} alarmType - Type of alarm (wake_up, remote_buzz)
    * @returns {Promise<boolean>} - True if alarm was scheduled successfully
    */
   const scheduleAlarm = async (

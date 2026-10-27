@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { StyleSheet, View, RefreshControl } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
-import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useGamification } from "../../hooks/useGamification";
@@ -47,15 +46,13 @@ export const MilestonesScreen = () => {
         />
       }
     >
-      {/* A plain View, not a ScrollView: `Screen` already scrolls and owns the
-          RefreshControl, and a nested vertical ScrollView swallowed both the
-          pull-to-refresh gesture and the frame's top padding. */}
       <GamificationCelebration
         celebration={celebration}
         onDismiss={dismissCelebration}
       />
       <View style={styles.scrollContent}>
-        {/* Current Level Card */}
+        
+        {/* Level Card */}
         <Card style={styles.levelCard}>
           <View style={styles.levelHeader}>
             <View
@@ -71,7 +68,10 @@ export const MilestonesScreen = () => {
                 Level {currentLevel.level} • {currentLevel.name}
               </Text>
               <Text variant="caption" tone="secondary">
-                {stats.points} SP
+                <Text style={{ fontWeight: "800", color: colors.text }}>
+                  {stats.points}
+                </Text>{" "}
+                Suhoor Points
               </Text>
             </View>
           </View>
@@ -111,26 +111,24 @@ export const MilestonesScreen = () => {
           <View style={styles.statsGrid}>
             <View style={styles.statItem}>
               <Text variant="h3" tone="primary" style={styles.statValue}>
-                {stats.successfulWakeups}
-              </Text>
-              <Text variant="caption" tone="secondary" style={styles.statLabel}>
-                Wake-ups
-              </Text>
-            </View>
-            <View
-              style={[styles.statDivider, { backgroundColor: colors.border }]}
-            />
-            <View style={styles.statItem}>
-              <Text variant="h3" tone="primary" style={styles.statValue}>
                 {stats.totalFastingDays}
               </Text>
               <Text variant="caption" tone="secondary" style={styles.statLabel}>
                 Fasting Days
               </Text>
             </View>
-            <View
-              style={[styles.statDivider, { backgroundColor: colors.border }]}
-            />
+            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+            
+            <View style={styles.statItem}>
+              <Text variant="h3" tone="primary" style={styles.statValue}>
+                {stats.earlyBirds}
+              </Text>
+              <Text variant="caption" tone="secondary" style={styles.statLabel}>
+                Early Birds
+              </Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+            
             <View style={styles.statItem}>
               <Text variant="h3" tone="primary" style={styles.statValue}>
                 {stats.membersBuzzed}
@@ -146,7 +144,7 @@ export const MilestonesScreen = () => {
         {unlockedBadges.length > 0 && (
           <Card>
             <View style={styles.sectionHeader}>
-              <Text variant="h3">Unlocked Badges</Text>
+              <Text variant="h3">{t('milestones.unlockedBadges')}</Text>
               <Badge label={`${unlockedBadges.length}`} tone="primary" />
             </View>
             <View style={styles.badgesGrid}>
@@ -190,7 +188,7 @@ export const MilestonesScreen = () => {
         {lockedBadges.length > 0 && (
           <Card>
             <View style={styles.sectionHeader}>
-              <Text variant="h3">Locked Badges</Text>
+              <Text variant="h3">{t('milestones.lockedBadges')}</Text>
               <Badge label={`${lockedBadges.length}`} tone="secondary" />
             </View>
             <View style={styles.badgesGrid}>
@@ -251,7 +249,7 @@ export const MilestonesScreen = () => {
         {/* All Levels */}
         <Card>
           <View style={styles.sectionHeader}>
-            <Text variant="h3">All Levels</Text>
+            <Text variant="h3">{t('milestones.allLevels')}</Text>
           </View>
           <View style={styles.levelsList}>
             {BARAKAH_TIERS.map((tier) => {
@@ -326,9 +324,6 @@ export const MilestonesScreen = () => {
 
 const styles = StyleSheet.create({
   scrollContent: {
-    // Screen's contentContainer already supplies the gutter and its `rowGap`
-    // only reaches its own direct children, so the section spacing is repeated
-    // here for the cards inside this wrapper.
     rowGap: 18,
   },
   bold: {

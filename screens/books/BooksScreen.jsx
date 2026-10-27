@@ -7,11 +7,11 @@ import {
   SafeAreaView,
   StyleSheet,
   TextInput,
+  Linking,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { useTheme } from "../../context/ThemeContext";
 import { useLanguage } from "../../context/LanguageContext";
-import { Linking } from "react-native";
 
 const WEB_BASE_URL = "https://suhoor-group.web.app";
 
@@ -157,7 +157,9 @@ export const BooksScreen = ({ navigation }) => {
                 <Ionicons name="book-outline" size={24} color="#6366F1" />
               </View>
               <View style={styles.pagesBadge}>
-                <Text style={styles.pagesText}>{t("common.pages", "pages")}</Text>
+                <Text style={styles.pagesText}>
+                  {book.pages} {t("common.pages", "pages")}
+                </Text>
               </View>
             </View>
 

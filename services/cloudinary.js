@@ -12,7 +12,8 @@ import {
 const CLOUDINARY_CLOUD_NAME = EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_API_KEY = EXPO_PUBLIC_CLOUDINARY_API_KEY;
 const CLOUDINARY_API_SECRET = EXPO_PUBLIC_CLOUDINARY_API_SECRET;
-const FOLDER_NAME = 'suhoorProfilePictures';
+const PROFILE_FOLDER = 'suhoorProfilePictures';
+const GROUP_FOLDER = 'suhoorGroupPictures';
 
 /**
  * Pure JavaScript SHA-1 implementation (RFC 3174)
@@ -107,10 +108,10 @@ function generateSignature(params) {
  */
 export async function uploadProfilePicture(file, userId) {
   const timestamp = Math.floor(Date.now() / 1000);
-  const publicId = `${FOLDER_NAME}/user_${userId}`;
+  const publicId = `${PROFILE_FOLDER}/user_${userId}`;
 
   const paramsToSign = {
-    folder: FOLDER_NAME,
+    folder: PROFILE_FOLDER,
     overwrite: 'true',
     public_id: publicId,
     timestamp: String(timestamp),
@@ -121,7 +122,7 @@ export async function uploadProfilePicture(file, userId) {
   const formData = new FormData();
   formData.append('api_key', CLOUDINARY_API_KEY);
   formData.append('timestamp', String(timestamp));
-  formData.append('folder', FOLDER_NAME);
+  formData.append('folder', PROFILE_FOLDER);
   formData.append('public_id', publicId);
   formData.append('overwrite', 'true');
   formData.append('signature', signature);
@@ -153,6 +154,68 @@ export async function uploadProfilePicture(file, userId) {
 
   if (!response.ok) {
     throw new Error(data.error?.message || 'Failed to upload profile picture to Cloudinary');
+  }
+
+  return {
+    url: data.secure_url,
+    publicId: data.public_id,
+  };
+}
+
+/**
+ * Upload a group picture to Cloudinary
+ * @param {string|object} file - file URI on native or File/Blob object on web
+ * @param {string} groupId - group ID
+ * @returns {Promise<{ url: string, publicId: string }>}
+ */
+export async function uploadGroupPicture(file, groupId) {
+  const timestamp = Math.floor(Date.now() / 1000);
+  const publicId = `${GROUP_FOLDER}/group_${groupId}`;
+
+  const paramsToSign = {
+    folder: GROUP_FOLDER,
+    overwrite: 'true',
+    public_id: publicId,
+    timestamp: String(timestamp),
+  };
+
+  const signature = generateSignature(paramsToSign);
+
+  const formData = new FormData();
+  formData.append('api_key', CLOUDINARY_API_KEY);
+  formData.append('timestamp', String(timestamp));
+  formData.append('folder', GROUP_FOLDER);
+  formData.append('public_id', publicId);
+  formData.append('overwrite', 'true');
+  formData.append('signature', signature);
+
+  if (Platform.OS === 'web') {
+    if (file instanceof File || file instanceof Blob) {
+      formData.append('file', file);
+    } else if (typeof file === 'string') {
+      formData.append('file', file);
+    }
+  } else {
+    // React Native format
+    formData.append('file', {
+      uri: typeof file === 'string' ? file : file.uri,
+      type: file.type || 'image/jpeg',
+      name: file.name || `group_${groupId}.jpg`,
+    });
+  }
+
+  const response = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+    {
+      method: 'POST',
+      body: formData,
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error?.message || 'Failed to upload group picture to Cloudinary');
   }
 
   return {

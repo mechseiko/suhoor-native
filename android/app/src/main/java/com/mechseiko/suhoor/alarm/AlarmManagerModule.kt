@@ -35,7 +35,7 @@ class AlarmManagerModule(private val context: Context) {
      * @param triggerTime Time when alarm should trigger (timestamp in milliseconds)
      * @param userId User ID for logging purposes
      * @param groupId Group ID for logging purposes
-     * @param alarmType Type of alarm (wake_up, recheck, remote_buzz)
+     * @param alarmType Type of alarm (wake_up, remote_buzz)
      * @return true if alarm was scheduled successfully
      */
     fun scheduleAlarm(

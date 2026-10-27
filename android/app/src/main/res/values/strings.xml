@@ -2,4 +2,15 @@
   <string name="app_name">Suhoor</string>
   <string name="expo_splash_screen_resize_mode" translatable="false">contain</string>
   <string name="expo_splash_screen_status_bar_translucent" translatable="false">false</string>
+  <string name="alarm_title">WAKE UP!</string>
+  <string name="alarm_time_for_suhoor">It\'s time for Suhoor</string>
+  <string name="alarm_pin_required">4-digit PIN required to dismiss</string>
+  <string name="alarm_dismiss_button">Dismiss Alarm (Enter PIN)</string>
+  <string name="alarm_notification_title">It\'s time for Suhoor</string>
+  <string name="alarm_notification_text">It\'s time for Suhoor! Wake up and enter PIN to dismiss</string>
+  <string name="alarm_type_wake_up">Wake Up, It\'s time for suhoor</string>
+  <string name="alarm_type_remote_buzz">You\'re Being Buzzed!</string>
+  <string name="alarm_type_default">Alarm</string>
+  <string name="alarm_buzz_notification_title">You\'re Being Buzzed!</string>
+  <string name="alarm_buzz_notification_text">A group member is buzzing you. Wake up and enter PIN to dismiss</string>
 </resources>

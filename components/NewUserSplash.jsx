@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react'
 import { View, Text, Image, StyleSheet, Dimensions, Animated, Easing, Platform } from 'react-native'
+import { useLanguage } from '../context/LanguageContext'
 
 const { width } = Dimensions.get('window')
 const isNative = Platform.OS !== 'web'
@@ -9,6 +10,7 @@ const isNative = Platform.OS !== 'web'
  * Smooth cascade effect: Logo slides from left, Text slides from right.
  */
 const NewUserSplash = ({ onFinish, duration = 2400 }) => {
+  const { t } = useLanguage()
   // Animation values
   const logoOpacity = useRef(new Animated.Value(0)).current
   const logoTranslateX = useRef(new Animated.Value(-30)).current // Starts 30px to the left
@@ -103,8 +105,8 @@ const NewUserSplash = ({ onFinish, duration = 2400 }) => {
           },
         ]}
       >
-        <Text style={styles.brandTitle}>Suhoor</Text>
-        <Text style={styles.brandSubtitle}>Wake up for suhoor in groups</Text>
+        <Text style={styles.brandTitle}>{t('app.name')}</Text>
+        <Text style={styles.brandSubtitle}>{t('hero.subtitle')}</Text>
       </Animated.View>
     </Animated.View>
   )

@@ -1,12 +1,3 @@
-/**
- * useGamification — mirrors the web hook (src/hooks/useGamification.js).
- *
- * Uses the same BADGES, BARAKAH_TIERS and getBarakahLevel from
- * firestoreSchema.js so that levels, milestone names and point values are
- * identical across web and native. Both apps read / write the same Firestore
- * collection (gamification_stats/{uid}).
- */
-
 import { useState, useEffect, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../context/AuthContext";
@@ -31,21 +22,21 @@ import {
 
 const EMPTY_STATS = {
   points: 0,
-  successfulWakeups: 0,
   totalFastingDays: 0,
+  earlyBirds: 0,
   membersBuzzed: 0,
   sunnahFasts: 0,
   badges: [],
 };
 
 export function useGamification() {
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
   const [stats, setStats] = useState(EMPTY_STATS);
   const [loading, setLoading] = useState(true);
-  const [wakeDates, setWakeDates] = useState([]);
+  const [wakeLogs, setWakeLogs] = useState([]);
   const [celebration, setCelebration] = useState(null);
 
-  // Live-sync gamification stats from Firestore
+  // 1. Live-sync stats from Firestore
   useEffect(() => {
     if (!currentUser?.uid) {
       setLoading(false);
@@ -65,8 +56,8 @@ export function useGamification() {
           const data = snapshot.data();
           setStats({
             points: data.points || 0,
-            successfulWakeups: data.successful_wakeups || 0,
             totalFastingDays: data.total_fasting_days || 0,
+            earlyBirds: data.early_birds || 0,
             membersBuzzed: data.members_buzzed || 0,
             sunnahFasts: data.sunnah_fasts || 0,
             badges: data.badges || [],
@@ -86,16 +77,16 @@ export function useGamification() {
     return () => unsubscribe();
   }, [currentUser]);
 
-  // Derive totalFastingDays from wake_up_logs (same source as web)
+  // 2. Fetch wake logs to calculate Fasting Days and Early Birds
   useEffect(() => {
     if (!currentUser?.uid) {
-      setWakeDates([]);
+      setWakeLogs([]);
       return;
     }
 
     let cancelled = false;
 
-    const fetchWakeDates = async () => {
+    const fetchWakeLogs = async () => {
       try {
         const logsQuery = query(
           collection(db, COLLECTIONS.wakeUpLogs),
@@ -103,16 +94,15 @@ export function useGamification() {
         );
         const snap = await getDocs(logsQuery);
         if (cancelled) return;
-        const dates = [
-          ...new Set(snap.docs.map((d) => d.data().date).filter(Boolean)),
-        ];
-        setWakeDates(dates);
+        
+        const logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setWakeLogs(logs);
       } catch (err) {
-        console.warn("Could not fetch wake dates:", err);
+        console.warn("Could not fetch wake logs:", err);
       }
     };
 
-    fetchWakeDates();
+    fetchWakeLogs();
     return () => {
       cancelled = true;
     };
@@ -129,18 +119,22 @@ export function useGamification() {
           gamificationStatsId(currentUser.uid)
         );
 
-        // Read current totals from the snapshot state (already synced)
         let points = stats.points;
-        let successfulWakeups = stats.successfulWakeups;
         let totalFastingDays = stats.totalFastingDays;
+        let earlyBirds = stats.earlyBirds;
         let membersBuzzed = stats.membersBuzzed;
         let sunnahFasts = stats.sunnahFasts;
         const badgeSet = new Set(stats.badges);
 
         if (type === "wake_up") {
-          successfulWakeups += 1;
-          totalFastingDays = wakeDates.length + 1;
-          points += 20;
+          totalFastingDays += 1;
+          points += 10; // Base 10 for fasting
+          
+          if (payload.isEarlyBird) {
+            earlyBirds += 1;
+            badgeSet.add(BADGES.EARLY_BIRD.id);
+            points += 15; // Extra 15 for early bird
+          }
 
           badgeSet.add(BADGES.FIRST_SUHOOR.id);
           if (totalFastingDays >= 3) badgeSet.add(BADGES.DAYS_3.id);
@@ -148,34 +142,31 @@ export function useGamification() {
           if (totalFastingDays >= 14) badgeSet.add(BADGES.DAYS_14.id);
           if (totalFastingDays >= 30) badgeSet.add(BADGES.DAYS_30.id);
 
-          if (payload.minutesBeforeFajr && payload.minutesBeforeFajr >= 40) {
-            badgeSet.add(BADGES.EARLY_BIRD.id);
-            points += BADGES.EARLY_BIRD.points;
-          }
         } else if (type === "buzz_member") {
           membersBuzzed += 1;
-          points += 15;
+          points += 2; // Reduced from 8 to prevent spam
           if (membersBuzzed >= 5) {
             badgeSet.add(BADGES.GROUP_GUARDIAN.id);
             points += BADGES.GROUP_GUARDIAN.points;
           }
         } else if (type === "sunnah_fast") {
           sunnahFasts += 1;
-          points += 25;
+          points += 15;
           if (sunnahFasts >= 8) {
             badgeSet.add(BADGES.SUNNAH_DEVOTEE.id);
             points += BADGES.SUNNAH_DEVOTEE.points;
           }
         } else if (type === "read_resource") {
-          points += 10;
+          points += 5;
           badgeSet.add(BADGES.KNOWLEDGE_SEEKER.id);
         }
 
         const updated = gamificationDoc({
           userId: currentUser.uid,
           points,
-          successfulWakeups,
+          successfulWakeups: totalFastingDays, // DB compat
           totalFastingDays,
+          earlyBirds,
           membersBuzzed,
           sunnahFasts,
           badges: Array.from(badgeSet),
@@ -186,10 +177,10 @@ export function useGamification() {
         const previousLevel = getBarakahLevel(stats.points);
         const updatedLevel = getBarakahLevel(points);
         if (updatedLevel.level > previousLevel.level) {
-          // Check if we've already celebrated this level
-          const lastCelebratedLevel = await AsyncStorage.getItem('suhoor_last_celebrated_level');
+          const storageKey = `suhoor_last_celebrated_level_${currentUser.uid}`;
+          const lastCelebratedLevel = await AsyncStorage.getItem(storageKey);
           if (lastCelebratedLevel !== String(updatedLevel.level)) {
-            await AsyncStorage.setItem('suhoor_last_celebrated_level', String(updatedLevel.level));
+            await AsyncStorage.setItem(storageKey, String(updatedLevel.level));
             setCelebration({
               level: updatedLevel.level,
               name: updatedLevel.name,
@@ -201,11 +192,27 @@ export function useGamification() {
         console.error("Error recording gamification activity:", err);
       }
     },
-    [currentUser, stats, wakeDates]
+    [currentUser, stats]
   );
 
+  // 3. Dynamic Early Bird Calculation for existing logs
+  const calculatedEarlyBirds = useCallback(() => {
+    let count = 0;
+    wakeLogs.forEach(log => {
+      if (!log.woke_up_at) return;
+      const wokeUpDate = new Date(log.woke_up_at);
+      const wokeUpHour = wokeUpDate.getHours();
+      const wokeUpMinute = wokeUpDate.getMinutes();
+      
+      // If they woke up before 4:30 AM, consider it an Early Bird
+      if (wokeUpHour < 4 || (wokeUpHour === 4 && wokeUpMinute < 30)) {
+        count++;
+      }
+    });
+    return count;
+  }, [wakeLogs]);
+
   const currentLevel = getBarakahLevel(stats.points);
-  const statsWithTotalDays = { ...stats, totalFastingDays: wakeDates.length };
   const nextTier = BARAKAH_TIERS.find(
     (t) => t.level === currentLevel.level + 1
   );
@@ -224,7 +231,11 @@ export function useGamification() {
     : 100;
 
   return {
-    stats: statsWithTotalDays,
+    stats: {
+      ...stats,
+      totalFastingDays: new Set(wakeLogs.map(l => l.date)).size,
+      earlyBirds: calculatedEarlyBirds(), // Override with exact calculation
+    },
     loading,
     currentLevel,
     nextTier,
@@ -233,7 +244,6 @@ export function useGamification() {
     celebration,
     dismissCelebration: () => setCelebration(null),
     allBadges: Object.values(BADGES),
-    // Legacy-compat exports (for any screens still using old API)
     badges: stats.badges,
     refreshStats: () => {},
   };

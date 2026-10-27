@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useRef } from 'react'
 import { Animated, Dimensions, StyleSheet, View } from 'react-native'
 import Toast from './Toast'
+import { useLanguage } from '../context/LanguageContext'
 
 const COLORS = ['#F59E0B', '#10B981', '#6366F1', '#EC4899', '#14B8A6']
 const PARTICLE_COUNT = 18
 
 export default function GamificationCelebration({ celebration, onDismiss }) {
+  const { t } = useLanguage()
   const particles = useMemo(
     () => Array.from({ length: PARTICLE_COUNT }, (_, index) => ({
       x: new Animated.Value(0),
@@ -80,7 +82,7 @@ export default function GamificationCelebration({ celebration, onDismiss }) {
         <Toast
           visible
           type="success"
-          message={`Level up! Level ${celebration.level} · ${celebration.name}`}
+          message={t('gamification.levelUp', { level: celebration.level, name: celebration.name })}
           onDismiss={onDismiss}
           duration={3200}
         />
