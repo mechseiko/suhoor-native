@@ -388,8 +388,8 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
         ? window.location.origin
         : 'https://suhoorapp.cv';
     const link = `${origin}/groups?groupKey=${key}`;
-    const prefix = t('groups.shareInviteMessage', "Let's wake up for suhoor together, Join my Group on Suhoor:");
-    const shareText = `${prefix}\n${link}`;
+    const prefix = t('groups.shareInviteMessage', "Join my group on Suhoor, Let's wake up for suhoor together:");
+    const shareText = `${prefix} ${link}`;
     await copyToClipboard(shareText);
     triggerToast(t('groups.inviteLinkCopied', 'Invite link copied!'), 'success');
   };
@@ -919,11 +919,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
                         { backgroundColor: colors.primary + '20' },
                       ]}
                     >
-                      <Text
-                        style={[styles.adminAvatarText, { color: colors.primary }]}
-                      >
-                        {initial}
-                      </Text>
+                      <Ionicons name="person" size={20} color={colors.primary} />
                     </View>
                     <View style={styles.adminMemberInfo}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', columnGap: 6 }}>
@@ -1306,14 +1302,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
                             { backgroundColor: colors.primary + '20' },
                           ]}
                         >
-                          <Text
-                            style={[
-                              styles.adminAvatarText,
-                              { color: colors.primary },
-                            ]}
-                          >
-                            {initial}
-                          </Text>
+                          <Ionicons name="person" size={20} color={colors.primary} />
                         </View>
                         <View style={styles.adminMemberInfo}>
                           <Text

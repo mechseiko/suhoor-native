@@ -194,7 +194,7 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
                   <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
                 ) : (
                   <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-                    <Ionicons name="camera" size={22} color="#FFFFFF" />
+                    <Ionicons name="person" size={22} color="#FFFFFF" />
                   </View>
                 )}
               </View>
@@ -318,15 +318,7 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
             {/* Logout Row */}
             <View style={[styles.logoutSection, { borderTopColor: colors.border || '#E5E7EB' }]}>
               <TouchableOpacity
-                style={[
-                  styles.logoutBtn,
-                  {
-                    backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.05)',
-                    borderWidth: 1,
-                    borderColor: isDark ? 'rgba(239, 68, 68, 0.35)' : '#FCA5A5',
-                    borderRadius: 10,
-                  },
-                ]}
+                style={styles.logoutBtn}
                 onPress={handleLogout}
               >
                 <Ionicons name="log-out-outline" size={20} color={isDark ? '#F87171' : '#EF4444'} />

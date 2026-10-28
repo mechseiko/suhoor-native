@@ -346,7 +346,7 @@ export const GroupsScreen = ({ navigation, route }) => {
             id: groupSnap.id,
             name: groupSnap.data().name || t('groups.unnamedGroup'),
             group_key: groupSnap.data().group_key || '',
-            group_picture_url: groupSnap.data().group_picture_url || null, // <--- Added group picture
+            group_picture_url: groupSnap.data().group_picture_url || null,
             member_count: new Set(
               memberCountSnap.docs.map((m) => m.data().user_id)
             ).size,
@@ -356,8 +356,9 @@ export const GroupsScreen = ({ navigation, route }) => {
       setGroups(groupsData)
     } catch (err) {
       console.error('[GroupsScreen] Error fetching groups:', err)
+      // Keep loading true on error to show skeleton instead of empty state
+      setLoading(true)
     } finally {
-      setLoading(false)
       setRefreshing(false)
     }
   }
@@ -585,9 +586,7 @@ export const GroupsScreen = ({ navigation, route }) => {
               style={styles.avatarImage}
             />
           ) : (
-            <Text style={[styles.avatarText, { color: colors.primary }]}>
-              {item.name.charAt(0).toUpperCase()}
-            </Text>
+            <Ionicons name="people" size={24} color={colors.primary} />
           )}
         </View>
         <View style={styles.cardInfo}>

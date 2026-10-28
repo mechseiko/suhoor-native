@@ -8,7 +8,9 @@ import {
   reload,
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithCredential, // ADDED THIS
+  signInWithCredential,
+  linkWithCredential,
+  fetchSignInMethodsForEmail,
 } from "firebase/auth";
 import { auth, db } from "../config/firebase";
 import { doc, onSnapshot, updateDoc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
@@ -33,17 +35,35 @@ export const AuthProvider = ({ children }) => {
   const [userProfile, setUserProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
-  const signup = (email, password) => {
-    return createUserWithEmailAndPassword(auth, email, password);
+  const signup = async (email, password) => {
+    try {
+      // Check if email already exists with Google provider
+      const signInMethods = await fetchSignInMethodsForEmail(auth, email);
+      if (signInMethods.includes('google.com') && !signInMethods.includes('password')) {
+        const error = new Error("This email is already registered with Google. Please sign in with Google or link your account first.");
+        error.code = "auth/email-already-linked-to-google";
+        throw error;
+      }
+      return await createUserWithEmailAndPassword(auth, email, password);
+    } catch (error) {
+      throw error;
+    }
   };
 
-  const login = (email, password) => {
-    return signInWithEmailAndPassword(auth, email, password);
+  const login = async (email, password) => {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      // Account linking is handled automatically by Firebase when using the same email
+      return userCredential;
+    } catch (error) {
+      throw error;
+    }
   };
 
   const signInWithGoogle = async () => {
     try {
       let userCredential;
+      let googleCredential;
 
       if (Platform.OS === 'web') {
         // WEB FLOW
@@ -55,19 +75,34 @@ export const AuthProvider = ({ children }) => {
         // NATIVE MOBILE FLOW
         await GoogleSignin.hasPlayServices();
         const response = await GoogleSignin.signIn();
-        
+
         // Handle different versions of the library
         const idToken = response.data?.idToken || response.idToken;
-        
+
         if (!idToken) {
            throw new Error("No ID token returned from Google");
         }
-        
-        const googleCredential = GoogleAuthProvider.credential(idToken);
+
+        googleCredential = GoogleAuthProvider.credential(idToken);
         userCredential = await signInWithCredential(auth, googleCredential);
       }
 
       const user = userCredential.user;
+
+      // ACCOUNT LINKING: Check if email already exists with password provider
+      try {
+        const signInMethods = await fetchSignInMethodsForEmail(auth, user.email);
+        if (signInMethods.includes('password') && !signInMethods.includes('google.com')) {
+          // Email exists with password but not linked to Google - link it
+          if (googleCredential) {
+            await linkWithCredential(user, googleCredential);
+            console.log("Google credential linked to existing email/password account");
+          }
+        }
+      } catch (linkErr) {
+        // Ignore linking errors (might already be linked or other issues)
+        console.log("Account linking note:", linkErr.message);
+      }
 
       // Check if user profile exists in Firestore, if not create it
       const profileDoc = await getDoc(doc(db, "profiles", user.uid));

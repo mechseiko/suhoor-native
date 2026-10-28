@@ -221,12 +221,14 @@ export const FastingTimesScreen = ({ navigation }) => {
           icon: 'warning',
           color: colors.warning,
           message: location.error || t('fastingTimes.noLocationAvailable'),
+          action: true,
         }
       : location?.loaded && location.source === 'profile'
       ? {
           icon: 'information-circle',
           color: colors.primary,
           message: t('fastingTimes.usingProfileLocation'),
+          action: false,
         }
       : null;
 
@@ -242,7 +244,7 @@ export const FastingTimesScreen = ({ navigation }) => {
         }
       >
         {/* Location Warning */}
-        {locationStatus && location.source === 'none' && (
+        {locationStatus && (
           <View
             style={{
               backgroundColor: colors.surfaceVariant,
@@ -258,6 +260,21 @@ export const FastingTimesScreen = ({ navigation }) => {
             <Text style={{ flex: 1, fontSize: 13, color: colors.textSecondary }}>
               {locationStatus.message}
             </Text>
+            {locationStatus.action && (
+              <TouchableOpacity
+                onPress={() => navigation.navigate('ProfileTab', { screen: 'ProfileScreen' })}
+                style={{
+                  backgroundColor: colors.primary,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 8,
+                }}
+              >
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>
+                  {t('common.setLocation', 'Set Location')}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 

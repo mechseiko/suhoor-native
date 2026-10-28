@@ -48,12 +48,12 @@ android {
     }
 
     namespace 'com.mechseiko.suhoor'
-    defaultConfig {
+defaultConfig {
         applicationId 'com.mechseiko.suhoor'
         minSdkVersion 24
         targetSdkVersion 36
-        versionCode 22
-        versionName "1.0.17"
+        versionCode 23
+        versionName "1.0.18"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
 

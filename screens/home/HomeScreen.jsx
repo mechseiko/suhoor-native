@@ -115,6 +115,15 @@ export const HomeScreen = ({ navigation }) => {
           }
         });
       } else {
+        // Mark all current notifications as seen to prevent old notifications on reconnection
+        if (list.length > 0) {
+          const latestTimestamp = list[0]?.created_at?.toMillis ? list[0].created_at.toMillis() : (list[0]?.created_at?.seconds ? list[0].created_at.seconds * 1000 : 0);
+          if (latestTimestamp > 0) {
+            await AsyncStorage.setItem('suhoor_notifications_last_seen', String(latestTimestamp));
+            setLastSeenNotifications(latestTimestamp);
+          }
+        }
+        try {
         try {
           const storedLastSeen = await AsyncStorage.getItem('suhoor_notifications_last_seen');
           const effectiveLastSeen = storedLastSeen ? Number(storedLastSeen) : lastSeen;
@@ -403,9 +412,7 @@ export const HomeScreen = ({ navigation }) => {
                   resizeMode="cover"
                 />
               ) : (
-                <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 16 }}>
-                  {(displayName || 'U').charAt(0).toUpperCase()}
-                </Text>
+                <Ionicons name="person" size={20} color="#FFFFFF" />
               )}
             </TouchableOpacity>
           </View>

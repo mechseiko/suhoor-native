@@ -857,10 +857,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                   style={styles.memberAvatarImage}
                 />
               ) : (
-                <Text style={[styles.memberAvatarText, { color: isDark ? colors.secondary : colors.primary }]}>
-                  {item.profiles?.display_name?.charAt(0).toUpperCase() ||
-                    item.profiles?.email?.charAt(0).toUpperCase() || "U"}
-                </Text>
+                <Ionicons name="person" size={20} color={isDark ? colors.secondary : colors.primary} />
               )}
             </View>
             {isOnline(item.profiles.id) && (
@@ -876,12 +873,12 @@ export const GroupDetailScreen = ({ route, navigation }) => {
             </View>
             <View style={styles.memberDetailsRow}>
               <View style={[styles.timeTag, { backgroundColor: isDark ? 'rgba(251, 191, 36, 0.1)' : 'rgba(21, 12, 51, 0.05)' }]}>
+                <Text style={[styles.timeTagText, { color: isDark ? colors.secondary : colors.primary }]}>{wakeUpTime}</Text>
                 <Ionicons
                   name="alarm-outline"
                   size={12}
                   color={isDark ? colors.secondary : colors.primary}
                 />
-                <Text style={[styles.timeTagText, { color: isDark ? colors.secondary : colors.primary }]}>{wakeUpTime}</Text>
               </View>
             </View>
           </View>
@@ -1153,9 +1150,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                     style={styles.actionModalAvatarImage}
                   />
                 ) : (
-                  <Text style={[styles.actionModalAvatarText, { color: colors.onPrimaryFill }]}>
-                    {selectedMemberForAction?.profiles?.display_name?.charAt(0).toUpperCase() || "U"}
-                  </Text>
+                  <Ionicons name="person" size={24} color={colors.onPrimaryFill} />
                 )}
               </View>
               <View style={{ flex: 1 }}>

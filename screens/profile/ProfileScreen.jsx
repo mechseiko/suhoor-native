@@ -289,9 +289,16 @@ const ProfileScreen = ({ route }) => {
           `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
             query
           )}&limit=10&addressdetails=1&accept-language=en`,
-          { headers: { Accept: "application/json" } }
+          { headers: { Accept: "application/json", "User-Agent": "SuhoorApp/1.0" } }
         );
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data = await response.json();
+        if (!Array.isArray(data) || data.length === 0) {
+          setLocationResults([]);
+          return;
+        }
         const results = data.map((item) => ({
           name: item.display_name,
           lat: parseFloat(item.lat),
@@ -300,7 +307,8 @@ const ProfileScreen = ({ route }) => {
         setLocationResults(results);
       } catch (err) {
         console.error("Error searching location:", err);
-      showToast(t("profile.locationSearchError", "Failed to search location"), "error");
+        setLocationResults([]);
+        showToast(t("profile.locationSearchError", "Failed to search location"), "error");
       } finally {
         setIsSearchingLocation(false);
       }
@@ -789,7 +797,7 @@ const ProfileScreen = ({ route }) => {
             {avatarUrl ? (
               <Image source={{ uri: avatarUrl }} style={styles.avatarBannerImage} />
             ) : (
-              <Text style={styles.avatarInitial}>{initial}</Text>
+              <Ionicons name="person" size={32} color="#FFFFFF" />
             )}
           </View>
           <View style={styles.headerInfo}>
@@ -1030,14 +1038,7 @@ const ProfileScreen = ({ route }) => {
                       style={styles.avatarUploadImage}
                     />
                   ) : (
-                    <Text
-                      style={[
-                        styles.avatarUploadInitial,
-                        { color: colors.primary },
-                      ]}
-                    >
-                      {initial}
-                    </Text>
+                    <Ionicons name="person" size={32} color={colors.primary} />
                   )}
                   {isUploadingAvatar && (
                     <View style={styles.avatarLoadingOverlay}>
@@ -2140,7 +2141,7 @@ const ProfileScreen = ({ route }) => {
             </View>
 
             <ScrollView style={{ maxHeight: 300 }}>
-              {isSearchingLocation && locationSearch.length >= 3 ? (
+              {isSearchingLocation ? (
                 <View style={{ padding: 20, alignItems: 'center' }}>
                   <ActivityIndicator size="small" color={Colors.primary} />
                   <Text style={{ marginTop: 8, color: colors.textSecondary, fontSize: 13 }}>

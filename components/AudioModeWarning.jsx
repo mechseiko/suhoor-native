@@ -88,29 +88,59 @@ export const AudioModeWarning = () => {
     };
   }, []);
 
+  // Check dismissed state on mount
+  useEffect(() => {
+    const checkDismissed = async () => {
+      const dismissed = await AsyncStorage.getItem('suhoor_audio_warning_dismissed');
+      if (dismissed === 'true') {
+        setShowWarning(false);
+      }
+    };
+    checkDismissed();
+  }, []);
+
   // Show warning logic (8 PM to Fajr)
   useEffect(() => {
-    if (todayData && (isSilent || isDND)) {
-      const now = new Date();
-      const currentHour = now.getHours();
-      
-      const fajrTime = todayData.fajr ? new Date(todayData.fajr) : new Date();
-      fajrTime.setHours(4, 30, 0, 0);
-      
-      if (currentHour >= 20 || currentHour < fajrTime.getHours()) {
-        setShowWarning(true);
-        
-        if (!notificationSent) {
-          sendSilentModeNotification();
-          setNotificationSent(true);
+    const checkDismissedTime = async () => {
+      const dismissedTime = await AsyncStorage.getItem('suhoor_audio_warning_dismissed_time');
+      if (dismissedTime) {
+        const oneHourAgo = Date.now() - (60 * 60 * 1000);
+        if (Number(dismissedTime) > oneHourAgo) {
+          setShowWarning(false);
+          return true;
+        }
+      }
+      return false;
+    };
+
+    const updateWarning = async () => {
+      const recentlyDismissed = await checkDismissedTime();
+      if (recentlyDismissed) return;
+
+      if (todayData && (isSilent || isDND)) {
+        const now = new Date();
+        const currentHour = now.getHours();
+
+        const fajrTime = todayData.fajr ? new Date(todayData.fajr) : new Date();
+        fajrTime.setHours(4, 30, 0, 0);
+
+        if (currentHour >= 20 || currentHour < fajrTime.getHours()) {
+          setShowWarning(true);
+
+          if (!notificationSent) {
+            sendSilentModeNotification();
+            setNotificationSent(true);
+          }
+        } else {
+          setShowWarning(false);
+          setNotificationSent(false);
         }
       } else {
         setShowWarning(false);
-        setNotificationSent(false);
       }
-    } else {
-      setShowWarning(false);
-    }
+    };
+
+    updateWarning();
   }, [isSilent, isDND, todayData, notificationSent]);
 
   const sendSilentModeNotification = async () => {
@@ -130,6 +160,7 @@ export const AudioModeWarning = () => {
   const handleDismiss = async () => {
     setShowWarning(false);
     await AsyncStorage.setItem('suhoor_audio_warning_dismissed', 'true');
+    await AsyncStorage.setItem('suhoor_audio_warning_dismissed_time', Date.now().toString());
   };
 
   const handleOpenSettings = () => {

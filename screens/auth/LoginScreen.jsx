@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { ActivityIndicator, Pressable, TouchableOpacity, View } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAuth } from '../../context/AuthContext'
@@ -20,6 +20,26 @@ export const LoginScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const { login, logout, signInWithGoogle } = useAuth()
+  const [cachedDisplayName, setCachedDisplayName] = useState('')
+  const [cachedEmail, setCachedEmail] = useState('')
+  const [showEmailInput, setShowEmailInput] = useState(false)
+
+  useEffect(() => {
+    const loadCachedUser = async () => {
+      try {
+        const storedName = await AsyncStorage.getItem('suhoor_last_display_name')
+        const storedEmail = await AsyncStorage.getItem('suhoor_last_email')
+        if (storedName) setCachedDisplayName(storedName)
+        if (storedEmail) {
+          setCachedEmail(storedEmail)
+          setEmail(storedEmail)
+        }
+      } catch (err) {
+        console.log('Error loading cached user:', err)
+      }
+    }
+    loadCachedUser()
+  }, [])
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -62,6 +82,18 @@ export const LoginScreen = ({ navigation }) => {
         }
       } catch (syncErr) {
         console.log('Error syncing alarm PIN:', syncErr)
+      }
+
+      // Cache user data for next login
+      try {
+        const profileDoc = await getDoc(doc(db, COLLECTIONS.profiles, user.uid))
+        if (profileDoc.exists()) {
+          const profileData = profileDoc.data()
+          await AsyncStorage.setItem('suhoor_last_display_name', profileData.display_name || user.email.split('@')[0])
+          await AsyncStorage.setItem('suhoor_last_email', user.email)
+        }
+      } catch (cacheErr) {
+        console.log('Error caching user data:', cacheErr)
       }
 
       // Navigate to main app on successful login
@@ -118,6 +150,18 @@ export const LoginScreen = ({ navigation }) => {
         console.log('Error syncing alarm PIN on Google sign-in:', syncErr)
       }
 
+      // Cache user data for next login
+      try {
+        const profileDoc = await getDoc(doc(db, COLLECTIONS.profiles, user.uid))
+        if (profileDoc.exists()) {
+          const profileData = profileDoc.data()
+          await AsyncStorage.setItem('suhoor_last_display_name', profileData.display_name || user.email.split('@')[0])
+          await AsyncStorage.setItem('suhoor_last_email', user.email)
+        }
+      } catch (cacheErr) {
+        console.log('Error caching user data:', cacheErr)
+      }
+
       // Navigate to main app on successful Google login
       navigation.reset({
         index: 0,
@@ -149,23 +193,31 @@ export const LoginScreen = ({ navigation }) => {
 
   return (
     <AuthWrapper
-      title={t('auth.welcomeBack')}
-      subtitle={t('auth.loginSubtitle')}
+      title={cachedDisplayName ? t('auth.welcomeBackName', { name: cachedDisplayName }) : t('auth.welcomeBack')}
+      subtitle={cachedDisplayName ? t('auth.loginSubtitle') : t('auth.loginSubtitle')}
       error={error}
       bottomTitle={t('auth.dontHaveAccount')}
       bottomsubTitle={t('auth.signup')}
       onBottomPress={() => navigation.navigate('Signup')}
     >
-      <Input
-        label={t('settings.emailAddress')}
-        icon="mail-outline"
-        placeholder={t("auth.emailPlaceholder", "your@email.com")}
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
+      {showEmailInput ? (
+        <Input
+          label={t('settings.emailAddress')}
+          icon="mail-outline"
+          placeholder={t("auth.emailPlaceholder", "your@email.com")}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+      ) : (
+        <TouchableOpacity onPress={() => setShowEmailInput(true)} style={{ marginBottom: 16 }}>
+          <Text style={{ color: colors.primary, fontSize: 13 }}>
+            {t('auth.notYou', 'Not ' + (cachedDisplayName || cachedEmail) + '?')}
+          </Text>
+        </TouchableOpacity>
+      )}
 
       <Input
         label={t('auth.password')}

@@ -65,19 +65,17 @@ export const GroupsStack = () => {
             return (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                 {groupPicture ? (
-                  <Image 
-                    source={{ uri: groupPicture }} 
-                    style={{ width: 32, height: 32, borderRadius: 16 }} 
+                  <Image
+                    source={{ uri: groupPicture }}
+                    style={{ width: 32, height: 32, borderRadius: 16 }}
                   />
                 ) : (
-                  <View style={{ 
-                    width: 32, height: 32, borderRadius: 16, 
-                    backgroundColor: colors.primary + '15', 
-                    alignItems: 'center', justifyContent: 'center' 
+                  <View style={{
+                    width: 32, height: 32, borderRadius: 16,
+                    backgroundColor: colors.primary + '15',
+                    alignItems: 'center', justifyContent: 'center'
                   }}>
-                    <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 16 }}>
-                      {groupName.charAt(0).toUpperCase()}
-                    </Text>
+                    <Ionicons name="people" size={18} color={colors.primary} />
                   </View>
                 )}
                 <Text style={{ fontSize: size.lg, fontWeight: '700', color: colors.text }} numberOfLines={1}>

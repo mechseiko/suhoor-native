@@ -220,6 +220,8 @@ export const SignupScreen = ({ navigation }) => {
     } catch (err) {
       if (err.code === "auth/email-already-in-use") {
         setError(t("auth.emailInUse"));
+      } else if (err.code === "auth/email-already-linked-to-google") {
+        setError(t("auth.emailAlreadyLinkedToGoogle"));
       } else {
         setError(t("auth.signupError"));
       }
