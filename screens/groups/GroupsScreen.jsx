@@ -50,7 +50,7 @@ export const GroupsScreen = ({ navigation, route }) => {
   const [refreshing, setRefreshing] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
-  
+
   const loadingMessages = [
     t('groups.loadingGroups'),
     t('groups.fetchingMembers'),
@@ -157,7 +157,7 @@ export const GroupsScreen = ({ navigation, route }) => {
         userProfile?.preferences?.wakeUpMinutesBeforeSuhoor || 45
 
       const [suhoorH, suhoorM] = todayData.time.sahur.split(':').map(Number)
-      
+
       // 1. Window end time (Suhoor)
       const endTime = new Date()
       endTime.setHours(suhoorH, suhoorM, 0, 0)
@@ -312,14 +312,14 @@ export const GroupsScreen = ({ navigation, route }) => {
     let savedPin = ''
     try {
       savedPin = (await AsyncStorage.getItem('suhoor_alarm_pin')) || ''
-    } catch {}
+    } catch { }
     if (savedPin && entered !== savedPin) {
       setPinError(t('alarm.incorrectPin'))
       setPinDigits(['', '', '', ''])
       setTimeout(() => pinRefs[0]?.current?.focus(), 100)
       return
     }
-    
+
     setShowPinModal(false)
     await handleDirectCheckIn()
   }
@@ -327,6 +327,7 @@ export const GroupsScreen = ({ navigation, route }) => {
   const fetchGroups = async () => {
     if (!currentUser) return
     try {
+      setLoading(true)
       const membersRef = collection(db, COLLECTIONS.groupMembers)
       const q = query(membersRef, where('user_id', '==', currentUser.uid))
       const querySnapshot = await getDocs(q)
@@ -361,9 +362,9 @@ export const GroupsScreen = ({ navigation, route }) => {
       setGroups(groupsData)
     } catch (err) {
       console.error('[GroupsScreen] Error fetching groups:', err)
-      // Keep loading true on error to show skeleton instead of empty state
-      setLoading(true)
+      setGroups([]) // don't keep loading — show empty state
     } finally {
+      setLoading(false)
       setRefreshing(false)
     }
   }

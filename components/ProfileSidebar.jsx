@@ -252,7 +252,7 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
                   <Ionicons name="person-outline" size={18} color="#6366F1" />
                 </View>
                 <Text variant="body" style={styles.menuLabel}>
-                  {t('profile.myProfile', 'My Profile')}
+                  {t('profile.myProfile', 'Profile')}
                 </Text>
                 <Ionicons name="chevron-forward" size={18} color={colors.textSecondary || '#9CA3AF'} />
               </TouchableOpacity>

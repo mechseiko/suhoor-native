@@ -172,7 +172,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       }
       setMembers([...seen.values()]);
       setMembersLoading(false);
-      
+
       // Add to module-level cache
       fetchedGroupsCache.add(groupId);
     } catch (err) {
@@ -828,7 +828,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         return (
           <View style={[styles.inlineBadge, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)' }]}>
             <Text style={[styles.inlineBadgeText, { color: colors.error }]}>
-              {t('groups.notFasting', 'Not Fasting')}
+              {t('groups.notFasting', 'You are not fasting')}
             </Text>
           </View>
         );
@@ -1080,20 +1080,34 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         <View style={[styles.trackerHeader, { borderBottomColor: colors.border }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             {isStatusVisibleNow() ? (
-              hasWokenUp ? (
+              !wantsToFast ? (
+                <View style={[styles.inlineBadge, {
+                  backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)',
+                  paddingVertical: 4,
+                  paddingHorizontal: 8,
+                }]}>
+                  <Text style={[styles.inlineBadgeText, { color: colors.error }]}>
+                    {t('groups.notFasting', 'Not Fasting')}
+                  </Text>
+                </View>
+              ) : hasWokenUp ? (
                 <View style={styles.awakeSuccess}>
                   <Ionicons
                     name="checkmark-circle"
                     size={16}
                     color={colors.secondary}
                   />
-                  <Text style={[styles.awakeSuccessText, { color: colors.secondary }]}>{t('groups.checkedIn', 'Checked in')}</Text>
+                  <Text style={[styles.awakeSuccessText, { color: colors.secondary }]}>
+                    {t('groups.checkedIn', 'Checked in')}
+                  </Text>
                 </View>
-              ) : wantsToFast ? (
+              ) : (
                 <View style={[styles.sleepingBadge, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}>
-                  <Text style={[styles.sleepingBadgeText, { color: isDark ? '#60A5FA' : '#3B82F6' }]}>{t('groups.notCheckedIn', "You haven't checked in")}</Text>
+                  <Text style={[styles.sleepingBadgeText, { color: isDark ? '#60A5FA' : '#3B82F6' }]}>
+                    {t('groups.notCheckedIn', "You haven't checked in")}
+                  </Text>
                 </View>
-              ) : null
+              )
             ) : null}
           </View>
         </View>
@@ -1584,7 +1598,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginBottom: 2,
   },
-warningMessage: {
+  warningMessage: {
     fontSize: 12,
     lineHeight: 16,
   },
