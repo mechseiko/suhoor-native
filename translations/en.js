@@ -3,6 +3,7 @@
 
 export const en = {
   "app.name": "Suhoor",
+  "hero.subtitle": "Wake Up for Suhoor in Groups",
   "nav.home": "Home",
   "nav.howitworks": "How it Works",
   "nav.about": "About",

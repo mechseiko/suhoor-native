@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { ActivityIndicator, Pressable, TouchableOpacity, View } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAuth } from '../../context/AuthContext'
@@ -9,7 +9,36 @@ import { Button, Input, Text } from '../../components/ui'
 import { GoogleIcon } from '../../components/GoogleIcon'
 import { db } from '../../config/firebase'
 import { COLLECTIONS } from '../../config/firestoreSchema'
-import { doc, updateDoc, getDoc } from 'firebase/firestore'
+import { doc, updateDoc, setDoc, getDoc } from 'firebase/firestore'
+
+const CACHE_KEYS = {
+  NAME: 'suhoor_last_display_name',
+  EMAIL: 'suhoor_last_email',
+}
+
+// Masks an email for display: "ahmed.khan@gmail.com" -> "a***@gmail.com"
+const maskEmail = (email) => {
+  if (!email || typeof email !== 'string' || !email.includes('@')) return ''
+  const [local, domain] = email.split('@')
+  if (!local) return `***@${domain}`
+  const visible = local.slice(0, 1)
+  return `${visible}***@${domain}`
+}
+
+// Safely derives a display name from a user object, never throws.
+const deriveDisplayName = (user, profileData) => {
+  const fromProfile = profileData?.display_name
+  if (fromProfile && String(fromProfile).trim()) return String(fromProfile).trim()
+
+  const fromAuth = user?.displayName
+  if (fromAuth && String(fromAuth).trim()) return String(fromAuth).trim()
+
+  const email = user?.email || ''
+  const fromEmail = email.split('@')[0]
+  if (fromEmail && fromEmail.trim()) return fromEmail.trim()
+
+  return ''
+}
 
 export const LoginScreen = ({ navigation }) => {
   const { t } = useLanguage()
@@ -24,22 +53,93 @@ export const LoginScreen = ({ navigation }) => {
   const [cachedEmail, setCachedEmail] = useState('')
   const [showEmailInput, setShowEmailInput] = useState(false)
 
+  // Guards against the async cache read clobbering what the user is typing.
+  const emailTouchedRef = useRef(false)
+
   useEffect(() => {
+    let cancelled = false
     const loadCachedUser = async () => {
       try {
-        const storedName = await AsyncStorage.getItem('suhoor_last_display_name')
-        const storedEmail = await AsyncStorage.getItem('suhoor_last_email')
+        const [storedName, storedEmail] = await Promise.all([
+          AsyncStorage.getItem(CACHE_KEYS.NAME),
+          AsyncStorage.getItem(CACHE_KEYS.EMAIL),
+        ])
+        if (cancelled) return
         if (storedName) setCachedDisplayName(storedName)
         if (storedEmail) {
           setCachedEmail(storedEmail)
-          setEmail(storedEmail)
+          // Only seed the input if the user hasn't started typing.
+          if (!emailTouchedRef.current) {
+            setEmail((prev) => prev || storedEmail)
+          }
         }
       } catch (err) {
         console.log('Error loading cached user:', err)
       }
     }
     loadCachedUser()
+    return () => {
+      cancelled = true
+    }
   }, [])
+
+  // Persist cache safely (never throws, never writes empty strings).
+  const persistCache = async (user, profileData) => {
+    try {
+      const name = deriveDisplayName(user, profileData)
+      const emailVal = user?.email || profileData?.email || ''
+      const writes = []
+      if (name) writes.push(AsyncStorage.setItem(CACHE_KEYS.NAME, name))
+      if (emailVal) writes.push(AsyncStorage.setItem(CACHE_KEYS.EMAIL, emailVal))
+      if (writes.length) await Promise.all(writes)
+    } catch (cacheErr) {
+      console.log('Error caching user data:', cacheErr)
+    }
+  }
+
+  // Sync alarm PIN from AsyncStorage to profile if it exists.
+  // Uses setDoc-with-merge so it works even if the profile doc doesn't exist yet.
+  const syncAlarmPin = async (uid) => {
+    try {
+      const alarmPin = await AsyncStorage.getItem('suhoor_alarm_pin')
+      if (!alarmPin) return
+      const profileRef = doc(db, COLLECTIONS.profiles, uid)
+      await setDoc(profileRef, { pin: alarmPin }, { merge: true })
+    } catch (syncErr) {
+      console.log('Error syncing alarm PIN:', syncErr)
+    }
+  }
+
+  // Returns { verified, profileData }.
+  // Fast path: Firebase Auth already says verified -> return immediately, no Firestore read.
+  // Slow path: unverified by Auth -> read Firestore (source of truth) + bounded retry.
+  const checkVerification = async (user) => {
+    // Fast path: no await before this return.
+    if (user.emailVerified) return { verified: true, profileData: null }
+
+    let profileData = null
+    try {
+      const snap = await getDoc(doc(db, COLLECTIONS.profiles, user.uid))
+      profileData = snap.exists() ? snap.data() : null
+    } catch (e) {
+      console.log('Error reading profile for verification:', e)
+    }
+
+    if (profileData?.isVerified === true) return { verified: true, profileData }
+
+    // One short retry in case the user just verified and state is still propagating.
+    await new Promise((r) => setTimeout(r, 600))
+    try {
+      await user.reload?.()
+      if (user.emailVerified) return { verified: true, profileData }
+      const snap2 = await getDoc(doc(db, COLLECTIONS.profiles, user.uid))
+      const pd2 = snap2.exists() ? snap2.data() : null
+      if (pd2?.isVerified === true) return { verified: true, profileData: pd2 }
+      return { verified: false, profileData: pd2 || profileData }
+    } catch (e) {
+      return { verified: false, profileData }
+    }
+  }
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -54,49 +154,16 @@ export const LoginScreen = ({ navigation }) => {
       const userCredential = await login(email.trim(), password)
       const user = userCredential.user
 
-      // Check Firebase Auth verification status first
-      if (!user.emailVerified) {
-        // Even if Firebase says not verified, check Firestore profile
-        // to handle the case where the user just verified but Auth hasn't synced yet
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        const userProfileDoc = await getDoc(doc(db, COLLECTIONS.profiles, user.uid))
-        const isProfileVerified = userProfileDoc.exists() ? userProfileDoc.data().isVerified : false
-        
-        if (!isProfileVerified) {
-          // Both Firebase and Firestore say not verified
-          await logout()
-          setError(t('auth.emailNotVerified'))
-          return
-        }
-        // If Firestore says verified but Firebase doesn't, proceed
-        // AuthContext will sync the status
+      const { verified, profileData } = await checkVerification(user)
+      if (!verified) {
+        await logout()
+        setError(t('auth.emailNotVerified'))
+        return
       }
 
-      // Sync alarm PIN from AsyncStorage to profile if it exists
-      try {
-        const alarmPin = await AsyncStorage.getItem('suhoor_alarm_pin')
-        if (alarmPin) {
-          const profileRef = doc(db, COLLECTIONS.profiles, user.uid)
-          await updateDoc(profileRef, { pin: alarmPin })
-        }
-      } catch (syncErr) {
-        console.log('Error syncing alarm PIN:', syncErr)
-      }
+      await syncAlarmPin(user.uid)
+      await persistCache(user, profileData)
 
-      // Cache user data for next login
-      try {
-        const profileDoc = await getDoc(doc(db, COLLECTIONS.profiles, user.uid))
-        if (profileDoc.exists()) {
-          const profileData = profileDoc.data()
-          await AsyncStorage.setItem('suhoor_last_display_name', profileData.display_name || user.email.split('@')[0])
-          await AsyncStorage.setItem('suhoor_last_email', user.email)
-        }
-      } catch (cacheErr) {
-        console.log('Error caching user data:', cacheErr)
-      }
-
-      // Navigate to main app on successful login
       navigation.reset({
         index: 0,
         routes: [{ name: 'MainTabs' }],
@@ -105,7 +172,7 @@ export const LoginScreen = ({ navigation }) => {
       console.error('Login error:', err)
       const errorCode = err.code
       let errorMessage = t('auth.loginError')
-      
+
       if (
         errorCode === 'auth/invalid-credential' ||
         errorCode === 'auth/invalid-login-credentials'
@@ -124,7 +191,7 @@ export const LoginScreen = ({ navigation }) => {
       } else if (errorCode === 'auth/network-request-failed') {
         errorMessage = t('auth.networkError')
       }
-      
+
       setError(errorMessage)
     } finally {
       setLoading(false)
@@ -139,30 +206,24 @@ export const LoginScreen = ({ navigation }) => {
       const userCredential = await signInWithGoogle()
       const user = userCredential.user
 
-      // Sync alarm PIN from AsyncStorage to profile if it exists
+      // Google accounts are verified by Google. But if the app gates on
+      // Firestore `isVerified`, respect that too.
+      let profileData = null
       try {
-        const alarmPin = await AsyncStorage.getItem('suhoor_alarm_pin')
-        if (alarmPin) {
-          const profileRef = doc(db, COLLECTIONS.profiles, user.uid)
-          await updateDoc(profileRef, { pin: alarmPin })
-        }
-      } catch (syncErr) {
-        console.log('Error syncing alarm PIN on Google sign-in:', syncErr)
+        const snap = await getDoc(doc(db, COLLECTIONS.profiles, user.uid))
+        profileData = snap.exists() ? snap.data() : null
+      } catch (e) {
+        console.log('Error reading profile after Google sign-in:', e)
+      }
+      if (profileData && profileData.isVerified === false) {
+        await logout()
+        setError(t('auth.emailNotVerified'))
+        return
       }
 
-      // Cache user data for next login
-      try {
-        const profileDoc = await getDoc(doc(db, COLLECTIONS.profiles, user.uid))
-        if (profileDoc.exists()) {
-          const profileData = profileDoc.data()
-          await AsyncStorage.setItem('suhoor_last_display_name', profileData.display_name || user.email.split('@')[0])
-          await AsyncStorage.setItem('suhoor_last_email', user.email)
-        }
-      } catch (cacheErr) {
-        console.log('Error caching user data:', cacheErr)
-      }
+      await syncAlarmPin(user.uid)
+      await persistCache(user, profileData)
 
-      // Navigate to main app on successful Google login
       navigation.reset({
         index: 0,
         routes: [{ name: 'MainTabs' }],
@@ -174,11 +235,11 @@ export const LoginScreen = ({ navigation }) => {
       if (
         err.code === 'auth/popup-closed-by-user' ||
         err.code === 'auth/cancelled-popup-request' ||
-        err.code === 'SIGN_IN_CANCELLED' // <-- ADDED THIS NATIVE ERROR CODE
+        err.code === 'SIGN_IN_CANCELLED'
       ) {
         errorMessage = t('auth.googleSignInCancelled', 'Sign-in cancelled')
       } else if (err.code === 'auth/popup-blocked') {
-        errorMessage = t('auth.popupBlocked', 'Sign-in popup was blocked. Please allow popups.')
+        errorMessage = t('auth.signInPopupBlocked', 'Sign-in popup was blocked. Please allow popups.')
       } else if (err.code === 'auth/network-request-failed') {
         errorMessage = t('auth.networkError')
       } else if (err.message) {
@@ -191,38 +252,55 @@ export const LoginScreen = ({ navigation }) => {
     }
   }
 
+  // "Not you?" — switch account. Clears the cached greeting locally so the
+  // header doesn't contradict the form. Cache keys are left intact so that if
+  // the user backs out, next mount restores the greeting.
+  const handleNotYou = () => {
+    setShowEmailInput(true)
+    setCachedDisplayName('')
+    setCachedEmail('')
+    setError('')
+  }
+
+  const handleEmailChange = (val) => {
+    emailTouchedRef.current = true
+    setEmail(val)
+  }
+
+  const showCachedFlow = !!(cachedDisplayName || cachedEmail)
+  const showEmailField = !showCachedFlow || showEmailInput
+  const greetingName = cachedDisplayName || ''
+
   return (
     <AuthWrapper
-      title={cachedDisplayName ? t('auth.welcomeBackName', { name: cachedDisplayName }) : t('auth.welcomeBack')}
-      subtitle={cachedDisplayName ? t('auth.loginSubtitle') : t('auth.loginSubtitle')}
+      title={
+        greetingName
+          ? t('auth.welcomeBackName', { name: greetingName })
+          : t('auth.welcomeBack')
+      }
+      subtitle={t('auth.loginSubtitle')}
       error={error}
       bottomTitle={t('auth.dontHaveAccount')}
       bottomsubTitle={t('auth.signup')}
       onBottomPress={() => navigation.navigate('Signup')}
     >
-      {showEmailInput ? (
+      {showEmailField && (
         <Input
           label={t('settings.emailAddress')}
           icon="mail-outline"
-          placeholder={t("auth.emailPlaceholder", "your@email.com")}
+          placeholder={t('auth.emailPlaceholder', 'your@email.com')}
           value={email}
-          onChangeText={setEmail}
+          onChangeText={handleEmailChange}
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
         />
-      ) : (
-        <TouchableOpacity onPress={() => setShowEmailInput(true)} style={{ marginBottom: 16 }}>
-          <Text style={{ color: colors.primary, fontSize: 13 }}>
-            {t('auth.notYou', 'Not ' + (cachedDisplayName || cachedEmail) + '?')}
-          </Text>
-        </TouchableOpacity>
       )}
 
       <Input
         label={t('auth.password')}
         icon="lock-closed-outline"
-        placeholder={t("auth.passwordPlaceholder", "••••••••")}
+        placeholder={t('auth.passwordPlaceholder', '••••••••')}
         value={password}
         onChangeText={setPassword}
         secure
@@ -231,14 +309,26 @@ export const LoginScreen = ({ navigation }) => {
         containerStyle={{ marginBottom: 1 }}
       />
 
-      <View style={{ marginBottom: 32, alignItems: 'flex-end' }}>
+      {showCachedFlow && !showEmailInput && (
+        <TouchableOpacity
+          onPress={handleNotYou}
+          hitSlop={8}
+          style={{ marginTop: 8, alignSelf: 'flex-start' }}
+        >
+          <Text style={{ color: colors.primary, fontSize: 13 }}>
+            {t('auth.notYou', {
+              name: cachedDisplayName || maskEmail(cachedEmail),
+            })}
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      <View style={{ marginBottom: 32, marginTop: 12, alignItems: 'flex-end' }}>
         <TouchableOpacity
           onPress={() => navigation.navigate('ForgotPassword')}
           hitSlop={10}
         >
-          <Text
-            style={{ color: colors.primary, fontWeight: '500', fontSize: 13.5 }}
-          >
+          <Text style={{ color: colors.primary, fontWeight: '500', fontSize: 13.5 }}>
             {t('auth.forgotPassword')}
           </Text>
         </TouchableOpacity>
@@ -254,37 +344,12 @@ export const LoginScreen = ({ navigation }) => {
       />
 
       {/* Divider */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          marginVertical: 12,
-        }}
-      >
-        <View
-          style={{
-            flex: 1,
-            height: 1,
-            backgroundColor: colors.border || '#E5E7EB',
-          }}
-        />
-        <Text
-          style={{
-            marginHorizontal: 16,
-            color: colors.textTertiary || '#6B7280',
-            fontSize: 14,
-            fontWeight: '400',
-          }}
-        >
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 12 }}>
+        <View style={{ flex: 1, height: 1, backgroundColor: colors.border || '#E5E7EB' }} />
+        <Text style={{ marginHorizontal: 16, color: colors.textTertiary || '#6B7280', fontSize: 14, fontWeight: '400' }}>
           {t('auth.or', 'or')}
         </Text>
-        <View
-          style={{
-            flex: 1,
-            height: 1,
-            backgroundColor: colors.border || '#E5E7EB',
-          }}
-        />
+        <View style={{ flex: 1, height: 1, backgroundColor: colors.border || '#E5E7EB' }} />
       </View>
 
       {/* Google Sign In Button */}
@@ -302,7 +367,7 @@ export const LoginScreen = ({ navigation }) => {
           alignItems: 'center',
           justifyContent: 'center',
           columnGap: 10,
-          opacity: (googleLoading || loading) ? 0.5 : pressed ? 0.85 : 1,
+          opacity: googleLoading || loading ? 0.5 : pressed ? 0.85 : 1,
         })}
       >
         {googleLoading ? (
@@ -310,13 +375,7 @@ export const LoginScreen = ({ navigation }) => {
         ) : (
           <>
             <GoogleIcon size={20} />
-            <Text
-              style={{
-                color: isDark ? colors.text : '#374151',
-                fontWeight: '500',
-                fontSize: 15,
-              }}
-            >
+            <Text style={{ color: isDark ? colors.text : '#374151', fontWeight: '500', fontSize: 15 }}>
               {t('auth.signInWithGoogle', 'Sign in with Google')}
             </Text>
           </>
