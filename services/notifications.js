@@ -129,7 +129,7 @@ export const configureNotifications = () => {
     // iOS asks at configure time; Android permissions are handled by the OS or,
     // for exact alarms, by the native alarm module.
     requestPermissions: Platform.OS === 'ios',
-    popInitialNotification: true,
+    popInitialNotification: false,
   })
 
   configured = true

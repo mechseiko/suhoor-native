@@ -21,7 +21,7 @@ const TOPICS = [
     titleKey: "learn.topic.howItWorks",
     titleDefault: "How Suhoor Works",
     subtitleKey: "learn.topic.howItWorksSub",
-    subtitleDefault: "Walk through the tabs and see how everything connects",
+    subtitleDefault: "Everything you need to know about how Suhoor works",
     isTourTrigger: true,
   },
   {

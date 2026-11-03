@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { StyleSheet, View, RefreshControl } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { useTheme } from "../../context/ThemeContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { useGamification } from "../../hooks/useGamification";
-import { BADGES, BARAKAH_TIERS } from "../../config/firestoreSchema";
+import { BADGE_TRACKS, BARAKAH_TIERS } from "../../config/firestoreSchema";
 import { Badge, Card, Screen, Text } from "../../components/ui";
 import { alpha, radius, spacing } from "../../theme";
 import GamificationCelebration from "../../components/GamificationCelebration";
@@ -19,7 +19,6 @@ export const MilestonesScreen = () => {
     progressPercent,
     celebration,
     dismissCelebration,
-    loading,
   } = useGamification();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -28,13 +27,30 @@ export const MilestonesScreen = () => {
     setTimeout(() => setRefreshing(false), 1000);
   };
 
-  const allBadges = Object.values(BADGES);
-  const unlockedBadges = allBadges.filter((badge) =>
-    stats.badges.includes(badge.id)
-  );
-  const lockedBadges = allBadges.filter(
-    (badge) => !stats.badges.includes(badge.id)
-  );
+  // Lifetime Badge Tracks
+  const tracks = Object.values(BADGE_TRACKS);
+
+  // Flatten unlocked badges from user's achieved badges
+  const unlockedBadges = [];
+  const nextTargetBadges = [];
+
+  tracks.forEach((track) => {
+    let highestUnlocked = null;
+    let nextLocked = null;
+
+    for (const level of track.levels) {
+      if (stats.badges.includes(level.badgeId)) {
+        highestUnlocked = { ...level, track };
+        unlockedBadges.push({ ...level, track });
+      } else if (!nextLocked) {
+        nextLocked = { ...level, track };
+      }
+    }
+
+    if (nextLocked) {
+      nextTargetBadges.push(nextLocked);
+    }
+  });
 
   return (
     <Screen
@@ -65,13 +81,13 @@ export const MilestonesScreen = () => {
             </View>
             <View style={styles.levelInfo}>
               <Text variant="h3" style={styles.levelTitle}>
-                Level {currentLevel.level} • {currentLevel.name}
+                {t('milestones.levelTitle', { level: currentLevel.level, name: currentLevel.name })}
               </Text>
               <Text variant="caption" tone="secondary">
                 <Text style={{ fontWeight: "800", color: colors.text }}>
                   {stats.points}
                 </Text>{" "}
-                Suhoor Points
+                {t('milestones.suhoorPoints', 'Suhoor Points')}
               </Text>
             </View>
           </View>
@@ -80,7 +96,7 @@ export const MilestonesScreen = () => {
             <View style={styles.progressSection}>
               <View style={styles.progressHeader}>
                 <Text variant="caption" tone="secondary">
-                  {nextTier.minPoints - stats.points} points to {nextTier.name}
+                  {t('milestones.pointsToNext', { points: nextTier.minPoints - stats.points, name: nextTier.name })}
                 </Text>
                 <Text variant="caption" tone="primary" style={styles.bold}>
                   {progressPercent}%
@@ -114,7 +130,7 @@ export const MilestonesScreen = () => {
                 {stats.totalFastingDays}
               </Text>
               <Text variant="caption" tone="secondary" style={styles.statLabel}>
-                Fasting Days
+                {t('milestones.fastingDays', 'Fasting Days')}
               </Text>
             </View>
             <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
@@ -124,7 +140,7 @@ export const MilestonesScreen = () => {
                 {stats.earlyBirds}
               </Text>
               <Text variant="caption" tone="secondary" style={styles.statLabel}>
-                Early Birds
+                {t('milestones.earlyBirds', 'Early Birds')}
               </Text>
             </View>
             <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
@@ -134,29 +150,34 @@ export const MilestonesScreen = () => {
                 {stats.membersBuzzed}
               </Text>
               <Text variant="caption" tone="secondary" style={styles.statLabel}>
-                Members Buzzed
+                {t('milestones.membersBuzzed', 'Members Buzzed')}
               </Text>
             </View>
           </View>
         </Card>
 
-        {/* Unlocked Badges */}
-        {unlockedBadges.length > 0 && (
-          <Card>
-            <View style={styles.sectionHeader}>
-              <Text variant="h3">{t('milestones.unlockedBadges')}</Text>
-              <Badge label={`${unlockedBadges.length}`} tone="primary" />
-            </View>
+        {/* Lifetime Badge Tracks */}
+        <Card>
+          <View style={styles.sectionHeader}>
+            <Text variant="h3">{t('milestones.unlockedBadges', 'Unlocked Badges')}</Text>
+            <Badge label={`${unlockedBadges.length}`} tone="primary" />
+          </View>
+
+          {unlockedBadges.length === 0 ? (
+            <Text variant="caption" tone="secondary" style={{ fontStyle: 'italic', paddingVertical: 8 }}>
+              {t('milestones.noBadgesYet', 'Check in for your first suhoor to unlock your first badge!')}
+            </Text>
+          ) : (
             <View style={styles.badgesGrid}>
               {unlockedBadges.map((badge) => (
                 <View
-                  key={badge.id}
+                  key={badge.badgeId}
                   style={[
                     styles.badgeCard,
                     { backgroundColor: alpha(colors.primary, 0.05) },
                   ]}
                 >
-                  <Text style={styles.badgeEmoji}>{badge.icon}</Text>
+                  <Text style={styles.badgeEmoji}>{badge.track.icon}</Text>
                   <Text variant="label" style={styles.badgeTitle}>
                     {badge.title}
                   </Text>
@@ -166,7 +187,7 @@ export const MilestonesScreen = () => {
                     style={styles.badgeDescription}
                     numberOfLines={2}
                   >
-                    {badge.description}
+                    {t('milestones.badgeLevelUnit', { level: badge.level, requirement: badge.requirement, unit: badge.track.unit })}
                   </Text>
                   <View style={styles.badgePoints}>
                     <Ionicons name="star" size={12} color={colors.primary} />
@@ -181,20 +202,20 @@ export const MilestonesScreen = () => {
                 </View>
               ))}
             </View>
-          </Card>
-        )}
+          )}
+        </Card>
 
-        {/* Locked Badges */}
-        {lockedBadges.length > 0 && (
+        {/* Upcoming Targets (Locked) */}
+        {nextTargetBadges.length > 0 && (
           <Card>
             <View style={styles.sectionHeader}>
-              <Text variant="h3">{t('milestones.lockedBadges')}</Text>
-              <Badge label={`${lockedBadges.length}`} tone="secondary" />
+              <Text variant="h3">{t('milestones.lockedBadges', 'Locked Badges')}</Text>
+              <Badge label={`${nextTargetBadges.length}`} tone="secondary" />
             </View>
             <View style={styles.badgesGrid}>
-              {lockedBadges.map((badge) => (
+              {nextTargetBadges.map((badge) => (
                 <View
-                  key={badge.id}
+                  key={badge.badgeId}
                   style={[
                     styles.badgeCard,
                     styles.lockedBadge,
@@ -202,7 +223,7 @@ export const MilestonesScreen = () => {
                   ]}
                 >
                   <Text style={[styles.badgeEmoji, styles.lockedEmoji]}>
-                    {badge.icon}
+                    {badge.track.icon}
                   </Text>
                   <Text
                     variant="label"
@@ -216,7 +237,7 @@ export const MilestonesScreen = () => {
                     style={[styles.badgeDescription, styles.lockedText]}
                     numberOfLines={2}
                   >
-                    {badge.description}
+                    {t('milestones.badgeRequires', { requirement: badge.requirement, unit: badge.track.unit })}
                   </Text>
                   <View style={styles.badgePoints}>
                     <Ionicons name="star" size={12} color={colors.muted} />
@@ -246,10 +267,10 @@ export const MilestonesScreen = () => {
           </Card>
         )}
 
-        {/* All Levels */}
+        {/* All Barakah Levels */}
         <Card>
           <View style={styles.sectionHeader}>
-            <Text variant="h3">{t('milestones.allLevels')}</Text>
+            <Text variant="h3">{t('milestones.allLevels', 'All Levels')}</Text>
           </View>
           <View style={styles.levelsList}>
             {BARAKAH_TIERS.map((tier) => {
@@ -295,14 +316,14 @@ export const MilestonesScreen = () => {
                           isUnlocked ? null : styles.lockedText,
                         ]}
                       >
-                        Level {tier.level} • {tier.name}
+                        {t('milestones.levelTitle', { level: tier.level, name: tier.name })}
                       </Text>
                       {isCurrent && (
-                        <Badge label={t('milestones.current')} tone="primary" size="sm" />
+                        <Badge label={t('milestones.current', 'Current')} tone="primary" size="sm" />
                       )}
                     </View>
                     <Text variant="caption" tone="secondary">
-                      {tier.minPoints} points required
+                      {t('milestones.pointsRequired', { points: tier.minPoints })}
                     </Text>
                   </View>
                   {isUnlocked && (
@@ -329,8 +350,6 @@ const styles = StyleSheet.create({
   bold: {
     fontWeight: "700",
   },
-
-  // Level Card
   levelCard: {},
   levelHeader: {
     flexDirection: "row",
@@ -371,8 +390,6 @@ const styles = StyleSheet.create({
     height: "100%",
     borderRadius: radius.pill,
   },
-
-  // Stats Card
   statsCard: {},
   statsGrid: {
     flexDirection: "row",
@@ -396,16 +413,12 @@ const styles = StyleSheet.create({
     width: 1,
     height: 40,
   },
-
-  // Section Headers
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: spacing.lg,
   },
-
-  // Badges Grid
   badgesGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -459,8 +472,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
-  // Levels List
   levelsList: {
     columnGap: spacing.md,
     rowGap: spacing.md,

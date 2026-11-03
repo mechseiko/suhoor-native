@@ -13,13 +13,12 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 import { useTheme } from "../../context/ThemeContext";
 import { useLanguage } from "../../context/LanguageContext";
 
-const WEB_BASE_URL = "https://suhoor-group.web.app";
+const WEB_BASE_URL = "https://suhoorapp.cv";
 
 const BOOKS = [
   {
     title: "Book of Fasting",
     subtitle: "As-Siyaam wa Ahkaamuhu",
-    author: "Shaikh Usaamah Al-Qoosee",
     file: "book-of-fasting.pdf",
     description:
       "A comprehensive translation of a small pocket-size booklet covering the essential rulings, conditions, and etiquette of Islamic fasting.",
@@ -29,7 +28,6 @@ const BOOKS = [
   {
     title: "Ramadhan: Let's Avoid the Losses",
     subtitle: "Maximizing the Holy Month",
-    author: "Islamic Research Foundation",
     file: "ramadhan-avoid-losses.pdf",
     description:
       "A practical guide identifying common traps and wasted moments in Ramadan, helping you protect your spiritual rewards.",
@@ -39,7 +37,6 @@ const BOOKS = [
   {
     title: "A Guide For Ramadhan",
     subtitle: "Productivity & Planning",
-    author: "Darussalam Publications",
     file: "a-guide-for-ramadhan.pdf",
     description:
       "A structured handbook to help Muslims plan their daily schedule, Quran recitation goals, and voluntary prayers throughout Ramadan.",
@@ -49,7 +46,6 @@ const BOOKS = [
   {
     title: "Kitab Us-Sawm",
     subtitle: "The Classic Book of Fasting",
-    author: "Mujlisul Ulama (PE)",
     file: "kitaabus-sawm.pdf",
     description:
       "Detailed theological exposition on the inner and outer dimensions of fasting, exemptions, and making up missed fasts.",
@@ -59,7 +55,6 @@ const BOOKS = [
   {
     title: "Causes Behind The Increase & Decrease of Eemaan",
     subtitle: "Strengthening Faith",
-    author: "Shaykh Abdur-Razzaq Al-Badr",
     file: "causes-of-eemaan.pdf",
     description:
       "Clarification of the key spiritual factors that elevate faith and the common sins and distractions that weaken it.",
@@ -69,7 +64,6 @@ const BOOKS = [
   {
     title: "Islamic Fundamentals: Zakat & Sawm",
     subtitle: "Pillars of Practice",
-    author: "Islamic Studies Academy",
     file: "islamic-fundamentals-zakat-and-sawm-hints-the-principles-economic-system-in-islam.pdf",
     description:
       "An indispensable handbook for students and seekers detailing the Islamic socioeconomic principles and fasting guidelines.",
@@ -79,7 +73,6 @@ const BOOKS = [
   {
     title: "Bulugh Al-Maram (Kitab as-Siyam)",
     subtitle: "Attainment of the Objective",
-    author: "Al-Hafidh Ibn Hajar Al-Asqalani",
     file: "bulugh-al-maram.pdf",
     description:
       "The monumental classical compilation of legal Hadiths regarding the rulings of fasting, moon-sighting, and I'tikaf.",
@@ -175,9 +168,6 @@ export const BooksScreen = ({ navigation }) => {
                   {book.subtitle}
                 </Text>
               )}
-              <Text style={[styles.author, { color: colors.textSecondary }]}>
-                {t("common.by", "By")} {book.author}
-              </Text>
               <Text
                 style={[styles.description, { color: colors.textSecondary }]}
                 numberOfLines={3}
@@ -188,7 +178,7 @@ export const BooksScreen = ({ navigation }) => {
 
             <View style={styles.cardFooter}>
               <TouchableOpacity
-                style={[styles.readButton, { backgroundColor: "#6366F1" }]}
+                style={[styles.readButton, { backgroundColor: "#150c33" }]}
                 onPress={() => openBook(book.file)}
               >
                 <Ionicons name="document-text-outline" size={16} color="white" />

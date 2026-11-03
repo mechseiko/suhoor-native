@@ -68,6 +68,7 @@ class AlarmActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        AlarmForegroundService.stopService(this)
         stopAlarmSound()
         stopVibration()
         releaseWakeLock()
@@ -267,6 +268,7 @@ class AlarmActivity : AppCompatActivity() {
      * where the user is required to enter their 4-digit PIN in AlarmOverlay to dismiss.
      */
     private fun openAppForPin() {
+        AlarmForegroundService.stopService(this)
         stopAlarmSound()
         stopVibration()
         releaseWakeLock()

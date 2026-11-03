@@ -43,6 +43,9 @@ class AlarmReceiver : BroadcastReceiver() {
 
         Log.d(TAG, "Alarm triggered: ${alarmData.id} type: ${alarmData.type}")
 
+        // Start foreground service to play sound and vibrate continuously even when app is closed
+        AlarmForegroundService.startAlarm(context, alarmData)
+
         // Show notification
         showNotification(context, alarmData)
 
@@ -62,6 +65,12 @@ class AlarmReceiver : BroadcastReceiver() {
 
         // Create notification channel for Android O+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val soundUri = android.net.Uri.parse("android.resource://" + context.packageName + "/" + R.raw.alarm_sound)
+            val audioAttributes = android.media.AudioAttributes.Builder()
+                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .setUsage(android.media.AudioAttributes.USAGE_ALARM)
+                .build()
+
             val channel = android.app.NotificationChannel(
                 CHANNEL_ID,
                 "Suhoor Alarm",
@@ -71,6 +80,8 @@ class AlarmReceiver : BroadcastReceiver() {
                 enableVibration(true)
                 enableLights(true)
                 setShowBadge(true)
+                setSound(soundUri, audioAttributes)
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
             }
 
             val systemNotificationManager = context.getSystemService(android.app.NotificationManager::class.java)

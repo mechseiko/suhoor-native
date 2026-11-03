@@ -20,6 +20,7 @@ const ALARM_TYPES = new Set(['wake_up_alarm']);
 const DAILY_ALARM_KEY = 'suhoor_daily_alarm_time';
 const FASTING_PROMPT_DISMISS_KEY = 'suhoor_fasting_prompt_dismissed';
 const IFTAR_NOTIFICATION_KEY = 'suhoor_iftar_scheduled';
+const CHECKIN_NOTIFICATION_KEY = 'suhoor_checkin_reminder_scheduled';
 
 const AlarmContext = createContext({});
 
@@ -248,6 +249,11 @@ export const AlarmProvider = ({ children }) => {
   const dismissAlarm = async () => {
     setIsAlarmActive(false);
     setAlarmData(null);
+    if (Platform.OS === 'android' && NativeModules?.AlarmBridge?.stopAlarmService) {
+      try {
+        await NativeModules.AlarmBridge.stopAlarmService();
+      } catch (e) {}
+    }
     const todayStr = new Date().toLocaleDateString('en-CA');
     await AsyncStorage.setItem(`suhoor_alarm_dismissed_${todayStr}`, 'true');
   };
@@ -286,35 +292,6 @@ export const AlarmProvider = ({ children }) => {
           if (hoursSinceDismiss < 24) return;
         }
 
-        // Check if user might plausibly fast tomorrow
-        const defaults = userProfile?.fastingDefaults || {};
-        const fastingDefaults = Object.values(defaults).some(v => v === true);
-
-        // Check if fasted in last 7 days (behavioral signal that they're an active faster)
-        let fastedInLast7Days = false;
-        try {
-          const { collection, query, where, getDocs } = await import('firebase/firestore');
-          const wakeUpLogsRef = collection(db, COLLECTIONS.wakeUpLogs);
-          const sevenDaysAgo = new Date(now);
-          sevenDaysAgo.setDate(now.getDate() - 7);
-          const sevenDaysAgoStr = sevenDaysAgo.toLocaleDateString('en-CA');
-
-          const recentLogsQuery = query(
-            wakeUpLogsRef,
-            where('user_id', '==', currentUser.uid),
-            where('date', '>=', sevenDaysAgoStr)
-          );
-          const recentLogsSnap = await getDocs(recentLogsQuery);
-          fastedInLast7Days = !recentLogsSnap.empty;
-        } catch (err) {
-          console.warn('Error checking recent fasting history:', err);
-        }
-
-        // Notify if fasting defaults are on OR user has fasted in last 7 days
-        const shouldNotify = fastingDefaults || fastedInLast7Days;
-
-        if (!shouldNotify) return;
-
         // Schedule notification for 5PM tomorrow
         const notificationTime = new Date(tomorrow);
         notificationTime.setHours(17, 0, 0, 0);
@@ -338,43 +315,125 @@ export const AlarmProvider = ({ children }) => {
 
   // Schedule iftar notification at maghrib time
   useEffect(() => {
-    if (!currentUser || !userProfile || !todayData?.time?.maghrib) return;
+    if (!currentUser || !todayData?.time?.maghrib) return;
 
     const scheduleIftarNotification = async () => {
       try {
         const now = new Date();
+        const todayStr = now.toLocaleDateString('en-CA');
+
+        // Check if user is fasting today (from local storage or Firestore)
+        const localStatus = await AsyncStorage.getItem(`suhoor_fasting_status_${todayStr}`);
+        let isFastingToday = localStatus === 'confirmed_fasting' || localStatus === 'fasting';
+
+        if (!isFastingToday) {
+          try {
+            const statusSnap = await getDoc(doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${todayStr}`));
+            if (statusSnap.exists()) {
+              const data = statusSnap.data();
+              if (data.wantsToFast || data.checkedIn) {
+                isFastingToday = true;
+              }
+            }
+          } catch (e) {
+            // fallback
+            isFastingToday = true;
+          }
+        }
+
+        if (!isFastingToday) return;
+
         const [maghribH, maghribM] = todayData.time.maghrib.split(':').map(Number);
-        
+        if (isNaN(maghribH) || isNaN(maghribM)) return;
+
         const iftarTime = new Date();
         iftarTime.setHours(maghribH, maghribM, 0, 0);
 
-        // If iftar time has passed today, schedule for tomorrow
-        if (iftarTime <= now) {
-          iftarTime.setDate(now.getDate() + 1);
+        // If iftar time hasn't passed today yet
+        if (iftarTime > now) {
+          const lastScheduled = await AsyncStorage.getItem(`${IFTAR_NOTIFICATION_KEY}_${todayStr}`);
+          if (!lastScheduled) {
+            await scheduleNotification({
+              semanticId: `suhoor-iftar-${todayStr}`,
+              date: iftarTime,
+              title: t('notifications.iftarTitle', t('fasting.iftarNotificationTitle', '🌅 Iftar Time')),
+              message: t('notifications.iftarMessage', t('fasting.iftarNotificationMessage', "It's time to break your fast. May Allah accept your fasting and duas!")),
+              channel: CHANNELS.iftar,
+            });
+            await AsyncStorage.setItem(`${IFTAR_NOTIFICATION_KEY}_${todayStr}`, iftarTime.toISOString());
+            console.log('Scheduled iftar notification for:', iftarTime.toISOString());
+          }
         }
-
-        // Check if already scheduled for today
-        const todayStr = new Date().toLocaleDateString('en-CA');
-        const lastScheduled = await AsyncStorage.getItem(`${IFTAR_NOTIFICATION_KEY}_${todayStr}`);
-        if (lastScheduled) return;
-
-        // Schedule notification
-        await scheduleNotification({
-          semanticId: 'suhoor-iftar',
-          date: iftarTime,
-          title: t('fasting.iftarNotificationTitle', 'Iftar Time'),
-          message: t('fasting.iftarNotificationMessage', "It's time to break your fast. May Allah accept your worship!"),
-          channel: CHANNELS.iftar,
-        });
-
-        await AsyncStorage.setItem(`${IFTAR_NOTIFICATION_KEY}_${todayStr}`, iftarTime.toISOString());
-        console.log('Scheduled iftar notification for:', iftarTime.toISOString());
       } catch (err) {
         console.error('Error scheduling iftar notification:', err);
       }
     };
 
     scheduleIftarNotification();
+  }, [currentUser, userProfile, todayData, t]);
+
+  // Schedule wake-up window check-in reminder
+  useEffect(() => {
+    if (!currentUser || !todayData?.time?.sahur) return;
+
+    const scheduleWakeUpCheckInReminder = async () => {
+      try {
+        const now = new Date();
+        const todayStr = now.toLocaleDateString('en-CA');
+
+        // Check if user already checked in today
+        const checkedInKey = `suhoor_checked_in_${todayStr}`;
+        const localCheckedIn = await AsyncStorage.getItem(checkedInKey);
+        if (localCheckedIn === 'true') {
+          // If already checked in, cancel any scheduled check-in reminder
+          await cancelNotification('suhoor-checkin-reminder');
+          await cancelNotification('suhoor-wakeup-start');
+          return;
+        }
+
+        const scheduledKey = `${CHECKIN_NOTIFICATION_KEY}_${todayStr}`;
+        const alreadyScheduled = await AsyncStorage.getItem(scheduledKey);
+        if (alreadyScheduled) return;
+
+        // Wake-up window starts at personal wake-up time or 40 mins before suhoor
+        const userMinutesBefore = userProfile?.preferences?.wakeUpMinutesBeforeSuhoor || 40;
+        const [sahurH, sahurM] = todayData.time.sahur.split(':').map(Number);
+        if (isNaN(sahurH) || isNaN(sahurM)) return;
+
+        const wakeUpDate = new Date();
+        wakeUpDate.setHours(sahurH, sahurM - userMinutesBefore, 0, 0);
+
+        if (wakeUpDate > now) {
+          // Schedule notification at the beginning of wake-up window
+          await scheduleNotification({
+            semanticId: 'suhoor-wakeup-start',
+            date: wakeUpDate,
+            title: t('notifications.wakeUpWindowStartTitle', '⏰ Wake-Up Window Started'),
+            message: t('notifications.wakeUpWindowStartMessage', "Don't forget to check in! Your wake-up window has begun."),
+            channel: CHANNELS.wakeUp,
+          });
+
+          // Schedule another reminder 10 minutes into the window
+          const reminderDate = new Date(wakeUpDate.getTime() + 10 * 60 * 1000);
+          if (reminderDate > now) {
+            await scheduleNotification({
+              semanticId: 'suhoor-checkin-reminder',
+              date: reminderDate,
+              title: t('notifications.checkInReminderTitle', '⏰ Time to Check In'),
+              message: t('notifications.checkInReminderMessage', "Don't forget to check in on the Groups tab to let your group know you're awake!"),
+              channel: CHANNELS.wakeUp,
+            });
+          }
+
+          await AsyncStorage.setItem(scheduledKey, wakeUpDate.toISOString());
+          console.log('Scheduled wake-up window notifications for:', wakeUpDate.toISOString());
+        }
+      } catch (err) {
+        console.error('Error scheduling wake-up check-in reminder:', err);
+      }
+    };
+
+    scheduleWakeUpCheckInReminder();
   }, [currentUser, userProfile, todayData, t]);
 
   return (

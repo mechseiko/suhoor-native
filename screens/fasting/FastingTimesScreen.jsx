@@ -14,6 +14,7 @@ import { useFastingTimes } from '../../hooks/useFastingTimes';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useNetwork } from '../../context/NetworkContext';
 import { useAlarmState } from '../../context/AlarmContext';
 import { hijriMonthName } from '../../config/languages';
 import { db } from '../../config/firebase';
@@ -30,6 +31,7 @@ export const FastingTimesScreen = ({ navigation }) => {
   const { currentUser, userProfile } = useAuth();
   const { colors, isDark } = useTheme();
   const { t, locale, formatDate, formatTime } = useLanguage();
+  const { isConnected } = useNetwork();
   const { todayData, loading, error, location, checkWakeUpWindow, setRefreshKey } = useFastingTimes();
   const { scheduleDailySuhoorAlarm } = useAlarmState();
 
@@ -134,8 +136,9 @@ export const FastingTimesScreen = ({ navigation }) => {
   };
 
   const calculateWakeUpTime = (suhoorTime, minutesBefore) => {
-    if (!suhoorTime) return '--:--';
+    if (!suhoorTime || suhoorTime === '--:--' || typeof suhoorTime !== 'string' || !suhoorTime.includes(':')) return '--:--';
     const [hours, minutes] = suhoorTime.split(':').map(Number);
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return '--:--';
     const suhoorDate = new Date();
     suhoorDate.setHours(hours, minutes, 0, 0);
     const wakeUpDate = new Date(suhoorDate.getTime() - minutesBefore * 60000);
@@ -151,21 +154,18 @@ export const FastingTimesScreen = ({ navigation }) => {
   // --- LOCK LOGIC ---
   // Locked from 12:00 Midnight until Suhoor ends.
   const isPickerLocked = () => {
-    if (!todayData?.time?.sahur) return false; // Don't lock if we don't have the time yet
+    if (!todayData?.time?.sahur || typeof todayData.time.sahur !== 'string' || !todayData.time.sahur.includes(':')) return false;
     
     const now = currentTime;
     const currentHour = now.getHours();
     
-    // If it's past noon, it's definitely unlocked (evening)
     if (currentHour >= 12) return false;
 
-    // It's between midnight and noon. Check if we are past Suhoor.
     const [suhoorH, suhoorM] = todayData.time.sahur.split(':').map(Number);
+    if (!Number.isFinite(suhoorH) || !Number.isFinite(suhoorM)) return false;
     const suhoorDate = new Date();
     suhoorDate.setHours(suhoorH, suhoorM, 0, 0);
 
-    // If it's currently BEFORE Suhoor, it's locked.
-    // If it's AFTER Suhoor (e.g. 6:00 AM), it's unlocked for tomorrow.
     return now < suhoorDate;
   };
 
@@ -184,51 +184,52 @@ export const FastingTimesScreen = ({ navigation }) => {
     );
   }
 
-  if (error) {
+  if (!isConnected) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-        <ScrollView
-          contentContainerStyle={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
-          }
-        >
-          <Ionicons name="alert-circle" size={48} color={colors.error} />
-          <Text style={{ marginTop: 16, fontSize: 17, fontWeight: '700', textAlign: 'center', color: colors.text }}>
-            {t('fastingTimes.loadError')}
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <Ionicons name="cloud-offline-outline" size={64} color={colors.muted} />
+          <Text style={{ marginTop: 16, fontSize: 18, fontWeight: '600', color: colors.text }}>
+            {t('network.offline', 'Offline')}
           </Text>
-          <Text style={{ marginTop: 8, fontSize: 13, textAlign: 'center', color: colors.textSecondary }}>{error}</Text>
+          <Text style={{ marginTop: 8, fontSize: 14, color: colors.textSecondary, textAlign: 'center' }}>
+            {t('network.offlineMessage', 'Check your internet connection to view fasting times')}
+          </Text>
           <TouchableOpacity
             onPress={handleRefresh}
-            style={{
-              marginTop: 20,
-              paddingHorizontal: 24,
-              paddingVertical: 12,
-              borderRadius: 10,
-              backgroundColor: colors.primary,
-            }}
+            style={{ marginTop: 20, paddingHorizontal: 20, paddingVertical: 12, backgroundColor: colors.primary, borderRadius: 12 }}
           >
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>{t('common.retry')}</Text>
+            <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 14 }}>
+              {t('common.retry', 'Retry')}
+            </Text>
           </TouchableOpacity>
-        </ScrollView>
+        </View>
       </SafeAreaView>
     );
   }
 
+  // FIXED: Prioritize location missing over API error
   const locationStatus =
     location?.loaded && location.source === 'none'
       ? {
           icon: 'warning',
           color: colors.warning,
           message: location.error || t('fastingTimes.noLocationAvailable'),
-          action: true,
+          action: 'location',
+        }
+      : error
+      ? {
+          icon: 'alert-circle',
+          color: colors.error,
+          message: t('fastingTimes.locationOnButFailed'),
+          action: 'retry',
         }
       : location?.loaded && location.source === 'profile'
       ? {
           icon: 'information-circle',
           color: colors.primary,
           message: t('fastingTimes.usingProfileLocation'),
-          action: false,
+          action: null,
         }
       : null;
 
@@ -243,11 +244,13 @@ export const FastingTimesScreen = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
         }
       >
-        {/* Location Warning */}
+        {/* Status / Warning Banner */}
         {locationStatus && (
           <View
             style={{
-              backgroundColor: colors.surfaceVariant,
+              backgroundColor: error ? (colors.error + '20') : colors.surfaceVariant,
+              borderColor: error ? colors.error : colors.border,
+              borderWidth: error ? 2 : 1,
               borderRadius: 12,
               padding: 14,
               marginBottom: 16,
@@ -257,10 +260,24 @@ export const FastingTimesScreen = ({ navigation }) => {
             }}
           >
             <Ionicons name={locationStatus.icon} size={20} color={locationStatus.color} />
-            <Text style={{ flex: 1, fontSize: 13, color: colors.textSecondary }}>
+            <Text style={{ flex: 1, fontSize: 13, color: error ? colors.error : colors.textSecondary, fontWeight: error ? '700' : '400' }}>
               {locationStatus.message}
             </Text>
-            {locationStatus.action && (
+            {locationStatus.action === 'retry' ? (
+              <TouchableOpacity
+                onPress={handleRefresh}
+                style={{
+                  backgroundColor: colors.primary,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 8,
+                }}
+              >
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>
+                  {t('common.retry')}
+                </Text>
+              </TouchableOpacity>
+            ) : locationStatus.action === 'location' ? (
               <TouchableOpacity
                 onPress={() => navigation.navigate('ProfileTab', { screen: 'ProfileScreen' })}
                 style={{
@@ -274,7 +291,7 @@ export const FastingTimesScreen = ({ navigation }) => {
                   {t('common.setLocation', 'Set Location')}
                 </Text>
               </TouchableOpacity>
-            )}
+            ) : null}
           </View>
         )}
 
@@ -466,7 +483,7 @@ export const FastingTimesScreen = ({ navigation }) => {
                   marginBottom: 8,
                 }}
               >
-                Alarm Time Locked
+                {t('fastingTimes.alarmLockedTitle', 'Alarm Time Locked')}
               </Text>
               <Text
                 style={{
@@ -477,7 +494,7 @@ export const FastingTimesScreen = ({ navigation }) => {
                   paddingHorizontal: 20,
                 }}
               >
-                Your alarm time is saved as {personalWakeUp}. You can only edit it before midnight. The selector will reappear after Suhoor ends at {suhoorTime}.
+                {t('fastingTimes.alarmLockedDesc', { time: personalWakeUp, suhoorTime })}
               </Text>
             </View>
           ) : (
@@ -580,7 +597,7 @@ export const FastingTimesScreen = ({ navigation }) => {
                     </View>
 
                     <Text style={{ fontSize: 11, color: colors.textSecondary, textAlign: 'center', marginTop: 8 }}>
-                      Allowed: {MIN_WAKE_MINUTES}–{MAX_WAKE_MINUTES} minutes before Suhoor ends
+                      {t('fastingTimes.allowedRange', { min: MIN_WAKE_MINUTES, max: MAX_WAKE_MINUTES })}
                     </Text>
                   </View>
                 </View>
@@ -646,7 +663,7 @@ export const FastingTimesScreen = ({ navigation }) => {
               </Text>
               <Text style={{ fontSize: 12, color: colors.textSecondary }}>
                 {userProfile?.preferences?.alarmSound && userProfile?.preferences?.alarmSound !== 'default'
-                  ? `Active sound set in profile (${userProfile.preferences.alarmSound})`
+                  ? t('fastingTimes.activeSound', { sound: userProfile.preferences.alarmSound })
                   : t('fastingTimes.usingDefaultSound')}
               </Text>
             </View>

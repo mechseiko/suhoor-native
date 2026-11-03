@@ -10,9 +10,9 @@ export const LogoLoader = () => {
 
   const loadingMessages = [
     'Checking your alarms...',
+    'Loading your groups...',
     'Pulling your fasting times...',
     'Bundling your experience...',
-    'Loading your groups...',
     'Preparing your data...',
     'Getting your crossed milestones...',
   ]

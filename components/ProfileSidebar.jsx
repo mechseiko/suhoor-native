@@ -22,6 +22,7 @@ import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useGamification } from '../hooks/useGamification'
+import { useNetwork } from '../context/NetworkContext'
 import { brand, neutral, radius } from '../theme'
 import { Badge, Text } from './ui'
 import { getCurrentVersion, getLatestPlayStoreVersion, compareVersions } from '../services/versionService'
@@ -33,7 +34,8 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
   const { currentUser, userProfile, logout } = useAuth()
   const { colors, isDark, setThemeMode, themeMode } = useTheme()
   const { t } = useLanguage()
-  const { stats, currentLevel } = useGamification()
+  const { stats, currentLevel, loading: gamificationLoading } = useGamification()
+  const { isConnected } = useNetwork()
   const [appVersion] = useState(getCurrentVersion())
   const [latestVersion, setLatestVersion] = useState(null)
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
@@ -212,11 +214,21 @@ export const ProfileSidebar = ({ visible, onClose, navigation }) => {
                   </Text>
                 )}
                 <View style={{ marginTop: 4, flexDirection: 'row' }}>
-                  <Badge
-                    label={`${t('common.levelAbbr')} ${currentLevel.level} • ${currentLevel.name}`}
-                    tone="secondary"
-                    bordered
-                  />
+                  {gamificationLoading ? (
+                    <View style={{ width: 80, height: 20, backgroundColor: colors.surfaceVariant, borderRadius: 10 }} />
+                  ) : !isConnected ? (
+                    <Badge
+                      label="-"
+                      tone="secondary"
+                      bordered
+                    />
+                  ) : (
+                    <Badge
+                      label={`${t('common.levelAbbr')} ${currentLevel.level} • ${currentLevel.name}`}
+                      tone="secondary"
+                      bordered
+                    />
+                  )}
                 </View>
               </View>
             </TouchableOpacity>

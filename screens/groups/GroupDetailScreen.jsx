@@ -43,6 +43,20 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 import Toast from "../../components/Toast";
 import GamificationCelebration from "../../components/GamificationCelebration";
 
+// Skeleton component for member list
+const MemberSkeleton = () => {
+  const { colors } = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+      <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surfaceVariant }} />
+      <View style={{ flex: 1, marginLeft: 12 }}>
+        <View style={{ width: 120, height: 16, backgroundColor: colors.surfaceVariant, borderRadius: 8, marginBottom: 6 }} />
+        <View style={{ width: 80, height: 12, backgroundColor: colors.surfaceVariant, borderRadius: 6 }} />
+      </View>
+    </View>
+  );
+};
+
 // Module-level cache (survives component unmounts)
 const fetchedGroupsCache = new Set();
 
@@ -399,6 +413,13 @@ export const GroupDetailScreen = ({ route, navigation }) => {
 
       if (data.userId === currentUser?.uid) {
         setHasWokenUp(true);
+        // Mark as checked-in to cancel wake-up notifications
+        try {
+          const todayStr = new Date().toLocaleDateString('en-CA');
+          await AsyncStorage.setItem(`suhoor_checked_in_${todayStr}`, 'true');
+        } catch (e) {
+          console.warn('Failed to set checked-in flag:', e);
+        }
       } else {
         triggerToast(
           t('groups.memberWokeUpToast', { name: data.userName }),
@@ -1056,10 +1077,6 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       {/* Wake Up Tracker Card */}
       <View style={[styles.trackerCard, { backgroundColor: colors.surface }]}>
         <View style={[styles.trackerHeader, { borderBottomColor: colors.border }]}>
-          <View style={styles.trackerTitleLeft}>
-            <Text style={[styles.trackerTitle, { color: colors.text }]}>{t('groups.wakeUpTracker')}</Text>
-          </View>
-
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             {isStatusVisibleNow() ? (
               hasWokenUp ? (
@@ -1069,11 +1086,11 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                     size={16}
                     color={colors.secondary}
                   />
-                  <Text style={[styles.awakeSuccessText, { color: colors.secondary }]}>Checked in</Text>
+                  <Text style={[styles.awakeSuccessText, { color: colors.secondary }]}>{t('groups.checkedIn', 'Checked in')}</Text>
                 </View>
               ) : wantsToFast ? (
                 <View style={[styles.sleepingBadge, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}>
-                  <Text style={[styles.sleepingBadgeText, { color: isDark ? '#60A5FA' : '#3B82F6' }]}>You haven't checked in</Text>
+                  <Text style={[styles.sleepingBadgeText, { color: isDark ? '#60A5FA' : '#3B82F6' }]}>{t('groups.notCheckedIn', "You haven't checked in")}</Text>
                 </View>
               ) : null
             ) : null}
@@ -1107,10 +1124,21 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         })()}
 
         {membersLoading ? (
+          <View style={{ paddingVertical: 8 }}>
+            <MemberSkeleton />
+            <MemberSkeleton />
+            <MemberSkeleton />
+            <MemberSkeleton />
+            <MemberSkeleton />
+          </View>
+        ) : isOffline ? (
           <View style={{ alignItems: 'center', paddingVertical: 32 }}>
-            <ActivityIndicator color={colors.primary} size="large" />
-            <Text style={{ marginTop: 12, color: colors.textSecondary, fontSize: 14 }}>
-              {t('groups.fetchingMembers', 'Fetching members...')}
+            <Ionicons name="cloud-offline-outline" size={48} color={colors.muted} />
+            <Text style={{ marginTop: 12, color: colors.text, fontSize: 16, fontWeight: '600' }}>
+              {t('network.offline', 'Offline')}
+            </Text>
+            <Text style={{ marginTop: 4, color: colors.textSecondary, fontSize: 14 }}>
+              {t('network.offlineMessage', 'Check your internet connection')}
             </Text>
           </View>
         ) : (

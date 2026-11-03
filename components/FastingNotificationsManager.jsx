@@ -1,17 +1,21 @@
 import React, { useEffect, useState } from 'react'
 import { Platform } from 'react-native'
 import { useAuth } from '../context/AuthContext'
-import { useFastingTimes } from '../hooks/useFastingTimes'
+import { useLanguage } from '../context/LanguageContext'
 import { scheduleNotification, CHANNELS } from '../services/notifications'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { db } from '../config/firebase'
+import { COLLECTIONS } from '../config/firestoreSchema'
+import { doc, getDoc } from 'firebase/firestore'
 
 /**
  * Headless manager component for fasting notifications.
- * Schedules daily 5PM fasting intention reminders for users who haven't set their intention.
+ * Schedules daily 5PM fasting intention reminder for users who haven't set their intention.
+ * Also triggers if app is opened after 5PM and intention for tomorrow is still not set.
  */
 export const FastingNotificationsManager = () => {
   const { currentUser } = useAuth()
-  const { todayData } = useFastingTimes()
+  const { t } = useLanguage()
   const [hasScheduledToday, setHasScheduledToday] = useState(false)
 
   useEffect(() => {
@@ -19,45 +23,65 @@ export const FastingNotificationsManager = () => {
 
     const scheduleFastingReminder = async () => {
       try {
-        const today = new Date().toLocaleDateString('en-CA')
-        const storageKey = `fasting_reminder_scheduled_${today}`
+        const now = new Date()
+        const todayStr = now.toLocaleDateString('en-CA')
+
+        const tomorrow = new Date(now)
+        tomorrow.setDate(now.getDate() + 1)
+        const tomorrowStr = tomorrow.toLocaleDateString('en-CA')
+
+        // 1. Check local storage if intention already set for tomorrow
+        const localIntention = await AsyncStorage.getItem(`suhoor_fasting_intention_${tomorrowStr}`)
+        if (localIntention) {
+          setHasScheduledToday(true)
+          return
+        }
+
+        // 2. Check Firestore if dailyFastingStatus doc already exists for tomorrow
+        try {
+          const statusRef = doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${tomorrowStr}`)
+          const statusSnap = await getDoc(statusRef)
+          if (statusSnap.exists()) {
+            setHasScheduledToday(true)
+            return
+          }
+        } catch (e) {
+          console.warn('Could not check remote dailyFastingStatus:', e)
+        }
+
+        const storageKey = `fasting_reminder_scheduled_${todayStr}`
         const alreadyScheduled = await AsyncStorage.getItem(storageKey)
-        
         if (alreadyScheduled) {
           setHasScheduledToday(true)
           return
         }
 
-        // Schedule notification for 5PM today
-        const reminderTime = new Date()
-        reminderTime.setHours(17, 0, 0, 0) // 5:00 PM
+        const scheduledTime = new Date(now)
+        scheduledTime.setHours(17, 0, 0, 0) // 5:00 PM
 
-        // If 5PM has already passed today, skip
-        if (reminderTime <= new Date()) {
-          await AsyncStorage.setItem(storageKey, 'skipped')
-          setHasScheduledToday(true)
-          return
-        }
+        // If currently before 5:00 PM, schedule for 17:00.
+        // If 5:00 PM has already arrived/passed today, schedule for 5 seconds from now so the user receives it!
+        const triggerTime = now >= scheduledTime ? new Date(now.getTime() + 5000) : scheduledTime
 
-        const semanticId = `fasting_intention_${today}`
+        const semanticId = `fasting_intention_${todayStr}`
         await scheduleNotification({
           semanticId,
-          date: reminderTime,
-          title: 'Time to Set Your Fasting Intention',
-          message: 'Don\'t forget to set your fasting intention for tomorrow!',
+          date: triggerTime,
+          title: t('fasting.dailyPromptTitle', 'Time to set your fasting intention'),
+          message: t('fasting.dailyPromptMessage', 'Set your intention for tomorrow'),
           channel: CHANNELS.fastingPrompt,
         })
 
         await AsyncStorage.setItem(storageKey, 'scheduled')
         setHasScheduledToday(true)
-        console.log('Fasting intention reminder scheduled for 5PM')
+        console.log('Fasting intention reminder scheduled for', triggerTime.toISOString())
       } catch (error) {
         console.error('Failed to schedule fasting reminder:', error)
       }
     }
 
     scheduleFastingReminder()
-  }, [currentUser, hasScheduledToday])
+  }, [currentUser, hasScheduledToday, t])
 
   return null
 }

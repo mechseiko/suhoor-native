@@ -14,8 +14,10 @@ import {
 import {
   COLLECTIONS,
   BADGES,
+  BADGE_TRACKS,
   BARAKAH_TIERS,
   getBarakahLevel,
+  calculateUserSPAndBadges,
   gamificationStatsId,
   gamificationDoc,
 } from "../config/firestoreSchema";
@@ -128,48 +130,36 @@ export function useGamification() {
 
         if (type === "wake_up") {
           totalFastingDays += 1;
-          points += 10; // Base 10 for fasting
-          
           if (payload.isEarlyBird) {
             earlyBirds += 1;
-            badgeSet.add(BADGES.EARLY_BIRD.id);
-            points += 15; // Extra 15 for early bird
           }
-
-          badgeSet.add(BADGES.FIRST_SUHOOR.id);
-          if (totalFastingDays >= 3) badgeSet.add(BADGES.DAYS_3.id);
-          if (totalFastingDays >= 7) badgeSet.add(BADGES.DAYS_7.id);
-          if (totalFastingDays >= 14) badgeSet.add(BADGES.DAYS_14.id);
-          if (totalFastingDays >= 30) badgeSet.add(BADGES.DAYS_30.id);
-
         } else if (type === "buzz_member") {
           membersBuzzed += 1;
-          points += 2; // Reduced from 8 to prevent spam
-          if (membersBuzzed >= 5) {
-            badgeSet.add(BADGES.GROUP_GUARDIAN.id);
-            points += BADGES.GROUP_GUARDIAN.points;
-          }
         } else if (type === "sunnah_fast") {
           sunnahFasts += 1;
-          points += 15;
-          if (sunnahFasts >= 8) {
-            badgeSet.add(BADGES.SUNNAH_DEVOTEE.id);
-            points += BADGES.SUNNAH_DEVOTEE.points;
-          }
         } else if (type === "read_resource") {
-          points += 5;
-          badgeSet.add(BADGES.KNOWLEDGE_SEEKER.id);
+          // resource read
         }
 
-        const updated = gamificationDoc({
-          userId: currentUser.uid,
-          points,
-          successfulWakeups: totalFastingDays, // DB compat
+        const calculated = calculateUserSPAndBadges({
           totalFastingDays,
           earlyBirds,
           membersBuzzed,
           sunnahFasts,
-          badges: Array.from(badgeSet),
+        });
+
+        points = calculated.points;
+        const allBadgesList = Array.from(new Set([...Array.from(badgeSet), ...calculated.badges]));
+
+        const updated = gamificationDoc({
+          userId: currentUser.uid,
+          points,
+          successfulWakeups: totalFastingDays,
+          totalFastingDays,
+          earlyBirds,
+          membersBuzzed,
+          sunnahFasts,
+          badges: allBadgesList,
         });
 
         await setDoc(docRef, updated, { merge: true });

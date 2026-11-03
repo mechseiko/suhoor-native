@@ -29,9 +29,11 @@ const getDeviceCoordinates = async () => {
       const fine = await PermissionsAndroid.check(
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
       );
-      
-      if (!fine) {
-        console.log("Fine location permission not yet granted, skipping auto-request");
+      const coarse = await PermissionsAndroid.check(
+        PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION
+      );
+      if (!fine && !coarse) {
+        console.log("Location permission not yet granted, skipping auto-request");
         return null;
       }
     } catch (error) {

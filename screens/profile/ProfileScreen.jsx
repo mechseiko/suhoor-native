@@ -22,6 +22,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Text } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
+import { useNetwork } from "../../context/NetworkContext";
 import {
   clearUserLocation,
   getCurrentCoordinates,
@@ -47,9 +48,10 @@ import Sound from 'react-native-sound';
 import { ALARM_SOUND_OPTIONS, getAlarmSoundUri, getAlarmSoundResourceName } from "../../utils/soundGenerator";
 
 const ProfileScreen = ({ route }) => {
-  const { currentUser, userProfile, logout, deleteAccount } = useAuth();
+  const { currentUser, userProfile, logout, deleteAccount, profileLoading } = useAuth();
   const { colors, themeMode, setThemeMode, isDark } = useTheme();
   const { t, isRTL } = useLanguage();
+  const { isConnected } = useNetwork();
   const [appVersion] = useState(getCurrentVersion());
   const [latestVersion, setLatestVersion] = useState(null);
 
@@ -200,7 +202,7 @@ const ProfileScreen = ({ route }) => {
           const fallback = new Sound('alarm_sound', Sound.MAIN_BUNDLE, (fallbackErr) => {
             if (fallbackErr) {
               console.log('Fallback preview sound load error:', fallbackErr);
-              showToast('Could not preview this sound', 'error');
+              showToast(t('profile.couldNotPreviewSound'), 'error');
               return;
             }
             fallback.setVolume(1.0);
@@ -221,7 +223,7 @@ const ProfileScreen = ({ route }) => {
       });
     } catch (err) {
       console.log('Preview sound error:', err);
-      showToast('Could not preview this sound', 'error');
+      showToast(t('profile.couldNotPreviewSound'), 'error');
     }
   };
 
@@ -602,6 +604,10 @@ const ProfileScreen = ({ route }) => {
   const avatarUrl = userProfile?.avatar_url || userProfile?.photoURL || currentUser?.photoURL;
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
+  // Determine if we should show skeleton or dash for data-dependent UI
+  const showSkeleton = profileLoading;
+  const showDash = !isConnected && !profileLoading;
+
   const pickImage = async () => {
     if (Platform.OS === "web") {
       return new Promise((resolve) => {
@@ -775,7 +781,7 @@ const ProfileScreen = ({ route }) => {
     },
     settingButton: {
       backgroundColor: colors.surfaceVariant,
-    },
+  },
   };
 
   return (
@@ -805,28 +811,20 @@ const ProfileScreen = ({ route }) => {
               <Text style={styles.headerName}>
                 {displayName || t("profile.member", "Member")}
               </Text>
-              {isVerified ? (
+              {showSkeleton ? (
+                <View style={{ width: 60, height: 20, backgroundColor: colors.surfaceVariant, borderRadius: 10 }} />
+              ) : showDash ? (
+                <View style={styles.verifiedBadge}>
+                  <Text style={[styles.verifiedText, { color: colors.textSecondary }]}>-</Text>
+                </View>
+              ) : isVerified ? (
                 <View style={styles.verifiedBadge}>
                   <Ionicons name="checkmark-circle" size={12} color="#10B981" />
                   <Text style={styles.verifiedText}>
                     {t("profile.verified", "Verified")}
                   </Text>
                 </View>
-              ) : (
-                <TouchableOpacity
-                  style={[styles.verifiedBadge, styles.unverifiedBadge]}
-                  onPress={handleResendVerification}
-                  disabled={isResendingVerification}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="alert-circle" size={12} color="#F59E0B" />
-                  <Text style={[styles.verifiedText, styles.unverifiedText]}>
-                    {isResendingVerification
-                      ? t("profile.resending", "Sending...")
-                      : t("profile.unverified", "Unverified • Resend")}
-                  </Text>
-                </TouchableOpacity>
-              )}
+              ) : null}
             </View>
             <Text style={styles.headerEmail}>{currentUser?.email}</Text>
             <View style={styles.memberSinceBadge}>
@@ -1925,7 +1923,7 @@ const ProfileScreen = ({ route }) => {
               <TouchableOpacity
                 style={styles.supportLinkRow}
                 onPress={() =>
-                  Linking.openURL("https://suhoor-group.web.app/privacy")
+                  Linking.openURL("https://suhoorapp.cv/privacy")
                 }
               >
                 <View style={styles.supportLinkInfo}>
@@ -1950,7 +1948,7 @@ const ProfileScreen = ({ route }) => {
               <TouchableOpacity
                 style={styles.supportLinkRow}
                 onPress={() =>
-                  Linking.openURL("https://suhoor-group.web.app/terms")
+                  Linking.openURL("https://suhoorapp.cv/terms")
                 }
               >
                 <View style={styles.supportLinkInfo}>

@@ -17,7 +17,8 @@ import { doc, onSnapshot, updateDoc, getDoc, setDoc, serverTimestamp } from "fir
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { detectUserLocationDetails } from "../utils/country";
-import { GoogleSignin } from "@react-native-google-signin/google-signin"; // ADDED THIS
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID } from "@env";
 
 const AuthContext = createContext({});
 
@@ -25,7 +26,7 @@ export const useAuth = () => useContext(AuthContext);
 
 // Configure Google Sign-In outside the component
 GoogleSignin.configure({
-  webClientId: '436930754190-6m8r5cegt0pa6mil8ujb8n1d2r9pmvk3.apps.googleusercontent.com',
+  webClientId: EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
   offlineAccess: true,
 });
 

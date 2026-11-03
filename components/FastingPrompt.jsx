@@ -274,6 +274,12 @@ export const FastingPrompt = () => {
         await scheduleDailySuhoorAlarm(alarmTime, t('fasting.suhoorAlarmLabel'));
       }
 
+      // If setting intention for today, mark as checked-in to cancel notifications
+      const todayStr = new Date().toLocaleDateString('en-CA');
+      if (targetKey === todayStr) {
+        await AsyncStorage.setItem(`suhoor_checked_in_${todayStr}`, 'true');
+      }
+
       setStatus('confirmed_fasting');
       triggerToast(t('fasting.intentionSetToast'), 'success');
 

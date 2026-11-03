@@ -148,8 +148,8 @@ export const TabNavigator = ({ tabBarRef }) => {
         name="ProfileTab"
         component={ProfileScreen}
         options={{
-          title: t('nav.profile', 'Profile'),
-          tabBarLabel: t('nav.profile', 'Profile'),
+          title: t('nav.profile', 'Settings'),
+          tabBarLabel: t('nav.profile', 'Settings'),
           headerTitle: t('profile.myProfile'),
         }}
       />

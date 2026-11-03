@@ -109,8 +109,6 @@ class AlarmManagerModule(private val context: Context) {
                 )
             }
 
-            // Start foreground service to keep alarm running in background
-            AlarmForegroundService.startService(context, triggerTime, alarmId)
 
             Log.d(TAG, "Alarm scheduled: $alarmId at ${Date(triggerTime)}")
             return true

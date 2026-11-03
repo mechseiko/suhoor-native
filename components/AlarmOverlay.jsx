@@ -245,6 +245,15 @@ export const AlarmOverlay = () => {
       Vibration.cancel()
     }
     cancelAlarm()
+
+    // Mark user as checked-in to cancel wake-up notifications
+    try {
+      const todayStr = new Date().toLocaleDateString('en-CA')
+      await AsyncStorage.setItem(`suhoor_checked_in_${todayStr}`, 'true')
+    } catch (e) {
+      console.warn('Failed to set checked-in flag:', e)
+    }
+
     setStatus('success')
     setTimeout(() => {
       dismissAlarm()
@@ -280,7 +289,7 @@ export const AlarmOverlay = () => {
             resizeMode="contain"
           />
           <Text variant="h2" style={styles.brandTitle}>
-            Suhoor
+            {t('app.name', 'Suhoor')}
           </Text>
         </View>
 

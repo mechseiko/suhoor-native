@@ -155,13 +155,32 @@ export const getLatestPlayStoreVersion = async (forceRefresh = false) => {
 
 /**
  * Checks whether an update is available on Google Play Store
+ * For internal/closed testing, we rely on the Play Core API via inAppUpdates module
+ * This version check is used as a fallback and for showing the modal
  */
 export const checkAppUpdate = async () => {
   const current = getCurrentVersion();
   const latest = await getLatestPlayStoreVersion();
   const isValidLatest = latest && typeof latest === 'string' && latest.trim().toLowerCase() !== 'unknown' && /^[0-9]/.test(latest.trim());
   const isValidCurrent = current && typeof current === 'string' && current.trim().toLowerCase() !== 'unknown' && /^[0-9]/.test(current.trim());
-  const isAvailable = Boolean(isValidLatest && isValidCurrent && compareVersions(latest, current) > 0);
+
+  // For internal/closed testing, check Play Core API directly
+  let playCoreUpdateAvailable = false;
+  if (Platform.OS === 'android') {
+    try {
+      const SpInAppUpdates = await import('sp-react-native-in-app-updates');
+      const inAppUpdates = new SpInAppUpdates.default(true); // true for internal testing
+      const result = await inAppUpdates.checkNeedsUpdate();
+      playCoreUpdateAvailable = result?.shouldUpdate || false;
+      console.log('[VersionService] Play Core API check:', result);
+    } catch (err) {
+      console.log('[VersionService] Play Core API check failed:', err);
+    }
+  }
+
+  // Use Play Core API result if available, otherwise fall back to version comparison
+  const isAvailable = playCoreUpdateAvailable || Boolean(isValidLatest && isValidCurrent && compareVersions(latest, current) > 0);
+
   return {
     isAvailable,
     currentVersion: current,

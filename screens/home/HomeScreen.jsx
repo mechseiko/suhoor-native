@@ -4,6 +4,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useNetwork } from '../../context/NetworkContext';
 import { useGamification } from '../../hooks/useGamification';
 import { db } from '../../config/firebase';
 import { COLLECTIONS } from '../../config/firestoreSchema';
@@ -32,6 +33,7 @@ export const HomeScreen = ({ navigation }) => {
   const { currentUser, userProfile } = useAuth();
   const { colors } = useTheme();
   const { t, formatDate } = useLanguage();
+  const { isConnected } = useNetwork();
   const { celebration, dismissCelebration } = useGamification();
   const [refreshing, setRefreshing] = useState(false);
   const [sidebarVisible, setSidebarVisible] = useState(false);
@@ -103,47 +105,70 @@ export const HomeScreen = ({ navigation }) => {
       snap.forEach(d => list.push({ id: d.id, ...d.data() }));
       setNotifications(list);
 
-      if (!isFirst) {
-        snap.docChanges().forEach(change => {
-          if (change.type === 'added') {
-            const data = change.doc.data();
-            presentNotification({
-              title: `${data.emoji || '🌙'} ${data.title}`,
-              message: data.message || '',
-              data: { id: change.doc.id, type: 'broadcast' }
-            });
-          }
-        });
-      } else {
-        // Mark all current notifications as seen to prevent old notifications on reconnection
-        if (list.length > 0) {
-          const latestTimestamp = list[0]?.created_at?.toMillis ? list[0].created_at.toMillis() : (list[0]?.created_at?.seconds ? list[0].created_at.seconds * 1000 : 0);
-          if (latestTimestamp > 0) {
-            await AsyncStorage.setItem('suhoor_notifications_last_seen', String(latestTimestamp));
-            setLastSeenNotifications(latestTimestamp);
-          }
-        }
-        try {
-        try {
-          const storedLastSeen = await AsyncStorage.getItem('suhoor_notifications_last_seen');
-          const effectiveLastSeen = storedLastSeen ? Number(storedLastSeen) : lastSeen;
-          if (effectiveLastSeen > 0) {
-            const now = Date.now();
-            const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-            const newUnseen = list.find(n => {
+      try {
+        const storedLastSeen = await AsyncStorage.getItem('suhoor_notifications_last_seen');
+        const effectiveLastSeen = storedLastSeen ? Number(storedLastSeen) : lastSeen;
+
+        // Load set of already presented notification IDs to avoid re-firing on network reconnect or airplane mode
+        const presentedRaw = await AsyncStorage.getItem('suhoor_presented_notif_ids');
+        const presentedIds = new Set(presentedRaw ? JSON.parse(presentedRaw) : []);
+
+        const now = Date.now();
+        // A broadcast notification is only valid for lock screen popup if sent within the last 10 minutes
+        const TEN_MINUTES_MS = 10 * 60 * 1000;
+
+        if (!isFirst) {
+          snap.docChanges().forEach(change => {
+            if (change.type === 'added') {
+              const data = change.doc.data();
+              const notifId = change.doc.id;
+              const notifTimestamp = data.created_at?.toMillis ? data.created_at.toMillis() : (data.created_at?.seconds ? data.created_at.seconds * 1000 : 0);
+
+              if (notifTimestamp && (now - notifTimestamp) < TEN_MINUTES_MS && notifTimestamp > effectiveLastSeen && !presentedIds.has(notifId)) {
+                presentedIds.add(notifId);
+                presentNotification({
+                  title: `${data.emoji || '🌙'} ${data.title}`,
+                  message: data.message || '',
+                  data: { id: notifId, type: 'broadcast' }
+                });
+              }
+            }
+          });
+        } else {
+          // On initial load / reconnect after offline / airplane mode:
+          // If this is the user's very first launch (effectiveLastSeen === 0), mark all existing as seen
+          if (effectiveLastSeen === 0 && list.length > 0) {
+            const latestTimestamp = list[0]?.created_at?.toMillis ? list[0].created_at.toMillis() : (list[0]?.created_at?.seconds ? list[0].created_at.seconds * 1000 : 0);
+            if (latestTimestamp > 0) {
+              await AsyncStorage.setItem('suhoor_notifications_last_seen', String(latestTimestamp));
+              setLastSeenNotifications(latestTimestamp);
+            }
+          } else if (effectiveLastSeen > 0) {
+            // Only present fresh notification if it arrived while briefly disconnected (< 10 mins ago)
+            const freshUnseen = list.find(n => {
               const timestamp = n.created_at?.toMillis ? n.created_at.toMillis() : (n.created_at?.seconds ? n.created_at.seconds * 1000 : 0);
-              return timestamp > effectiveLastSeen && (now - timestamp) < ONE_DAY_MS;
+              return timestamp > effectiveLastSeen && (now - timestamp) < TEN_MINUTES_MS && !presentedIds.has(n.id);
             });
-            if (newUnseen) {
+            if (freshUnseen) {
+              presentedIds.add(freshUnseen.id);
               presentNotification({
-                title: `${newUnseen.emoji || '🌙'} ${newUnseen.title}`,
-                message: newUnseen.message || '',
-                data: { id: newUnseen.id, type: 'broadcast' }
+                title: `${freshUnseen.emoji || '🌙'} ${freshUnseen.title}`,
+                message: freshUnseen.message || '',
+                data: { id: freshUnseen.id, type: 'broadcast' }
               });
             }
+            // Mark all currently loaded notifications as presented to prevent replay on reconnect
+            list.forEach(n => presentedIds.add(n.id));
           }
-        } catch (_) {}
+        }
+
+        // Save presented notification IDs (cap at last 50 IDs)
+        const idArray = Array.from(presentedIds).slice(-50);
+        await AsyncStorage.setItem('suhoor_presented_notif_ids', JSON.stringify(idArray));
+      } catch (e) {
+        console.warn('Error handling broadcast notification presentation:', e);
       }
+
       isFirst = false;
     }, err => console.log('Error fetching notifications:', err));
 

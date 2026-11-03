@@ -18,6 +18,7 @@ export function useNativeAlarm() {
       cancelAllAlarms: async () => false,
       canScheduleExactAlarms: async () => true,
       triggerRemoteBuzz: async () => false,
+      stopAlarmService: async () => true,
       isNativeAvailable: false,
     }
   }
@@ -35,6 +36,7 @@ export function useNativeAlarm() {
       cancelAllAlarms: async () => false,
       canScheduleExactAlarms: async () => false,
       triggerRemoteBuzz: async () => false,
+      stopAlarmService: async () => false,
       isNativeAvailable: false,
     }
   }
@@ -182,6 +184,13 @@ export function useNativeAlarm() {
     cancelAllAlarms,
     canScheduleExactAlarms,
     triggerRemoteBuzz,
+    stopAlarmService: async () => {
+      try {
+        return await AlarmBridge.stopAlarmService();
+      } catch (e) {
+        return false;
+      }
+    },
     isNativeAvailable: true,
   }
 }

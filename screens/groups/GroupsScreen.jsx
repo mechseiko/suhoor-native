@@ -18,6 +18,7 @@ import { copyToClipboard } from '../../utils/clipboard'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { useLanguage } from '../../context/LanguageContext'
+import { useNetwork } from '../../context/NetworkContext'
 import { useFastingTimes } from '../../hooks/useFastingTimes'
 import { db } from '../../config/firebase'
 import { COLLECTIONS, wakeUpLogId } from '../../config/firestoreSchema'
@@ -41,6 +42,7 @@ export const GroupsScreen = ({ navigation, route }) => {
   const { currentUser, userProfile } = useAuth()
   const { colors, isDark } = useTheme()
   const { t } = useLanguage()
+  const { isConnected } = useNetwork()
   const { todayData } = useFastingTimes()
   const { emitWakeUp } = useSocket()
   const [groups, setGroups] = useState([])
@@ -248,6 +250,9 @@ export const GroupsScreen = ({ navigation, route }) => {
         wokeUpAt: wakeUpTime,
       }, { merge: true })
 
+      // Set checked-in flag in AsyncStorage for notification cancellation
+      await AsyncStorage.setItem(`suhoor_checked_in_${todayStr}`, 'true')
+
       if (emitWakeUp && groups.length > 0) {
         const userName =
           userProfile?.display_name ||
@@ -260,10 +265,10 @@ export const GroupsScreen = ({ navigation, route }) => {
       }
 
       setHasCheckedInToday(true)
-      triggerToast("Check-in successful! You're awake.", 'success')
+      triggerToast(t('groups.checkInSuccess'), 'success')
     } catch (err) {
       console.error('Error in check-in:', err)
-      triggerToast('Failed to check in. Try again.', 'error')
+      triggerToast(t('groups.checkInFailed'), 'error')
     } finally {
       setLoading(false)
     }
@@ -725,21 +730,13 @@ export const GroupsScreen = ({ navigation, route }) => {
       {/* ONE Check-in Banner */}
       {isInWakeUpWindow && wantsToFast && !hasCheckedInToday && (
         <View style={[styles.checkInBanner, { backgroundColor: colors.primary }]}>
-          <View style={styles.checkInContent}>
-            <Ionicons name="alarm-outline" size={20} color={colors.white} />
-            <View style={styles.checkInText}>
-              <Text style={styles.checkInTitle}>
-                {t('groups.areYouAwake') || 'Are you awake?'}
-              </Text>
-            </View>
-          </View>
           <TouchableOpacity
             style={styles.checkInBtn}
             onPress={openPinModal}
             disabled={loading}
           >
             <Text style={styles.checkInBtnText}>
-              {loading ? 'Checking in…' : t('groups.checkInBtn') || 'Check in'}
+              {loading ? t('groups.checkingIn') : t('groups.checkInBtn')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -760,14 +757,24 @@ export const GroupsScreen = ({ navigation, route }) => {
           <GroupSkeleton />
           <GroupSkeleton />
         </View>
+      ) : !isConnected ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="cloud-offline-outline" size={54} color={colors.muted} />
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>
+            {t('network.offline', 'Offline')}
+          </Text>
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+            {t('network.offlineMessage', 'Check your internet connection to view groups')}
+          </Text>
+        </View>
       ) : groups.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="people-outline" size={54} color={colors.muted} />
           <Text style={[styles.emptyTitle, { color: colors.text }]}>
-            No groups yet
+            {t('groups.noGroupsYet')}
           </Text>
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            Create a new group to invite friends, or join an existing one using a unique key.
+            {t('groups.noGroupsDescription')}
           </Text>
         </View>
       ) : (
@@ -788,10 +795,10 @@ export const GroupsScreen = ({ navigation, route }) => {
             <View style={styles.emptyContainer}>
               <Ionicons name="search-outline" size={54} color={colors.muted} />
               <Text style={[styles.emptyTitle, { color: colors.text }]}>
-                No groups found
+                {t('groups.noGroupsFound', 'No groups found')}
               </Text>
               <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                Try a different search term
+                {t('groups.tryDifferentSearch', 'Try a different search term')}
               </Text>
             </View>
           }
@@ -966,7 +973,7 @@ export const GroupsScreen = ({ navigation, route }) => {
           <View style={[styles.modalCard, themedStyles.modalCard]}>
             <View style={[styles.modalHeader, themedStyles.modalHeader]}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>
-                Enter Your Alarm PIN
+                {t('groups.enterAlarmPin')}
               </Text>
               <TouchableOpacity onPress={() => setShowPinModal(false)}>
                 <Ionicons name="close" size={24} color={colors.text} />
@@ -974,7 +981,7 @@ export const GroupsScreen = ({ navigation, route }) => {
             </View>
             <View style={styles.modalContent}>
               <Text style={[styles.modalInfo, { color: colors.textSecondary, textAlign: 'center', marginBottom: 20 }]}>
-                Enter your personal 4-digit PIN to confirm you are awake.
+                {t('groups.enterPinDescription')}
               </Text>
               <View style={{ flexDirection: 'row', justifyContent: 'center', columnGap: 12, marginBottom: 12 }}>
                 {pinDigits.map((digit, i) => (
@@ -1023,7 +1030,7 @@ export const GroupsScreen = ({ navigation, route }) => {
                   <ActivityIndicator color={colors.white} size="small" />
                 ) : (
                   <Text style={[styles.modalBtnConfirmText, { color: colors.white }]}>
-                    Confirm - I'm Awake
+                    {t('common.confirm')}
                   </Text>
                 )}
               </TouchableOpacity>

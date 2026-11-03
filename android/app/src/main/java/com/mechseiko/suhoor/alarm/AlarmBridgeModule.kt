@@ -182,6 +182,16 @@ class AlarmBridgeModule(reactContext: ReactApplicationContext) : ReactContextBas
      * @param promise Promise to resolve with success status
      */
     @ReactMethod
+    fun stopAlarmService(promise: Promise) {
+        try {
+            AlarmForegroundService.stopService(reactApplicationContext)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("STOP_SERVICE_ERROR", e.message, e)
+        }
+    }
+
+    @ReactMethod
     fun cancelAllAlarms(promise: Promise) {
         try {
             alarmManagerModule.cancelAllAlarms()

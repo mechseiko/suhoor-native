@@ -35,6 +35,7 @@ export const triggerImmediateUpdate = async (fallbackUrl = PLAY_STORE_URL) => {
     console.log('[InAppUpdates] shouldUpdate:', result?.shouldUpdate);
     console.log('[InAppUpdates] availableVersionCode:', result?.availableVersionCode);
     console.log('[InAppUpdates] clientVersionCode:', result?.clientVersionCode);
+    console.log('[InAppUpdates] updateAvailability:', result?.updateAvailability);
 
     if (result && result.shouldUpdate) {
       await inAppUpdates.startUpdate({
