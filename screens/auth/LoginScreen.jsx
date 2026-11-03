@@ -323,7 +323,7 @@ export const LoginScreen = ({ navigation }) => {
         </TouchableOpacity>
       )}
 
-      <View style={{ marginBottom: 32, marginTop: 12, alignItems: 'flex-end' }}>
+      <View style={{ marginBottom: 16, marginTop: 12, alignItems: 'flex-end' }}>
         <TouchableOpacity
           onPress={() => navigation.navigate('ForgotPassword')}
           hitSlop={10}

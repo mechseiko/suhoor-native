@@ -150,7 +150,7 @@ export const TabNavigator = ({ tabBarRef }) => {
         options={{
           title: t('nav.profile', 'Settings'),
           tabBarLabel: t('nav.profile', 'Settings'),
-          headerTitle: t('profile.myProfile'),
+          headerTitle: t('nav.profile'),
         }}
       />
       <Tab.Screen

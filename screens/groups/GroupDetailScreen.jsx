@@ -895,12 +895,12 @@ export const GroupDetailScreen = ({ route, navigation }) => {
             </View>
             <View style={styles.memberDetailsRow}>
               <View style={[styles.timeTag, { backgroundColor: isDark ? 'rgba(251, 191, 36, 0.1)' : 'rgba(21, 12, 51, 0.05)' }]}>
-                <Text style={[styles.timeTagText, { color: isDark ? colors.secondary : colors.primary }]}>{wakeUpTime}</Text>
                 <Ionicons
                   name="alarm-outline"
                   size={12}
                   color={isDark ? colors.secondary : colors.primary}
                 />
+                <Text style={[styles.timeTagText, { color: isDark ? colors.secondary : colors.primary }]}>{wakeUpTime}</Text>
               </View>
             </View>
           </View>
@@ -1404,6 +1404,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     columnGap: 12,
     marginTop: 4,
+  },
+  timeTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    columnGap: 4,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+  },
+  timeTagText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   memberActions: {
     flexDirection: "row",
