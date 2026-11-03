@@ -391,7 +391,8 @@ export const GroupDetailScreen = ({ route, navigation }) => {
   useEffect(() => {
     if (!isSocketConnected) return;
 
-    const handleMemberWokeUp = (data) => {
+    // FIXED: Added async here
+    const handleMemberWokeUp = async (data) => {
       setWakeUpLogs((prev) => {
         const exists = prev.some(
           (log) =>
