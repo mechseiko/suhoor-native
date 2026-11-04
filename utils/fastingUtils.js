@@ -73,28 +73,28 @@ export const isFirstNineDhulHijjah = (date) => {
 
 /**
  * Determine the target date for the fasting prompt
- * - If it's 8 AM or later (before midnight): target is tomorrow
- * - If it's midnight or later (before 8 AM): target is today
- * - Otherwise (between 8 AM and midnight): prompt is hidden (too late to set intention for today, too early for tomorrow)
+ * - If it's 7 AM or later (before midnight): target is tomorrow
+ * - If it's midnight or later (before 7 AM): target is today
+ * - Otherwise (between 7 AM and midnight): prompt is hidden (too late to set intention for today, too early for tomorrow)
  * @returns {Date|null}
  */
 export const getTargetFastingDate = () => {
   const now = new Date();
   const hour = now.getHours();
 
-  // 8 AM or later (before midnight): show prompt for tomorrow
-  if (hour >= 8 && hour < 24) {
+  // 7 AM or later (before midnight): show prompt for tomorrow
+  if (hour >= 7 && hour < 24) {
     const tomorrow = new Date(now);
     tomorrow.setDate(now.getDate() + 1);
     return tomorrow;
   }
-  
-  // Midnight or later (before 8 AM): show prompt for today
-  if (hour >= 0 && hour < 8) {
+
+  // Midnight or later (before 7 AM): show prompt for today
+  if (hour >= 0 && hour < 7) {
     return new Date(now);
   }
 
-  // Between 8 AM and midnight: hide prompt
+  // Between 7 AM and midnight: hide prompt
   return null;
 };
 

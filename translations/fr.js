@@ -118,6 +118,8 @@ export const fr = {
   "auth.notYou": "Pas {{name}}?",
   "network.offline": "Vous êtes hors ligne. Certaines fonctionnalités peuvent ne pas fonctionner.",
   "network.online": "Vous êtes de nouveau en ligne!",
+  "audioMode.warningTitle": "Votre téléphone est-il en mode silencieux ?",
+  "audioMode.warningMessage": "Votre téléphone peut être en mode silencieux ou ne pas déranger. Les alarmes peuvent ne pas sonner. Veuillez vérifier les paramètres audio.",
   "network.offlineMode": "Mode hors ligne - fonctionnalité limitée",
   "auth.loginSubtitle": "Connectez-vous à votre compte",
   "auth.loginError": "Échec de la connexion. Veuillez vérifier vos identifiants et réessayer.",

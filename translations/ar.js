@@ -119,6 +119,8 @@ export const ar = {
   "auth.notYou": "ليس {{name}}؟",
   "network.offline": "أنت غير متصل بالإنترنت. قد لا تعمل بعض الميزات.",
   "network.online": "أنت متصل بالإنترنت مرة أخرى!",
+  "audioMode.warningTitle": "هل هاتفك في وضع الصامت؟",
+  "audioMode.warningMessage": "قد يكون هاتفك في وضع الصمت أو عدم الإزعاج. قد لا تعمل المنبهات. يرجى التحقق من إعدادات الصوت.",
   "network.offlineMode": "وضع عدم الاتصال - وظائف محدودة",
   "auth.loginSubtitle": "سجل الدخول إلى حسابك",
   "auth.loginError": "فشل تسجيل الدخول. يرجى التحقق من بياناتك والمحاولة مرة أخرى.",

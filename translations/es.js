@@ -118,6 +118,8 @@ export const es = {
   "auth.notYou": "¿No eres {{name}}?",
   "network.offline": "Estás sin conexión. Algunas funciones pueden no funcionar.",
   "network.online": "¡Estás de nuevo en línea!",
+  "audioMode.warningTitle": "¿Está tu teléfono en modo silencioso?",
+  "audioMode.warningMessage": "Tu teléfono puede estar en modo silencioso o no molestar. Las alarmas pueden no sonar. Por favor verifica la configuración de audio.",
   "network.offlineMode": "Modo sin conexión - funcionalidad limitada",
   "auth.loginSubtitle": "Inicia sesión en tu cuenta",
   "auth.loginError": "Error al iniciar sesión. Por favor verifica tus credenciales e intenta de nuevo.",

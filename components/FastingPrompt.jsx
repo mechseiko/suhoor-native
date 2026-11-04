@@ -578,18 +578,22 @@ export const FastingPrompt = () => {
                 {t('fasting.alarmActiveNotice')}
               </Text>
             </View>
-            <TouchableOpacity
-              onPress={handleReset}
-              style={styles.resetButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              accessibilityRole="button"
-              accessibilityLabel={t('fasting.changeIntention')}
-            >
-              <Ionicons name="refresh" size={18} color={isDark ? '#34D399' : '#059669'} />
-              <Text style={{ color: isDark ? '#34D399' : '#059669', fontSize: 12, marginLeft: 4, fontWeight: '600' }}>
-                Reset
-              </Text>
-            </TouchableOpacity>
+            {/* Hide reset button after 3 AM of target date */}
+            {targetDateMidnight && new Date() < new Date(targetDateMidnight.getTime() + 3 * 60 * 60 * 1000) && (
+              <TouchableOpacity
+                onPress={handleReset}
+                style={styles.resetButton}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityRole="button"
+                accessibilityLabel={t('fasting.changeIntention')}
+              >
+                <Ionicons name="refresh" size={18} color={isDark ? '#34D399' : '#059669'} />
+                <Text style={{ color: isDark ? '#34D399' : '#059669', fontSize: 12, marginLeft: 4, fontWeight: '600' }}>
+                  Reset
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
           </View>
         </Card>
       )}

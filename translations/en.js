@@ -784,7 +784,7 @@ export const en = {
   "groups.invitingNewMembers": "Inviting New Members",
   "groups.adminsOnlyShort": "Admins Only",
   "groups.allMembersShort": "All Members",
-  "profile.member": "Member",
+  "profile.member": "-",
   "onboarding.whyLocationTitle": "Why we need your location",
   "onboarding.whyLocationText": "We use your location to calculate accurate Suhoor and Iftar times for your area. We'll use your current location when available, or fall back to your saved default location. We'll only ask you to choose a location when neither is available.",
   "nav.leaderboard": "Leaderboard",
@@ -867,7 +867,9 @@ export const en = {
   "groups.noGroupsDescription": "Create a new group to invite friends, or join an existing one using a unique key.",
   "groups.enterAlarmPin": "Enter Your Alarm PIN",
   "groups.enterPinDescription": "Enter your personal 4-digit PIN to confirm you are awake.",
-  "common.confirm": "Confirm"
+  "common.confirm": "Confirm",
+  "audioMode.warningTitle": "Is your phone in silent mode?",
+  "audioMode.warningMessage": "Your phone may be in silent or DND mode. Alarms may not sound. Please check your audio settings."
 };
 
 export default en;

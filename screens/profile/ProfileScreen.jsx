@@ -809,7 +809,7 @@ const ProfileScreen = ({ route }) => {
           <View style={styles.headerInfo}>
             <View style={styles.nameRow}>
               <Text style={styles.headerName}>
-                {displayName || t("profile.member", "Member")}
+                {displayName || t("profile.member", "-")}
               </Text>
               {showSkeleton ? (
                 <View style={{ width: 60, height: 20, backgroundColor: colors.surfaceVariant, borderRadius: 10 }} />

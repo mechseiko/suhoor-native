@@ -456,7 +456,7 @@ export const SignupScreen = ({ navigation }) => {
                   textDecorationLine: "underline",
                 }}
                 onPress={() =>
-                  Linking.openURL("https://suhoor-group.web.app/terms")
+                  Linking.openURL("https://suhoorapp.cv/terms")
                 }
               >
                 {t("nav.terms")}
@@ -468,7 +468,7 @@ export const SignupScreen = ({ navigation }) => {
                   textDecorationLine: "underline",
                 }}
                 onPress={() =>
-                  Linking.openURL("https://suhoor-group.web.app/privacy")
+                  Linking.openURL("https://suhoorapp.cv/privacy")
                 }
               >
                 {t("nav.privacy")}

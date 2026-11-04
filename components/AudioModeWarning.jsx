@@ -148,8 +148,8 @@ export const AudioModeWarning = () => {
       await scheduleNotification({
         semanticId: 'audio_mode_warning',
         date: new Date(Date.now() + 1000),
-        title: 'Is your phone in silent mode?',
-        message: 'Your phone may be in silent or DND mode. Alarms may not sound. Please check your audio settings.',
+        title: t('audioMode.warningTitle'),
+        message: t('audioMode.warningMessage'),
         channel: { id: 'suhoor-wake-up', name: 'Suhoor Wake Up' },
       });
     } catch (error) {

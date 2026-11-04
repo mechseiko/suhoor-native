@@ -118,6 +118,8 @@ export const tr = {
   "auth.notYou": "{{name}} değil misiniz?",
   "network.offline": "Çevrimdışısınız. Bazı özellikler çalışmayabilir.",
   "network.online": "Yeniden çevrimiçisiniz!",
+  "audioMode.warningTitle": "Telefonunuz sessiz modda mı?",
+  "audioMode.warningMessage": "Telefonunuz sessiz veya rahatsız etmeme modunda olabilir. Alarmlar çalmayabilir. Lütfen ses ayarlarınızı kontrol edin.",
   "network.offlineMode": "Çevrimdışı mod - sınırlı işlevsellik",
   "auth.loginSubtitle": "Hesabınıza giriş yapın",
   "auth.loginError": "Giriş başarısız. Lütfen kimlik bilgilerinizi kontrol edip tekrar deneyin.",
