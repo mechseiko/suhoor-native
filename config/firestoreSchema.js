@@ -32,6 +32,7 @@ export const COLLECTIONS = {
   gamificationStats: 'gamification_stats',
   groupBuzzes: 'group_buzzes',
   notifications: 'notifications',
+  milestoneAchievements: 'milestone_achievements',
 }
 
 /** Subcollection of `groups`: groups/{groupId}/locations/{userId}. */
@@ -66,6 +67,32 @@ export const groupStatsId = (groupId, startDate, endDate) =>
 
 /** group_exclusions/{groupId}_{userId} */
 export const groupExclusionId = (groupId, userId) => `${groupId}_${userId}`
+
+/** milestone_achievements/{uid}_{badgeId}_{timestamp} */
+export const milestoneAchievementId = (userId, badgeId, timestamp = Date.now()) =>
+  `${userId}_${badgeId}_${timestamp}`
+
+export const milestoneAchievementDoc = ({
+  userId,
+  badgeId,
+  badgeTitle,
+  badgeCategory,
+  points,
+  trackName,
+  level,
+  trackIcon,
+}) => ({
+  user_id: userId,
+  badge_id: badgeId,
+  badge_title: badgeTitle,
+  badge_category: badgeCategory,
+  points_earned: points,
+  track_name: trackName,
+  level,
+  track_icon: trackIcon,
+  achieved_at: new Date().toISOString(),
+  created_at: new Date().toISOString(),
+})
 
 export const groupExclusionDoc = ({ groupId, userId, reason = 'left', byUserId = null }) => ({
   group_id: groupId,

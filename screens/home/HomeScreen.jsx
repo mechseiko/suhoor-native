@@ -124,7 +124,10 @@ export const HomeScreen = ({ navigation }) => {
               const notifId = change.doc.id;
               const notifTimestamp = data.created_at?.toMillis ? data.created_at.toMillis() : (data.created_at?.seconds ? data.created_at.seconds * 1000 : 0);
 
-              if (notifTimestamp && (now - notifTimestamp) < TWO_HOURS_MS && notifTimestamp > effectiveLastSeen && !presentedIds.has(notifId)) {
+              // Only show lock-screen popup if showInApp is true or not set (defaults to true for backwards compatibility)
+              const shouldShowPopup = data.showInApp !== false;
+
+              if (shouldShowPopup && notifTimestamp && (now - notifTimestamp) < TWO_HOURS_MS && notifTimestamp > effectiveLastSeen && !presentedIds.has(notifId)) {
                 presentedIds.add(notifId);
                 presentNotification({
                   title: `${data.emoji || '🌙'} ${data.title}`,
@@ -147,7 +150,8 @@ export const HomeScreen = ({ navigation }) => {
             // Only present fresh notification if it arrived while briefly disconnected (< 2 hours ago)
             const freshUnseen = list.find(n => {
               const timestamp = n.created_at?.toMillis ? n.created_at.toMillis() : (n.created_at?.seconds ? n.created_at.seconds * 1000 : 0);
-              return timestamp > effectiveLastSeen && (now - timestamp) < TWO_HOURS_MS && !presentedIds.has(n.id);
+              const shouldShowPopup = n.showInApp !== false;
+              return shouldShowPopup && timestamp > effectiveLastSeen && (now - timestamp) < TWO_HOURS_MS && !presentedIds.has(n.id);
             });
             if (freshUnseen) {
               presentedIds.add(freshUnseen.id);

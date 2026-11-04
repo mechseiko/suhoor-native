@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../config/firebase";
+import { presentNotification } from "../services/notifications";
+import { useLanguage } from "../context/LanguageContext";
 import {
   collection,
   query,
@@ -20,6 +22,8 @@ import {
   calculateUserSPAndBadges,
   gamificationStatsId,
   gamificationDoc,
+  milestoneAchievementId,
+  milestoneAchievementDoc,
 } from "../config/firestoreSchema";
 
 const EMPTY_STATS = {
@@ -33,10 +37,12 @@ const EMPTY_STATS = {
 
 export function useGamification() {
   const { currentUser, userProfile } = useAuth();
+  const { t } = useLanguage();
   const [stats, setStats] = useState(EMPTY_STATS);
   const [loading, setLoading] = useState(true);
   const [wakeLogs, setWakeLogs] = useState([]);
   const [celebration, setCelebration] = useState(null);
+  const [newBadgeAchievement, setNewBadgeAchievement] = useState(null);
 
   // 1. Live-sync stats from Firestore
   useEffect(() => {
@@ -96,7 +102,7 @@ export function useGamification() {
         );
         const snap = await getDocs(logsQuery);
         if (cancelled) return;
-        
+
         const logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         setWakeLogs(logs);
       } catch (err) {
@@ -151,6 +157,60 @@ export function useGamification() {
         points = calculated.points;
         const allBadgesList = Array.from(new Set([...Array.from(badgeSet), ...calculated.badges]));
 
+        // Track newly earned badges
+        const newBadges = calculated.badges.filter(badgeId => !badgeSet.has(badgeId));
+
+        // Record milestone achievements for each new badge
+        for (const badgeId of newBadges) {
+          let badgeInfo = null;
+          let trackInfo = null;
+
+          // Find badge info in BADGE_TRACKS
+          for (const track of Object.values(BADGE_TRACKS)) {
+            const level = track.levels.find(l => l.badgeId === badgeId);
+            if (level) {
+              badgeInfo = level;
+              trackInfo = track;
+              break;
+            }
+          }
+
+          if (badgeInfo && trackInfo) {
+            const achievementId = milestoneAchievementId(currentUser.uid, badgeId);
+            const achievementDoc = milestoneAchievementDoc({
+              userId: currentUser.uid,
+              badgeId,
+              badgeTitle: badgeInfo.title,
+              // badgeCategory: badgeInfo.category,
+              points: badgeInfo.points,
+              // trackName: trackInfo.name,
+              level: badgeInfo.level,
+              trackIcon: trackInfo.icon,
+              badgeCategory: trackInfo.category,
+              trackName: trackInfo.title,
+            });
+            await setDoc(doc(db, COLLECTIONS.milestoneAchievements, achievementId), achievementDoc);
+
+            // Trigger in-app notification for new badge
+            setNewBadgeAchievement({
+              badgeId,
+              title: badgeInfo.title,
+              category: badgeInfo.category,
+              points: badgeInfo.points,
+              trackName: trackInfo.name,
+              level: badgeInfo.level,
+              icon: trackInfo.icon,
+            });
+
+            // Show notification
+            presentNotification({
+              title: `${trackInfo.icon} ${t('milestones.newBadge', 'New Badge Unlocked!')}`,
+              message: t('milestones.badgeUnlocked', { title: badgeInfo.title, points: badgeInfo.points }),
+              data: { type: 'badge', badgeId },
+            });
+          }
+        }
+
         const updated = gamificationDoc({
           userId: currentUser.uid,
           points,
@@ -193,7 +253,7 @@ export function useGamification() {
       const wokeUpDate = new Date(log.woke_up_at);
       const wokeUpHour = wokeUpDate.getHours();
       const wokeUpMinute = wokeUpDate.getMinutes();
-      
+
       // If they woke up before 4:30 AM, consider it an Early Bird
       if (wokeUpHour < 4 || (wokeUpHour === 4 && wokeUpMinute < 30)) {
         count++;
@@ -208,16 +268,16 @@ export function useGamification() {
   );
   const progressPercent = nextTier
     ? Math.min(
-        100,
-        Math.max(
-          0,
-          Math.round(
-            ((stats.points - currentLevel.minPoints) /
-              (nextTier.minPoints - currentLevel.minPoints)) *
-              100
-          )
+      100,
+      Math.max(
+        0,
+        Math.round(
+          ((stats.points - currentLevel.minPoints) /
+            (nextTier.minPoints - currentLevel.minPoints)) *
+          100
         )
       )
+    )
     : 100;
 
   return {
@@ -235,7 +295,7 @@ export function useGamification() {
     dismissCelebration: () => setCelebration(null),
     allBadges: Object.values(BADGES),
     badges: stats.badges,
-    refreshStats: () => {},
+    refreshStats: () => { },
   };
 }
 

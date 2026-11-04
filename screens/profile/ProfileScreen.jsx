@@ -461,7 +461,7 @@ const ProfileScreen = ({ route }) => {
         "preferences.defaultLocation": savedLocation,
       });
       await saveUserLocation(savedLocation);
-      setSelectedLocation(location);
+      setSelectedLocation(savedLocation);
       setShowLocationModal(false);
       setLocationSearch("");
       setLocationResults([]);

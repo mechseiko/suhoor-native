@@ -52,6 +52,37 @@ export const MilestonesScreen = () => {
     }
   });
 
+  // If we have fewer than 6 locked badges, add more from the tracks with the most unlocked levels
+  if (nextTargetBadges.length < 6) {
+    const additionalLocked = [];
+    tracks.forEach((track) => {
+      let unlockedCount = 0;
+      let secondLocked = null;
+      let foundFirst = false;
+
+      for (const level of track.levels) {
+        if (stats.badges.includes(level.badgeId)) {
+          unlockedCount++;
+        } else if (!foundFirst) {
+          foundFirst = true;
+        } else if (!secondLocked) {
+          secondLocked = { ...level, track };
+        }
+      }
+
+      if (secondLocked && unlockedCount > 0) {
+        additionalLocked.push({ badge: secondLocked, unlockedCount });
+      }
+    });
+
+    // Sort by most unlocked levels and add up to 6 total
+    additionalLocked.sort((a, b) => b.unlockedCount - a.unlockedCount);
+    const needed = 6 - nextTargetBadges.length;
+    for (let i = 0; i < Math.min(needed, additionalLocked.length); i++) {
+      nextTargetBadges.push(additionalLocked[i].badge);
+    }
+  }
+
   return (
     <Screen
       refreshControl={

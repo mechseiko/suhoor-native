@@ -637,10 +637,7 @@ export const FastingTimesScreen = ({ navigation }) => {
           </View>
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => {
-              navigation?.navigate?.('ProfileTab', { tab: 'preferences', screen: 'ProfileTab', params: { tab: 'preferences' } }) ||
-              navigation?.navigate?.('Profile', { tab: 'preferences' });
-            }}
+            onPress={() => navigation?.navigate?.('ProfileTab', { tab: 'preferences' })}
             style={{
               flexDirection: 'row', alignItems: 'center', columnGap: 12,
               paddingVertical: 14, paddingHorizontal: 14,

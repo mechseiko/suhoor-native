@@ -207,7 +207,7 @@ export const RootNavigator = () => {
   return (
     <NavigationContainer ref={navigationRef} linking={deepLinking} style={navContainerStyle}>
       <View style={styles.container}>
-        {currentUser && isVerified ? (
+        {currentUser ? (
           <AppTour tabBarRef={tabBarRef}>
             <TabNavigator tabBarRef={tabBarRef} />
           </AppTour>
