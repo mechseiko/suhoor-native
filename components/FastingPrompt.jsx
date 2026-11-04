@@ -594,7 +594,6 @@ export const FastingPrompt = () => {
               </TouchableOpacity>
             )}
           </View>
-          </View>
         </Card>
       )}
 
