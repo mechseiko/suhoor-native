@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
+import android.util.Log
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.facebook.react.uimanager.ViewManager
@@ -242,6 +243,13 @@ class AlarmBridgeModule(reactContext: ReactApplicationContext) : ReactContextBas
         promise: Promise
     ) {
         try {
+            // A muted group must not be able to buzz this device at all.
+            if (MutedGroups.isMuted(reactApplicationContext, groupId)) {
+                Log.d("AlarmBridge", "Buzz from muted group ignored: $groupId")
+                promise.resolve(true)
+                return
+            }
+
             // The server also pushes the same buzz over FCM. Whichever arrives
             // first rings; the other is dropped here.
             if (BuzzDedupe.isDuplicate(reactApplicationContext, alarmId)) {
@@ -338,6 +346,29 @@ class AlarmBridgeModule(reactContext: ReactApplicationContext) : ReactContextBas
                 }
         } catch (e: Exception) {
             promise.reject("FCM_TOKEN_ERROR", e.message, e)
+        }
+    }
+
+    /** Mute/unmute wake-up buzzes coming from one group (stored natively). */
+    @ReactMethod
+    fun setMutedGroup(groupId: String, muted: Boolean, promise: Promise) {
+        try {
+            MutedGroups.setMuted(reactApplicationContext, groupId, muted)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("MUTE_ERROR", e.message, e)
+        }
+    }
+
+    /** Muted group ids, so JS can restore its toggles from one source. */
+    @ReactMethod
+    fun getMutedGroups(promise: Promise) {
+        try {
+            val array = Arguments.createArray()
+            MutedGroups.all(reactApplicationContext).forEach { array.pushString(it) }
+            promise.resolve(array)
+        } catch (e: Exception) {
+            promise.reject("MUTE_LIST_ERROR", e.message, e)
         }
     }
 

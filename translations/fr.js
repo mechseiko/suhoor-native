@@ -892,7 +892,10 @@ export const fr = {
   "auth.invalidCredentialsGoogleHint": "E-mail ou mot de passe incorrect. Si vous vous êtes inscrit avec Google, utilisez « Continuer avec Google ».",
   "milestones.newBadge": "Nouveau badge débloqué !",
   "auth.signInPopupBlocked": "La fenêtre de connexion a été bloquée. Autorisez les pop-ups.",
-  "network.offlineMessage": "Vérifiez votre connexion Internet."
+  "network.offlineMessage": "Vérifiez votre connexion Internet.",
+  "whatsNew.title": "Nouveautés",
+  "whatsNew.versionLabel": "Version {{version}}",
+  "whatsNew.gotIt": "J'ai compris"
 };
 
 export default fr;

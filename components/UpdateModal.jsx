@@ -7,6 +7,7 @@ import {
   Linking,
   Pressable,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { Text } from './ui';
@@ -124,6 +125,114 @@ export const UpdateModal = ({
             >
               {t('common.later', 'Maybe Later')}
             </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+/**
+ * "What's New" — shown once after the installed build changes.
+ *
+ * Deliberately in this file and reusing `styles` below, so it looks exactly like
+ * the update modal and both stay in one place. It is a *separate* component: the
+ * update flow above is untouched.
+ *
+ * `entries` comes from hooks/useWhatsNew + config/whatsNew.js. With an empty
+ * WHATS_NEW map the parent never sets `visible`, so this renders nothing today.
+ */
+export const WhatsNewModal = ({ visible, entries = [], onClose }) => {
+  const { colors, isDark } = useTheme();
+  const { t } = useLanguage();
+
+  if (!visible || !entries.length) return null;
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={styles.overlay}>
+        <View
+          style={[
+            styles.container,
+            {
+              backgroundColor: colors.surface || (isDark ? '#1F1A2E' : '#FFFFFF'),
+              borderColor: colors.border || (isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB'),
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.iconWrapper,
+              { backgroundColor: isDark ? 'rgba(242, 159, 29, 0.15)' : 'rgba(242, 159, 29, 0.1)' },
+            ]}
+          >
+            <Ionicons
+              name="sparkles-outline"
+              size={32}
+              color={brand.primary || '#F29F1D'}
+            />
+          </View>
+
+          <Text variant="h2" style={[styles.title, { color: colors.text }]}>
+            {t('whatsNew.title')}
+          </Text>
+
+          <ScrollView
+            style={{ alignSelf: 'stretch', maxHeight: 360 }}
+            contentContainerStyle={{ paddingBottom: spacing.sm }}
+            showsVerticalScrollIndicator={false}
+          >
+            {entries.map((entry) => (
+              <View key={entry.versionCode} style={{ marginBottom: spacing.base }}>
+                {entry.versionName ? (
+                  <Text variant="caption" tone="secondary" style={{ marginBottom: 2 }}>
+                    {t('whatsNew.versionLabel', { version: entry.versionName })}
+                  </Text>
+                ) : null}
+
+                {entry.titleKey ? (
+                  <Text variant="h3" style={{ marginBottom: 4, color: colors.text }}>
+                    {t(entry.titleKey)}
+                  </Text>
+                ) : null}
+
+                {(entry.items || []).map((item, index) => (
+                  <View
+                    key={`${entry.versionCode}-${index}`}
+                    style={{ flexDirection: 'row', columnGap: 8, marginBottom: 6 }}
+                  >
+                    <Text variant="body" style={{ color: colors.primary }}>
+                      •
+                    </Text>
+                    <View style={{ flex: 1 }}>
+                      {item.titleKey ? (
+                        <Text variant="body" style={{ fontWeight: '600', color: colors.text }}>
+                          {t(item.titleKey)}
+                        </Text>
+                      ) : null}
+                      {item.bodyKey ? (
+                        <Text variant="body" tone="secondary" style={{ fontSize: 13 }}>
+                          {t(item.bodyKey)}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ))}
+          </ScrollView>
+
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={[styles.primaryBtn, { backgroundColor: brand.primary || '#F29F1D' }]}
+            onPress={onClose}
+          >
+            <Text style={styles.primaryBtnText}>{t('whatsNew.gotIt')}</Text>
           </TouchableOpacity>
         </View>
       </View>

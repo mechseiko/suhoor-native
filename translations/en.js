@@ -894,7 +894,10 @@ export const en = {
   "fastingTimes.usingDeviceLocation": "Using your device's GPS location",
   "groups.makeAdminConfirmSelected": "Add {{name}} as an admin of this group? They will be able to edit group info and manage settings.",
   "auth.signInPopupBlocked": "Sign-in popup was blocked. Please allow popups.",
-  "network.offlineMessage": "Check your internet connection."
+  "network.offlineMessage": "Check your internet connection.",
+  "whatsNew.title": "What's New",
+  "whatsNew.versionLabel": "Version {{version}}",
+  "whatsNew.gotIt": "Got it"
 };
 
 export default en;

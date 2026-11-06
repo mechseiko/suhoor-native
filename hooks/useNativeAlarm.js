@@ -22,6 +22,7 @@ export function useNativeAlarm() {
       openExactAlarmSettings: async () => false,
       getFcmToken: async () => null,
       consumeAlarmTrigger: async () => null,
+      setMutedGroup: async () => false,
       triggerRemoteBuzz: async () => false,
       stopAlarmService: async () => true,
       isNativeAvailable: false,
@@ -45,6 +46,7 @@ export function useNativeAlarm() {
       openExactAlarmSettings: async () => false,
       getFcmToken: async () => null,
       consumeAlarmTrigger: async () => null,
+      setMutedGroup: async () => false,
       triggerRemoteBuzz: async () => false,
       stopAlarmService: async () => false,
       isNativeAvailable: false,
@@ -247,6 +249,17 @@ export function useNativeAlarm() {
     }
   }
 
+  /** Mute/unmute buzzes from one group (native store, used by FCM + socket). */
+  const setMutedGroup = async (groupId, muted) => {
+    try {
+      if (!AlarmBridge.setMutedGroup || !groupId) return false
+      return await AlarmBridge.setMutedGroup(groupId, Boolean(muted))
+    } catch (error) {
+      console.error('Error setting muted group:', error)
+      return false
+    }
+  }
+
   return {
     scheduleAlarm,
     updateAlarm,
@@ -260,6 +273,7 @@ export function useNativeAlarm() {
     openExactAlarmSettings,
     getFcmToken,
     consumeAlarmTrigger,
+    setMutedGroup,
     triggerRemoteBuzz,
     stopAlarmService: async () => {
       try {

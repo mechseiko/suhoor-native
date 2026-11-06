@@ -9,6 +9,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.google.gson.Gson
 import com.mechseiko.suhoor.R
+import java.util.Date
 
 /**
  * BroadcastReceiver that handles alarm triggers
@@ -55,6 +56,27 @@ class AlarmReceiver : BroadcastReceiver() {
         // Remove alarm from storage after triggering
         val alarmManagerModule = AlarmManagerModule(context)
         alarmManagerModule.cancelAlarm(alarmId)
+
+        // Keep the daily alarm alive without the app being opened: re-arm the
+        // same alarm for 24h later. The app replaces it with the exact API time
+        // the next time it schedules (cancel + reschedule of the same id), so
+        // this is only the safety net that prevents "one morning rings, then
+        // silence". Buzzes never chain.
+        if (alarmId == "suhoor-daily-alarm" && alarmData.type == "wake_up") {
+            val nextTrigger = alarmData.triggerTime + 24L * 60L * 60L * 1000L
+            if (nextTrigger > System.currentTimeMillis()) {
+                alarmManagerModule.scheduleAlarm(
+                    alarmId = alarmId,
+                    triggerTime = nextTrigger,
+                    userId = alarmData.userId,
+                    groupId = alarmData.groupId,
+                    alarmType = alarmData.type,
+                    soundName = alarmData.soundName,
+                    volume = alarmData.volume
+                )
+                Log.d(TAG, "Re-armed daily alarm for ${Date(nextTrigger)}")
+            }
+        }
     }
 
     /**

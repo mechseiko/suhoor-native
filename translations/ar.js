@@ -892,7 +892,10 @@ export const ar = {
   "milestones.newBadge": "تم فتح شارة جديدة!",
   "groups.makeAdminConfirmSelected": "إضافة {{name}} كمسؤول لهذه المجموعة؟ سيتمكن من تعديل معلومات المجموعة وإدارة الإعدادات.",
   "auth.signInPopupBlocked": "تم حظر نافذة تسجيل الدخول. يرجى السماح بالنوافذ المنبثقة.",
-  "network.offlineMessage": "تحقق من اتصالك بالإنترنت."
+  "network.offlineMessage": "تحقق من اتصالك بالإنترنت.",
+  "whatsNew.title": "ما الجديد",
+  "whatsNew.versionLabel": "الإصدار {{version}}",
+  "whatsNew.gotIt": "حسنًا"
 };
 
 export default ar;

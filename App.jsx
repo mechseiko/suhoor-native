@@ -6,9 +6,11 @@ import { AuthProvider } from "./context/AuthContext";
 import { SocketProvider } from "./context/SocketContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { LanguageProvider } from "./context/LanguageContext";
-import { AlarmProvider } from "./context/AlarmContext";
+import { AlarmProvider, useAlarmState } from "./context/AlarmContext";
 import { NetworkProvider } from "./context/NetworkContext";
 import AlarmOverlay from "./components/AlarmOverlay";
+import { WhatsNewModal } from "./components/UpdateModal";
+import { useWhatsNew } from "./hooks/useWhatsNew";
 import RootNavigator from "./navigation/RootNavigator";
 import { configureNotifications } from "./services/notifications";
 import FastingNotificationsManager from "./components/FastingNotificationsManager";
@@ -77,6 +79,21 @@ if (Platform.OS === "web" && typeof document !== "undefined") {
   document.head.appendChild(style);
 }
 
+/**
+ * "What's New" gate.
+ *
+ * Rendered *before* <AlarmOverlay /> so the alarm always wins, and it additionally
+ * skips while an alarm is active. With an empty config/whatsNew.js this returns
+ * null, so nothing changes for users until release notes exist.
+ */
+const WhatsNewGate = () => {
+  const { isAlarmActive } = useAlarmState();
+  const { visible, entries, dismiss } = useWhatsNew();
+
+  if (isAlarmActive) return null;
+  return <WhatsNewModal visible={visible} entries={entries} onClose={dismiss} />;
+};
+
 export default function App() {
   const [fontsLoaded] = useFontsNative();
   const [fontTimeout, setFontTimeout] = useState(false);
@@ -131,6 +148,7 @@ export default function App() {
                 <AlarmProvider>
                   <View style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
                     <RootNavigator />
+                    <WhatsNewGate />
                     <AlarmOverlay />
                     <FastingNotificationsManager />
                     <NetworkStatusNotification />

@@ -22,6 +22,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { useLanguage } from "../../context/LanguageContext";
 import { Button, Text } from "../../components/ui";
+import LogoLoader from "../../components/LogoLoader";
 import { brand } from "../../theme";
 import { db } from "../../config/firebase";
 import { doc, updateDoc } from "firebase/firestore";

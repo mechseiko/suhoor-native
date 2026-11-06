@@ -31,6 +31,9 @@ export const COLLECTIONS = {
   groupExclusions: 'group_exclusions',
   gamificationStats: 'gamification_stats',
   groupBuzzes: 'group_buzzes',
+  /** Append-only buzz log: one document per buzz. `group_buzzes` stays as the
+   *  last-buzz-per-(group,member) record used for the cooldown. */
+  buzzEvents: 'buzz_events',
   notifications: 'notifications',
   milestoneAchievements: 'milestone_achievements',
 }

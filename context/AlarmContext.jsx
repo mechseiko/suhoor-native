@@ -51,6 +51,29 @@ export const AlarmProvider = ({ children }) => {
     return () => subscription?.remove();
   }, []);
 
+  // Restore the native "muted groups" store from local settings. The FCM buzz
+  // path is native-only, so the mute flags must live there as well.
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !NativeModules?.AlarmBridge?.setMutedGroup) return;
+    (async () => {
+      try {
+        const keys = await AsyncStorage.getAllKeys();
+        const mutedKeys = keys.filter((k) => k.startsWith('@suhoor_group_mute_'));
+        await Promise.all(
+          mutedKeys.map(async (key) => {
+            const groupId = key.replace('@suhoor_group_mute_', '');
+            const value = await AsyncStorage.getItem(key);
+            if (value === 'true' && groupId) {
+              await NativeModules.AlarmBridge.setMutedGroup(groupId, true);
+            }
+          })
+        );
+      } catch (e) {
+        console.warn('Could not restore muted groups:', e);
+      }
+    })();
+  }, []);
+
   // The user tapped "Enter PIN" on the native alarm screen (or the alarm
   // notification). The native alarm is still ringing; show the PIN overlay so
   // it can be dismissed properly. Registered after the reset effect above so it
@@ -335,59 +358,15 @@ export const AlarmProvider = ({ children }) => {
     setAlarmData(data || { type: 'wake_up_alarm' });
   };
 
-  // Schedule 5PM fasting prompt notification
-  useEffect(() => {
-    if (!currentUser || !userProfile) return;
-
-    const scheduleFastingPrompt = async () => {
-      try {
-        const now = new Date();
-        const hour = now.getHours();
-
-        // Only schedule after 5PM (17) - run checks any time after 5 PM
-        if (hour < 17) return;
-
-        const tomorrow = new Date(now);
-        tomorrow.setDate(now.getDate() + 1);
-        const tomorrowStr = tomorrow.toLocaleDateString('en-CA');
-
-        // Check if intention already set for tomorrow
-        const statusRef = doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${tomorrowStr}`);
-        const statusSnap = await getDoc(statusRef);
-        if (statusSnap.exists()) return;
-
-        // Check if dismissed in last 24 hours
-        const lastDismissed = await AsyncStorage.getItem(FASTING_PROMPT_DISMISS_KEY);
-        if (lastDismissed) {
-          const dismissedTime = new Date(lastDismissed);
-          const hoursSinceDismiss = (now - dismissedTime) / (1000 * 60 * 60);
-          if (hoursSinceDismiss < 24) return;
-        }
-
-        // Schedule notification for 5PM tomorrow
-        const notificationTime = new Date(tomorrow);
-        notificationTime.setHours(17, 0, 0, 0);
-
-        await scheduleNotification({
-          semanticId: 'suhoor-fasting-prompt',
-          date: notificationTime,
-          title: t('fasting.dailyPromptTitle', 'Time to set your fasting intention'),
-          message: t('fasting.dailyPromptMessage', 'Set your intention for tomorrow'),
-          channel: CHANNELS.fastingPrompt,
-        });
-
-        console.log('Scheduled fasting prompt for:', notificationTime.toISOString());
-      } catch (err) {
-        console.error('Error scheduling fasting prompt:', err);
-      }
-    };
-
-    scheduleFastingPrompt();
-  }, [currentUser, userProfile, t]);
+  // NOTE: the daily 5 PM fasting-intention reminder is scheduled by
+  // components/FastingNotificationsManager. It used to be scheduled here as
+  // well, under a different notification id, which produced two reminders at
+  // 17:00. Keep exactly one scheduler.
 
   // Schedule iftar notification at maghrib time
   useEffect(() => {
-    if (!currentUser || !todayData?.time?.maghrib) return;
+    const breakTimeRaw = todayData?.time?.iftar || todayData?.time?.maghrib;
+    if (!currentUser || !breakTimeRaw) return;
 
     const scheduleIftarNotification = async () => {
       try {
@@ -415,7 +394,7 @@ export const AlarmProvider = ({ children }) => {
 
         if (!isFastingToday) return;
 
-        const [maghribH, maghribM] = todayData.time.maghrib.split(':').map(Number);
+        const [maghribH, maghribM] = breakTimeRaw.split(':').map(Number);
         if (isNaN(maghribH) || isNaN(maghribM)) return;
 
         const iftarTime = new Date();

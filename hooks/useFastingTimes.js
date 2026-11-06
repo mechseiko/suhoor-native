@@ -5,10 +5,22 @@ import { fastingTimesUrl } from '../config/env';
 import { useAuth } from '../context/AuthContext';
 
 const CACHE_KEY = 'suhoor_fasting_times';
+/**
+ * Cache for the day *after* today, which is what the daily prompt targets for
+ * most of the day (07:00 -> midnight) and what its alarm is armed for.
+ * The API's default response only contains today, so this row is fetched with
+ * an explicit `&date=` and kept separately.
+ */
+const NEXT_CACHE_KEY = 'suhoor_fasting_times_next';
 
 /** Storage date key — always en-CA (YYYY-MM-DD), never the UI language. */
 const todayKey = () => new Date().toLocaleDateString('en-CA');
 const toDateKey = (d) => d.toLocaleDateString('en-CA');
+const tomorrowKey = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return toDateKey(d);
+};
 
 /** Default minutes before suhoor to open the wake-up window. */
 const DEFAULT_WAKE_MINUTES = 45;
@@ -23,6 +35,8 @@ export function useFastingTimes() {
   });
 
   const [fastingData, setFastingData] = useState(null);
+  /** Next day's API row, for the prompt's target date + its alarm time. */
+  const [nextDay, setNextDay] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [currentDayKey, setCurrentDayKey] = useState(todayKey());
@@ -134,6 +148,68 @@ export function useFastingTimes() {
     return () => { cancelled = true; };
   }, [location.loaded, location.coordinates?.lat, location.coordinates?.lng, fastingData]); // REMOVED currentDayKey from dependencies
 
+  // Load the cached row for tomorrow (survives the no-network launch).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const cached = await AsyncStorage.getItem(NEXT_CACHE_KEY);
+        if (!cached) return;
+        const parsed = JSON.parse(cached);
+        const key = tomorrowKey();
+        if (parsed?.date === key && parsed?.row) {
+          if (!cancelled) setNextDay({ date: key, row: parsed.row });
+        } else {
+          // Stale (yesterday's "tomorrow", or a corrupted entry).
+          await AsyncStorage.removeItem(NEXT_CACHE_KEY);
+        }
+      } catch (err) {
+        console.log('Could not read next-day fasting cache:', err?.message);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [currentDayKey]);
+
+  // Fetch tomorrow explicitly. The default API response is one day only, so
+  // without this the prompt could not know the target day's suhoor at all.
+  useEffect(() => {
+    if (!location.loaded || !location.coordinates?.lat || !location.coordinates?.lng) return;
+    if (!fastingData) return; // today first; keeps request order predictable
+    const key = tomorrowKey();
+    if (nextDay?.date === key) return;
+
+    let cancelled = false;
+
+    const fetchNextDay = async () => {
+      try {
+        const response = await fetch(
+          `${fastingTimesUrl(location.coordinates.lat, location.coordinates.lng)}&date=${key}`
+        );
+        const data = await response.json();
+        const row = data?.code === 200 ? data.data?.fasting?.[0] : null;
+        if (cancelled || !row?.time?.sahur) return;
+
+        setNextDay({ date: key, row });
+        await AsyncStorage.setItem(
+          NEXT_CACHE_KEY,
+          JSON.stringify({ date: key, row })
+        );
+      } catch (err) {
+        // Offline: getSuhoor() still falls back to today's time.
+        console.log('Could not fetch next-day fasting times:', err?.message);
+      }
+    };
+
+    fetchNextDay();
+    return () => { cancelled = true; };
+  }, [
+    location.loaded,
+    location.coordinates?.lat,
+    location.coordinates?.lng,
+    fastingData,
+    nextDay,
+  ]);
+
   const fastingDays = fastingData?.fasting ?? [];
   const todayData = fastingDays[0] ?? null;
 
@@ -141,30 +217,30 @@ export function useFastingTimes() {
    * Resolve the day row for a given en-CA date key.
    * Prefers an explicit `date` field on each row; falls back to array
    * indexing ([today, tomorrow, ...]) for APIs that don't include a date.
+   * Tomorrow's row comes from its own fetch/cache (see NEXT_CACHE_KEY).
    */
   const getDayData = useCallback((dateKey) => {
     if (!dateKey) return null;
     const byDate = fastingDays.find((d) => d?.date === dateKey);
     if (byDate) return byDate;
 
+    if (nextDay?.date === dateKey && nextDay.row) return nextDay.row;
+
     const todayStr = todayKey();
     if (dateKey === todayStr) return fastingDays[0] ?? null;
 
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    if (dateKey === toDateKey(tomorrow)) return fastingDays[1] ?? null;
+    if (dateKey === tomorrowKey()) return fastingDays[1] ?? null;
 
     return null;
-  }, [fastingDays]);
+  }, [fastingDays, nextDay]);
 
   /**
    * Suhoor end for the given date key, as a local Date, or null.
    *
-   * The API returns a single day (range=day), so tomorrow's row is never in
-   * `fastingDays`. Without this fallback `getWakeStart(tomorrow)` was null and
-   * the daily prompt could never arm tomorrow's alarm at all. Suhoor moves by
-   * about a minute a day, so today's time is a safe approximation — it is
-   * shifted one minute earlier so the alarm can never ring after suhoor.
+   * For tomorrow this uses the row fetched with `&date=` (accurate to the
+   * minute). Only when that request failed — offline on a fresh install — does
+   * it fall back to today's suhoor shifted one minute earlier, so the alarm can
+   * never ring after suhoor.
    */
   const getSuhoor = useCallback((dateKey) => {
     const day = getDayData(dateKey);

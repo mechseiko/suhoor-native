@@ -48,11 +48,14 @@ class AlarmManagerModule(private val context: Context) {
         volume: Float = -1f
     ): Boolean {
         try {
-            // Check if exact alarm permission is granted (Android 12+)
+            // Check if exact alarm permission is granted (Android 12+).
+            // If it is not, we still schedule an inexact alarm below: an alarm
+            // that fires a few minutes late is far better than no alarm at all.
+            var exactAllowed = true
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                if (!alarmManager.canScheduleExactAlarms()) {
-                    Log.e(TAG, "SCHEDULE_EXACT_ALARM permission not granted")
-                    return false
+                exactAllowed = alarmManager.canScheduleExactAlarms()
+                if (!exactAllowed) {
+                    Log.w(TAG, "Exact alarms not allowed — falling back to inexact alarm")
                 }
             }
 
@@ -92,15 +95,30 @@ class AlarmManagerModule(private val context: Context) {
                 flags
             )
 
-            // Schedule exact alarm
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerTime,
-                    pendingIntent
-                )
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                alarmManager.setExact(
+            // Schedule the alarm: exact when permitted, inexact (but still
+            // Doze-proof) otherwise, so a fasting user always gets woken.
+            if (exactAllowed) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        triggerTime,
+                        pendingIntent
+                    )
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                    alarmManager.setExact(
+                        AlarmManager.RTC_WAKEUP,
+                        triggerTime,
+                        pendingIntent
+                    )
+                } else {
+                    alarmManager.set(
+                        AlarmManager.RTC_WAKEUP,
+                        triggerTime,
+                        pendingIntent
+                    )
+                }
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP,
                     triggerTime,
                     pendingIntent

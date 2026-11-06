@@ -892,7 +892,10 @@ export const tr = {
   "milestones.newBadge": "Yeni rozet kazanıldı!",
   "groups.makeAdminConfirmSelected": "{{name}} bu grubun yöneticisi olarak eklensin mi? Grup bilgilerini düzenleyebilecek ve ayarları yönetebilecek.",
   "auth.signInPopupBlocked": "Giriş açılır penceresi engellendi. Lütfen açılır pencerelere izin verin.",
-  "network.offlineMessage": "İnternet bağlantınızı kontrol edin."
+  "network.offlineMessage": "İnternet bağlantınızı kontrol edin.",
+  "whatsNew.title": "Yenilikler",
+  "whatsNew.versionLabel": "Sürüm {{version}}",
+  "whatsNew.gotIt": "Anladım"
 };
 
 export default tr;

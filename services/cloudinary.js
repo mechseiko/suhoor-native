@@ -8,6 +8,18 @@ import {
   EXPO_PUBLIC_CLOUDINARY_API_KEY,
   EXPO_PUBLIC_CLOUDINARY_API_SECRET,
 } from '@env';
+import { SOCKET_URL } from '../config/env';
+
+/**
+ * Signing strategy
+ *
+ * Preferred: the Suhoor backend signs (`/api/cloudinary/sign`), so the API
+ * secret never ships in the APK.
+ * Fallback: the old on-device signing, kept ONLY so uploads keep working until
+ * the backend has CLOUDINARY_API_KEY/SECRET configured and a build without the
+ * local secret is shipped. Remove `EXPO_PUBLIC_CLOUDINARY_API_SECRET` from
+ * .env (and the fallback below) once that is confirmed.
+ */
 
 const CLOUDINARY_CLOUD_NAME = EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_API_KEY = EXPO_PUBLIC_CLOUDINARY_API_KEY;
@@ -17,7 +29,7 @@ const GROUP_FOLDER = 'suhoorGroupPictures';
 
 /**
  * Pure JavaScript SHA-1 implementation (RFC 3174)
- * Guaranteed cross-platform without native crypto module dependencies.
+ * Only used by the local fallback signer.
  */
 function sha1(str) {
   function rotateLeft(n, s) {
@@ -91,13 +103,59 @@ function sha1(str) {
   return [H0, H1, H2, H3, H4].map(cvtHex).join('').toLowerCase();
 }
 
-/**
- * Generate signed parameters for Cloudinary API
- */
-function generateSignature(params) {
+function localSignature(params) {
   const sortedKeys = Object.keys(params).sort();
   const serialized = sortedKeys.map((k) => `${k}=${params[k]}`).join('&');
   return sha1(serialized + CLOUDINARY_API_SECRET);
+}
+
+/**
+ * Ask the backend to sign. Returns null when the backend is unreachable or not
+ * configured yet, which switches the caller to local signing.
+ */
+async function serverSignature({ action, folder, publicId }) {
+  try {
+    if (!SOCKET_URL) return null;
+    const response = await fetch(`${SOCKET_URL}/api/cloudinary/sign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, folder, publicId }),
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (!data?.signature || !data?.params) return null;
+    return data;
+  } catch (e) {
+    return null;
+  }
+}
+
+/** Returns everything needed to sign a Cloudinary request, server-first. */
+async function signedParams({ action = 'upload', folder, publicId }) {
+  const fromServer = await serverSignature({ action, folder, publicId });
+  if (fromServer) {
+    return {
+      apiKey: fromServer.apiKey,
+      signature: fromServer.signature,
+      timestamp: String(fromServer.timestamp),
+      params: fromServer.params,
+      source: 'server',
+    };
+  }
+
+  const timestamp = Math.floor(Date.now() / 1000);
+  const params =
+    action === 'destroy'
+      ? { public_id: publicId, timestamp: String(timestamp) }
+      : { folder, overwrite: 'true', public_id: publicId, timestamp: String(timestamp) };
+
+  return {
+    apiKey: CLOUDINARY_API_KEY,
+    signature: localSignature(params),
+    timestamp: String(timestamp),
+    params,
+    source: 'local',
+  };
 }
 
 /**
@@ -107,59 +165,8 @@ function generateSignature(params) {
  * @returns {Promise<{ url: string, publicId: string }>}
  */
 export async function uploadProfilePicture(file, userId) {
-  const timestamp = Math.floor(Date.now() / 1000);
   const publicId = `${PROFILE_FOLDER}/user_${userId}`;
-
-  const paramsToSign = {
-    folder: PROFILE_FOLDER,
-    overwrite: 'true',
-    public_id: publicId,
-    timestamp: String(timestamp),
-  };
-
-  const signature = generateSignature(paramsToSign);
-
-  const formData = new FormData();
-  formData.append('api_key', CLOUDINARY_API_KEY);
-  formData.append('timestamp', String(timestamp));
-  formData.append('folder', PROFILE_FOLDER);
-  formData.append('public_id', publicId);
-  formData.append('overwrite', 'true');
-  formData.append('signature', signature);
-
-  if (Platform.OS === 'web') {
-    if (file instanceof File || file instanceof Blob) {
-      formData.append('file', file);
-    } else if (typeof file === 'string') {
-      formData.append('file', file);
-    }
-  } else {
-    // React Native format
-    formData.append('file', {
-      uri: typeof file === 'string' ? file : file.uri,
-      type: file.type || 'image/jpeg',
-      name: file.name || `avatar_${userId}.jpg`,
-    });
-  }
-
-  const response = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
-    {
-      method: 'POST',
-      body: formData,
-    }
-  );
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.error?.message || 'Failed to upload profile picture to Cloudinary');
-  }
-
-  return {
-    url: data.secure_url,
-    publicId: data.public_id,
-  };
+  return uploadToFolder({ file, folder: PROFILE_FOLDER, publicId, fallbackName: `avatar_${userId}.jpg` });
 }
 
 /**
@@ -169,25 +176,20 @@ export async function uploadProfilePicture(file, userId) {
  * @returns {Promise<{ url: string, publicId: string }>}
  */
 export async function uploadGroupPicture(file, groupId) {
-  const timestamp = Math.floor(Date.now() / 1000);
   const publicId = `${GROUP_FOLDER}/group_${groupId}`;
+  return uploadToFolder({ file, folder: GROUP_FOLDER, publicId, fallbackName: `group_${groupId}.jpg` });
+}
 
-  const paramsToSign = {
-    folder: GROUP_FOLDER,
-    overwrite: 'true',
-    public_id: publicId,
-    timestamp: String(timestamp),
-  };
-
-  const signature = generateSignature(paramsToSign);
+async function uploadToFolder({ file, folder, publicId, fallbackName }) {
+  const signed = await signedParams({ action: 'upload', folder, publicId });
 
   const formData = new FormData();
-  formData.append('api_key', CLOUDINARY_API_KEY);
-  formData.append('timestamp', String(timestamp));
-  formData.append('folder', GROUP_FOLDER);
-  formData.append('public_id', publicId);
-  formData.append('overwrite', 'true');
-  formData.append('signature', signature);
+  formData.append('api_key', signed.apiKey);
+  formData.append('timestamp', signed.timestamp);
+  formData.append('folder', signed.params.folder);
+  formData.append('public_id', signed.params.public_id);
+  formData.append('overwrite', signed.params.overwrite);
+  formData.append('signature', signed.signature);
 
   if (Platform.OS === 'web') {
     if (file instanceof File || file instanceof Blob) {
@@ -200,7 +202,7 @@ export async function uploadGroupPicture(file, groupId) {
     formData.append('file', {
       uri: typeof file === 'string' ? file : file.uri,
       type: file.type || 'image/jpeg',
-      name: file.name || `group_${groupId}.jpg`,
+      name: file.name || fallbackName,
     });
   }
 
@@ -215,7 +217,7 @@ export async function uploadGroupPicture(file, groupId) {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.error?.message || 'Failed to upload group picture to Cloudinary');
+    throw new Error(data.error?.message || 'Failed to upload picture to Cloudinary');
   }
 
   return {
@@ -231,19 +233,13 @@ export async function uploadGroupPicture(file, groupId) {
 export async function deleteProfilePicture(publicId) {
   if (!publicId) return;
 
-  const timestamp = Math.floor(Date.now() / 1000);
-  const paramsToSign = {
-    public_id: publicId,
-    timestamp: String(timestamp),
-  };
-
-  const signature = generateSignature(paramsToSign);
+  const signed = await signedParams({ action: 'destroy', publicId });
 
   const formData = new FormData();
   formData.append('public_id', publicId);
-  formData.append('api_key', CLOUDINARY_API_KEY);
-  formData.append('timestamp', String(timestamp));
-  formData.append('signature', signature);
+  formData.append('api_key', signed.apiKey);
+  formData.append('timestamp', signed.timestamp);
+  formData.append('signature', signed.signature);
 
   const response = await fetch(
     `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/destroy`,

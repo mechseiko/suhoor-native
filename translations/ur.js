@@ -892,7 +892,10 @@ export const ur = {
   "milestones.newBadge": "نیا بیج حاصل ہو گیا!",
   "groups.makeAdminConfirmSelected": "{{name}} کو اس گروپ کا ایڈمن بنائیں؟ وہ گروپ کی معلومات میں ترمیم اور سیٹنگز سنبھال سکیں گے۔",
   "auth.signInPopupBlocked": "سائن اِن پاپ اپ بلاک ہو گئی۔ براہ کرم پاپ اپ کی اجازت دیں۔",
-  "network.offlineMessage": "اپنا انٹرنیٹ کنکشن چیک کریں۔"
+  "network.offlineMessage": "اپنا انٹرنیٹ کنکشن چیک کریں۔",
+  "whatsNew.title": "نیا کیا ہے",
+  "whatsNew.versionLabel": "ورژن {{version}}",
+  "whatsNew.gotIt": "سمجھ گیا"
 };
 
 export default ur;

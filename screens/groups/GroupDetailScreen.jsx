@@ -35,6 +35,7 @@ import {
   getDocs,
   doc,
   getDoc,
+  addDoc,
   deleteDoc,
   updateDoc,
   onSnapshot,
@@ -621,6 +622,25 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       timestamp: Date.now(),
       buzzed_at: serverTimestamp(),
     });
+
+    // group_buzzes keeps one doc per (group, member) — it is the cooldown
+    // record, not a history. Append the event so counts and the admin feed are
+    // real. Failure here must never block the buzz itself.
+    try {
+      await addDoc(collection(db, COLLECTIONS.buzzEvents), {
+        group_id: groupId,
+        group_name: group?.name || "",
+        from_user_id: currentUser.uid,
+        from_user_name: fromName,
+        to_user_id: member.profiles.id,
+        to_user_name:
+          member.profiles.display_name || member.profiles.email || "",
+        date: new Date().toLocaleDateString("en-CA"),
+        created_at: serverTimestamp(),
+      });
+    } catch (e) {
+      console.warn("Could not write buzz event log:", e);
+    }
 
     buzzUser(member.profiles.id, groupId, fromName, group?.name);
 

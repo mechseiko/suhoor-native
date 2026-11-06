@@ -66,7 +66,8 @@
     "android": "react-native run-android",
     "ios": "react-native run-ios",
     "test": "jest",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "i18n:check": "node scripts/i18n-check.mjs"
   },
   "private": true
 }

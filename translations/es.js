@@ -892,7 +892,10 @@ export const es = {
   "milestones.newBadge": "¡Nueva insignia desbloqueada!",
   "groups.makeAdminConfirmSelected": "¿Añadir a {{name}} como administrador de este grupo? Podrá editar la información del grupo y gestionar los ajustes.",
   "auth.signInPopupBlocked": "Se bloqueó la ventana de inicio de sesión. Permite las ventanas emergentes.",
-  "network.offlineMessage": "Revisa tu conexión a internet."
+  "network.offlineMessage": "Revisa tu conexión a internet.",
+  "whatsNew.title": "Novedades",
+  "whatsNew.versionLabel": "Versión {{version}}",
+  "whatsNew.gotIt": "Entendido"
 };
 
 export default es;

@@ -8,6 +8,7 @@ import com.google.gson.Gson
 import com.mechseiko.suhoor.alarm.AlarmData
 import com.mechseiko.suhoor.alarm.AlarmReceiver
 import com.mechseiko.suhoor.alarm.BuzzDedupe
+import com.mechseiko.suhoor.alarm.MutedGroups
 
 /**
  * Receives group "buzzes" while the app is closed or the socket is gone.
@@ -45,6 +46,12 @@ class SuhoorMessagingService : FirebaseMessagingService() {
         val alarmId = data["alarmId"]
             ?: "buzz_${message.messageId ?: System.currentTimeMillis()}"
         val now = System.currentTimeMillis()
+
+        // The user muted this group's wake-up buzzes: drop it entirely.
+        if (MutedGroups.isMuted(this, data["groupId"])) {
+            Log.d(TAG, "Buzz from muted group ignored: ${data["groupId"]}")
+            return
+        }
 
         // The socket may have delivered the same buzz already.
         if (BuzzDedupe.isDuplicate(this, alarmId)) {

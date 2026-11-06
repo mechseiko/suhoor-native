@@ -13,6 +13,7 @@ import {
   FlatList,
   Image,
   Platform,
+  NativeModules,
 } from 'react-native';
 import {
   doc,
@@ -63,7 +64,6 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
   const [onlyAdminsEdit, setOnlyAdminsEdit] = useState(true);
   const [onlyAdminsInvite, setOnlyAdminsInvite] = useState(false);
   const [onlyAdminsBuzz, setOnlyAdminsBuzz] = useState(false);
-  const [requireApproval, setRequireApproval] = useState(false);
 
   // Per-user group notification preference
   const [muteNotifications, setMuteNotifications] = useState(false);
@@ -110,6 +110,12 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
     setMuteNotifications(val);
     try {
       await AsyncStorage.setItem(`@suhoor_group_mute_${groupId}`, val ? 'true' : 'false');
+      // Native side owns the real enforcement: the FCM buzz path never runs JS.
+      try {
+        if (NativeModules?.AlarmBridge?.setMutedGroup) {
+          NativeModules.AlarmBridge.setMutedGroup(groupId, Boolean(val)).catch(() => {});
+        }
+      } catch (_) {}
       triggerToast(
         val ? t('groups.notificationsMuted', 'Notifications muted for this group') : t('groups.notificationsUnmuted', 'Notifications unmuted for this group'),
         'info'
@@ -232,7 +238,6 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
         setOnlyAdminsEdit(data.only_admins_edit ?? true);
         setOnlyAdminsInvite(data.only_admins_invite ?? false);
         setOnlyAdminsBuzz(data.only_admins_buzz ?? false);
-        setRequireApproval(data.require_approval ?? false);
       }
 
       // 2. Fetch all members with profiles
@@ -386,7 +391,7 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
     const origin =
       typeof window !== 'undefined' && window.location?.origin
         ? window.location.origin
-        : 'https://suhoorapp.cv';
+        : 'https://suhoor-group.web.app';
     const link = `${origin}/groups?groupKey=${key}`;
     const prefix = t('groups.shareInviteMessage', "Join my group on Suhoor, Let's wake up for suhoor together:");
     const shareText = `${prefix} ${link}`;
