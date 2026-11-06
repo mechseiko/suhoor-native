@@ -740,14 +740,28 @@ export const GroupSettingsScreen = ({ route, navigation }) => {
             <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>
               {t('groups.groupKey', 'Group Code')}
             </Text>
-            <View style={styles.keyRow}>
-              <Text style={[styles.infoValue, { color: colors.text }]}>
-                {group?.group_key || groupKey}
-              </Text>
-              <TouchableOpacity onPress={handleCopyKey} style={styles.copyIcon}>
-                <Ionicons name="copy-outline" size={18} color={colors.primary} />
-              </TouchableOpacity>
-            </View>
+            {!isAdmin && onlyAdminsInvite ? (
+              <View style={styles.keyRow}>
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={14}
+                  color={colors.textSecondary}
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={[styles.infoValue, { color: colors.textSecondary }]}>
+                  {t('groups.groupKeyAdminsOnly')}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.keyRow}>
+                <Text style={[styles.infoValue, { color: colors.text }]}>
+                  {group?.group_key || groupKey}
+                </Text>
+                <TouchableOpacity onPress={handleCopyKey} style={styles.copyIcon}>
+                  <Ionicons name="copy-outline" size={18} color={colors.primary} />
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
 

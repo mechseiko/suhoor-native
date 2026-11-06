@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, NativeModules, Platform } from 'react-native';
 import {
   subscribeToNotifications,
@@ -15,6 +15,7 @@ import { COLLECTIONS } from '../config/firestoreSchema';
 import { doc, getDoc } from 'firebase/firestore';
 import { useFastingTimes } from '../hooks/useFastingTimes';
 import { useNativeAlarm } from '../hooks/useNativeAlarm';
+import { getAlarmSoundResourceName } from '../utils/soundGenerator';
 
 const ALARM_TYPES = new Set(['wake_up_alarm']);
 const DAILY_ALARM_KEY = 'suhoor_daily_alarm_time';
@@ -34,7 +35,7 @@ export const AlarmProvider = ({ children }) => {
   const { on, off } = useSocket();
   const { t } = useLanguage();
   const { todayData } = useFastingTimes();
-  const { triggerRemoteBuzz } = useNativeAlarm();
+  const { triggerRemoteBuzz, scheduleAlarm: scheduleNativeAlarm, consumeAlarmTrigger } = useNativeAlarm();
 
   // Reset alarm state when app comes to foreground (after swipe-close)
   useEffect(() => {
@@ -50,6 +51,50 @@ export const AlarmProvider = ({ children }) => {
     return () => subscription?.remove();
   }, []);
 
+  // The user tapped "Enter PIN" on the native alarm screen (or the alarm
+  // notification). The native alarm is still ringing; show the PIN overlay so
+  // it can be dismissed properly. Registered after the reset effect above so it
+  // wins when both fire on the same resume. Covers cold start and resume.
+  // Kept in a ref: useNativeAlarm() returns fresh closures on every render, and
+  // this listener must be registered exactly once.
+  const consumeAlarmTriggerRef = useRef(consumeAlarmTrigger);
+  useEffect(() => {
+    consumeAlarmTriggerRef.current = consumeAlarmTrigger;
+  }, [consumeAlarmTrigger]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkPendingTrigger = async () => {
+      const consume = consumeAlarmTriggerRef.current;
+      if (Platform.OS !== 'android' || typeof consume !== 'function') return;
+      try {
+        const trigger = await consume();
+        if (cancelled || !trigger) return;
+        console.log('⏰ Native alarm handed off to PIN overlay:', trigger);
+        setAlarmData({
+          type: trigger.alarmType === 'remote_buzz' ? 'buzz' : 'wake_up_alarm',
+          fromNative: true,
+          alarmId: trigger.alarmId,
+        });
+        setIsAlarmActive(true);
+      } catch (e) {
+        console.warn('Could not consume native alarm trigger:', e);
+      }
+    };
+
+    checkPendingTrigger();
+
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') checkPendingTrigger();
+    });
+
+    return () => {
+      cancelled = true;
+      subscription?.remove();
+    };
+  }, []);
+
   useEffect(() => {
     const handleGetBuzzed = async (data) => {
       console.log('🔔 Received incoming buzz:', data);
@@ -57,7 +102,10 @@ export const AlarmProvider = ({ children }) => {
       // Use native Android alarm for buzz - works even when app is closed
       if (Platform.OS === 'android' && NativeModules && NativeModules.AlarmBridge) {
         try {
-          const alarmId = `buzz_${currentUser.uid}_${data.fromUserId}_${Date.now()}`;
+          // Use the server-generated id: the same buzz may also arrive as an
+          // FCM push, and the native side de-duplicates on this value.
+          const alarmId =
+            data.alarmId || `buzz_${currentUser.uid}_${data.fromUserId}_${Date.now()}`;
           const success = await triggerRemoteBuzz(
             alarmId,
             currentUser.uid,
@@ -183,14 +231,38 @@ export const AlarmProvider = ({ children }) => {
         // Schedule exact native Android alarm (survives Doze, device sleep, and deep background)
         if (Platform.OS === 'android' && NativeModules && NativeModules.AlarmBridge && NativeModules.AlarmBridge.scheduleAlarm) {
           try {
-            await NativeModules.AlarmBridge.scheduleAlarm(
+            // Native side plays its own raw resource, so pass the resource
+            // name (not the RN sound id) and the user's volume.
+            const nativeSound = getAlarmSoundResourceName(
+              userProfile?.preferences?.alarmSound || 'default'
+            );
+            const nativeVolume =
+              userProfile?.preferences?.soundEnabled === false
+                ? 0
+                : typeof userProfile?.preferences?.alarmVolume === 'number'
+                  ? userProfile.preferences.alarmVolume
+                  : 1;
+
+            const ok = await scheduleNativeAlarm(
               'suhoor-daily-alarm',
               alarmDate.getTime(),
               currentUser?.uid || '',
               '',
-              'wake_up'
+              'wake_up',
+              nativeSound,
+              nativeVolume
             );
-            console.log('⏰ Native exact alarm scheduled for:', alarmDate.toISOString());
+            if (ok) {
+              console.log('⏰ Native exact alarm scheduled for:', alarmDate.toISOString());
+            } else {
+              // Most often: "Alarms & reminders" access is off, so
+              // setExactAndAllowWhileIdle is refused. The Home reliability card
+              // surfaces this to the user.
+              console.warn(
+                '⏰ Native exact alarm was NOT scheduled (check exact-alarm permission) for:',
+                alarmDate.toISOString()
+              );
+            }
           } catch (nativeErr) {
             console.warn('Native exact alarm scheduling error:', nativeErr);
           }

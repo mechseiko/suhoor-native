@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, View, Image, TouchableOpacity } from 'react-native';
 import { db } from '../config/firebase';
 import { COLLECTIONS } from '../config/firestoreSchema';
-import { doc, setDoc, getDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -165,58 +165,67 @@ export const FastingPrompt = () => {
   ]);
 
   // ── Current day fasting status (for the top banner) ────────────────────
+  // Live listener: the banner must react to the user answering this prompt and
+  // to a check-in from the Groups tab, both of which write this same document.
+  //
+  // Only two states exist: fasting / not_fasting. A record the app wrote for
+  // the user (isAutoDefault) is NOT an intention, so it never raises the banner
+  // — that is what produced "Intention set - fasting pending" for people who
+  // never answered the prompt.
   useEffect(() => {
-    if (!currentUser) return;
-    let cancelled = false;
-    const fetchStatus = async () => {
-      try {
-        const statusRef = doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${todayStr}`);
-        const snap = await getDoc(statusRef);
-        if (cancelled) return;
-        if (snap.exists()) {
-          const d = snap.data();
-          if (d.checkedIn === true) setCurrentDayFastingStatus('fasting');
-          else if (d.wantsToFast === true) setCurrentDayFastingStatus('pending');
-          else if (d.wantsToFast === false) setCurrentDayFastingStatus('not_fasting');
-          else setCurrentDayFastingStatus(null);
+    if (!currentUser) {
+      setCurrentDayFastingStatus(null);
+      return;
+    }
+
+    const statusRef = doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${todayStr}`);
+    const unsub = onSnapshot(
+      statusRef,
+      (snap) => {
+        if (!snap.exists()) {
+          setCurrentDayFastingStatus(null);
+          return;
+        }
+        const d = snap.data();
+        if (d.checkedIn === true) {
+          setCurrentDayFastingStatus('fasting');
+        } else if (d.wantsToFast === false) {
+          setCurrentDayFastingStatus('not_fasting');
+        } else if (d.wantsToFast === true && d.isAutoDefault !== true) {
+          setCurrentDayFastingStatus('fasting');
         } else {
           setCurrentDayFastingStatus(null);
         }
-      } catch (err) {
-        console.error('Error fetching current day status:', err);
+      },
+      (err) => {
+        console.error('Error listening to current day status:', err);
+        setCurrentDayFastingStatus(null);
       }
-    };
-    fetchStatus();
-    return () => { cancelled = true; };
+    );
+
+    return () => unsub();
   }, [currentUser, todayStr]);
 
-  // ── Banner time-window (today's suhoor/iftar) ──────────────────────────
-  const [bannerMode, setBannerMode] = useState('hidden');
-  useEffect(() => {
-    const computeMode = () => {
-      const day = getDayData(todayStr);
-      if (!day?.time) return;
-      const now = new Date();
-      const nowMinutes = now.getHours() * 60 + now.getMinutes();
-      const parseMins = (s) => {
-        if (!s) return null;
-        const [h, m] = s.split(':').map(Number);
-        if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
-        return h * 60 + m;
-      };
-      const suhoorMins = parseMins(day.time.sahur);
-      const iftarMins = parseMins(day.time.iftar || day.time.maghrib);
-      const endOfBannerMins = 20 * 60;
-      if (suhoorMins === null) return;
-      if (nowMinutes < suhoorMins) setBannerMode('hidden');
-      else if (iftarMins !== null && nowMinutes >= iftarMins && nowMinutes < endOfBannerMins) setBannerMode('iftar');
-      else if (nowMinutes >= endOfBannerMins) setBannerMode('hidden');
-      else setBannerMode('fasting_status');
+  // ── Banner time-window ────────────────────────────────────────────────
+  // Visible from the end of the wake-up window (suhoor) until the fast breaks
+  // (iftar, i.e. maghrib). The API exposes `sahur` and `iftar` only.
+  const bannerVisible = (() => {
+    const day = getDayData(todayStr);
+    if (!day?.time) return false;
+    const toMins = (s) => {
+      if (!s) return null;
+      const [h, m] = s.split(':').map(Number);
+      if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+      return h * 60 + m;
     };
-    computeMode();
-    const id = setInterval(computeMode, 60000);
-    return () => clearInterval(id);
-  }, [getDayData, todayStr]);
+    const suhoorMins = toMins(day.time.sahur);
+    const breakMins = toMins(day.time.iftar || day.time.maghrib);
+    if (suhoorMins === null || breakMins === null) return false;
+
+    const now = new Date(nowTick);
+    const nowMins = now.getHours() * 60 + now.getMinutes();
+    return nowMins >= suhoorMins && nowMins < breakMins;
+  })();
 
   // ── Auto-record: inside wake window, write default if user never chose ─
   // Only writes the intent; the alarm was either armed explicitly (Yes),
@@ -357,25 +366,7 @@ export const FastingPrompt = () => {
         onDismiss={() => setToastVisible(false)}
       />
 
-      {bannerMode === 'iftar' && (
-        <View
-          style={[
-            styles.statusBanner,
-            {
-              backgroundColor: isDark ? 'rgba(251, 191, 36, 0.15)' : 'rgba(251, 191, 36, 0.10)',
-              borderColor: isDark ? 'rgba(251, 191, 36, 0.4)' : 'rgba(251, 191, 36, 0.3)',
-            },
-          ]}
-        >
-          <View style={{ flex: 1 }}>
-            <Text variant="h3" style={{ fontSize: 13, color: isDark ? '#FCD34D' : '#B45309' }}>
-              {t('fasting.iftarTime')}
-            </Text>
-          </View>
-        </View>
-      )}
-
-      {bannerMode === 'fasting_status' && currentDayFastingStatus && (
+      {bannerVisible && currentDayFastingStatus && (
         <View
           style={[
             styles.statusBanner,
@@ -383,14 +374,10 @@ export const FastingPrompt = () => {
               backgroundColor:
                 currentDayFastingStatus === 'fasting'
                   ? isDark ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.08)'
-                  : currentDayFastingStatus === 'pending'
-                  ? isDark ? 'rgba(251, 191, 36, 0.12)' : 'rgba(251, 191, 36, 0.08)'
                   : isDark ? 'rgba(107, 114, 128, 0.15)' : 'rgba(107, 114, 128, 0.08)',
               borderColor:
                 currentDayFastingStatus === 'fasting'
                   ? isDark ? 'rgba(16, 185, 129, 0.3)' : 'rgba(16, 185, 129, 0.2)'
-                  : currentDayFastingStatus === 'pending'
-                  ? isDark ? 'rgba(251, 191, 36, 0.3)' : 'rgba(251, 191, 36, 0.2)'
                   : isDark ? 'rgba(107, 114, 128, 0.3)' : 'rgba(107, 114, 128, 0.2)',
             },
           ]}
@@ -403,15 +390,11 @@ export const FastingPrompt = () => {
                 color:
                   currentDayFastingStatus === 'fasting'
                     ? colors.success || '#10B981'
-                    : currentDayFastingStatus === 'pending'
-                    ? isDark ? '#FCD34D' : '#B45309'
                     : colors.textSecondary,
               }}
             >
               {currentDayFastingStatus === 'fasting'
                 ? t('fasting.youAreFasting')
-                : currentDayFastingStatus === 'pending'
-                ? t('fasting.intentPending')
                 : t('fasting.youAreNotFasting')}
             </Text>
             {currentDayFastingStatus === 'fasting' && (

@@ -38,6 +38,11 @@ class AlarmForegroundService : Service() {
         const val ACTION_STOP_ALARM = "com.mechseiko.suhoor.STOP_ALARM"
         const val EXTRA_ALARM_DATA = "alarm_data"
 
+        /** True while the service is ringing. Read by AlarmActivity so the two
+         *  never play the same loop on top of each other. */
+        @Volatile
+        var isRunning: Boolean = false
+
         fun startAlarm(context: Context, alarmData: AlarmData) {
             val gson = Gson()
             val intent = Intent(context, AlarmForegroundService::class.java).apply {
@@ -52,10 +57,18 @@ class AlarmForegroundService : Service() {
         }
 
         fun stopService(context: Context) {
-            val intent = Intent(context, AlarmForegroundService::class.java).apply {
-                action = ACTION_STOP_ALARM
+            // Nothing to stop. Calling startService() from the background just to
+            // deliver a STOP action throws on Android 8+.
+            if (!isRunning) return
+            try {
+                val intent = Intent(context, AlarmForegroundService::class.java).apply {
+                    action = ACTION_STOP_ALARM
+                }
+                context.startService(intent)
+            } catch (e: Exception) {
+                Log.w(TAG, "stopService failed, stopping directly", e)
+                context.stopService(Intent(context, AlarmForegroundService::class.java))
             }
-            context.startService(intent)
         }
     }
 
@@ -70,9 +83,10 @@ class AlarmForegroundService : Service() {
                 } catch (e: Exception) {
                     null
                 }
+                isRunning = true
                 acquireWakeLock()
                 startForegroundAlarmNotification(alarmData)
-                startAlarmSound()
+                startAlarmSound(alarmData)
                 startVibration()
             }
             ACTION_STOP_ALARM -> {
@@ -80,6 +94,7 @@ class AlarmForegroundService : Service() {
                 stopVibration()
                 releaseWakeLock()
                 stopForeground(true)
+                isRunning = false
                 stopSelf()
             }
         }
@@ -111,7 +126,7 @@ class AlarmForegroundService : Service() {
         val fullScreenIntent = Intent(this, AlarmActivity::class.java).apply {
             putExtra("alarm_id", alarmData?.id ?: "suhoor_alarm")
             putExtra("alarm_data", if (alarmData != null) Gson().toJson(alarmData) else "")
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
         val pFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -196,7 +211,7 @@ class AlarmForegroundService : Service() {
         }
     }
 
-    private fun startAlarmSound() {
+    private fun startAlarmSound(alarmData: AlarmData?) {
         if (mediaPlayer != null) return
         try {
             val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -224,7 +239,21 @@ class AlarmForegroundService : Service() {
                 audioManager.requestAudioFocus(null, AudioManager.STREAM_ALARM, AudioManager.AUDIOFOCUS_GAIN)
             }
 
-            mediaPlayer = MediaPlayer.create(this, R.raw.alarm_sound)?.apply {
+            // Play whatever the user picked in Settings -> Alarm sound.
+            val requested = alarmData?.soundName ?: ""
+            val resId = if (requested.isNotBlank()) {
+                resources.getIdentifier(requested, "raw", packageName)
+            } else 0
+            val track = if (resId != 0) resId else R.raw.alarm_sound
+
+            // Alarms persisted by an older build deserialize volume as 0 with no
+            // soundName. Only trust volume when we wrote it alongside a sound.
+            val explicitVolume =
+                if (alarmData != null && !alarmData.soundName.isNullOrBlank()) alarmData.volume else -1f
+            val volume =
+                if (explicitVolume >= 0f) explicitVolume.coerceIn(0f, 1f) else 1.0f
+
+            mediaPlayer = MediaPlayer.create(this, track)?.apply {
                 isLooping = true
                 setAudioAttributes(
                     AudioAttributes.Builder()
@@ -233,7 +262,7 @@ class AlarmForegroundService : Service() {
                         .setLegacyStreamType(AudioManager.STREAM_ALARM)
                         .build()
                 )
-                setVolume(1.0f, 1.0f)
+                setVolume(volume, volume)
                 start()
             }
         } catch (e: Exception) {
@@ -298,6 +327,7 @@ class AlarmForegroundService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        isRunning = false
         stopAlarmSound()
         stopVibration()
         releaseWakeLock()

@@ -69,6 +69,8 @@ class AlarmBridgeModule(reactContext: ReactApplicationContext) : ReactContextBas
         userId: String,
         groupId: String,
         alarmType: String,
+        soundName: String,
+        volume: Double,
         promise: Promise
     ) {
         try {
@@ -77,7 +79,9 @@ class AlarmBridgeModule(reactContext: ReactApplicationContext) : ReactContextBas
                 triggerTime = triggerTime.toLong(),
                 userId = userId,
                 groupId = groupId,
-                alarmType = alarmType
+                alarmType = alarmType,
+                soundName = soundName,
+                volume = volume.toFloat()
             )
 
             if (success) {
@@ -238,6 +242,13 @@ class AlarmBridgeModule(reactContext: ReactApplicationContext) : ReactContextBas
         promise: Promise
     ) {
         try {
+            // The server also pushes the same buzz over FCM. Whichever arrives
+            // first rings; the other is dropped here.
+            if (BuzzDedupe.isDuplicate(reactApplicationContext, alarmId)) {
+                promise.resolve(true)
+                return
+            }
+
             // Schedule immediate alarm for remote buzz
             val triggerTime = System.currentTimeMillis() + 1000 // 1 second from now
 
@@ -256,6 +267,96 @@ class AlarmBridgeModule(reactContext: ReactApplicationContext) : ReactContextBas
             }
         } catch (e: Exception) {
             promise.reject("REMOTE_BUZZ_ERROR", e.message, e)
+        }
+    }
+
+    /**
+     * Android 14+ can revoke USE_FULL_SCREEN_INTENT. When it is off the alarm
+     * notification degrades to a heads-up and never covers the lock screen.
+     */
+    @ReactMethod
+    fun canUseFullScreenIntent(promise: Promise) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                val nm = reactApplicationContext.getSystemService(android.app.NotificationManager::class.java)
+                promise.resolve(nm?.canUseFullScreenIntent() == true)
+            } else {
+                promise.resolve(true)
+            }
+        } catch (e: Exception) {
+            promise.reject("FSI_CHECK_ERROR", e.message, e)
+        }
+    }
+
+    @ReactMethod
+    fun openFullScreenIntentSettings(promise: Promise) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                    Uri.parse("package:${reactApplicationContext.packageName}")
+                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                reactApplicationContext.startActivity(intent)
+            }
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("FSI_SETTINGS_ERROR", e.message, e)
+        }
+    }
+
+    /**
+     * Android 12+ needs the "Alarms & reminders" special access for
+     * setExactAndAllowWhileIdle. Without it scheduleAlarm() fails silently.
+     */
+    @ReactMethod
+    fun openExactAlarmSettings(promise: Promise) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val intent = Intent(
+                    Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                    Uri.parse("package:${reactApplicationContext.packageName}")
+                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                reactApplicationContext.startActivity(intent)
+            }
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("EXACT_ALARM_SETTINGS_ERROR", e.message, e)
+        }
+    }
+
+    /** FCM registration token, used for background buzz delivery. */
+    @ReactMethod
+    fun getFcmToken(promise: Promise) {
+        try {
+            com.google.firebase.messaging.FirebaseMessaging.getInstance().token
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        promise.resolve(task.result)
+                    } else {
+                        promise.reject("FCM_TOKEN_ERROR", task.exception?.message ?: "no token", task.exception)
+                    }
+                }
+        } catch (e: Exception) {
+            promise.reject("FCM_TOKEN_ERROR", e.message, e)
+        }
+    }
+
+    /** One-shot: did the user open the app from the alarm screen/notification? */
+    @ReactMethod
+    fun consumeAlarmTrigger(promise: Promise) {
+        try {
+            val trigger = AlarmTriggerBus.consume()
+            if (trigger == null) {
+                promise.resolve(null)
+                return
+            }
+            val map = Arguments.createMap().apply {
+                putString("alarmId", trigger.first)
+                putString("alarmType", trigger.second)
+            }
+            promise.resolve(map)
+        } catch (e: Exception) {
+            promise.reject("ALARM_TRIGGER_ERROR", e.message, e)
         }
     }
 

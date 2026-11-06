@@ -9,6 +9,8 @@ import android.media.AudioManager
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -61,17 +63,27 @@ class AlarmActivity : AppCompatActivity() {
         // Acquire wake lock to keep device awake
         acquireWakeLock()
 
-        // Start alarm sound and vibration
-        startAlarmSound()
-        startVibration()
+        // The foreground service owns the looping sound + vibration. Only fall
+        // back to playing here if it did not start (e.g. the service was killed
+        // and the user reopened the alarm from its notification).
+        Handler(Looper.getMainLooper()).postDelayed({
+            if (!isFinishing && !AlarmForegroundService.isRunning) {
+                startAlarmSound()
+                startVibration()
+            }
+        }, 800)
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        AlarmForegroundService.stopService(this)
         stopAlarmSound()
         stopVibration()
         releaseWakeLock()
+        // Note: the foreground service is intentionally left running here. The
+        // alarm stops only when the correct PIN is entered (JS dismissAlarm ->
+        // AlarmBridge.stopAlarmService) or when the user dismisses the alarm.
+        // Silencing it on activity teardown is what let users escape the alarm
+        // by pressing Home / Back.
     }
 
     /**
@@ -264,18 +276,11 @@ class AlarmActivity : AppCompatActivity() {
     }
 
     /**
-     * Stop native sound & vibration and open the React Native app (MainActivity)
-     * where the user is required to enter their 4-digit PIN in AlarmOverlay to dismiss.
+     * Hand off to the React Native app, where the user enters their 4-digit PIN
+     * in AlarmOverlay. The sound keeps ringing (foreground service) until that
+     * PIN is accepted — this activity must not silence it on the way out.
      */
     private fun openAppForPin() {
-        AlarmForegroundService.stopService(this)
-        stopAlarmSound()
-        stopVibration()
-        releaseWakeLock()
-
-        val notificationManager = androidx.core.app.NotificationManagerCompat.from(this)
-        notificationManager.cancel(AlarmReceiver.NOTIFICATION_ID)
-
         val launchIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra("alarm_trigger", true)
@@ -288,6 +293,8 @@ class AlarmActivity : AppCompatActivity() {
             putExtra("alarm_type", alarmData?.type)
         }
 
+        // Keep the wake lock until the app is actually in front. onDestroy will
+        // release it afterwards while leaving the service untouched.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
             keyguardManager?.requestDismissKeyguard(this, object : KeyguardManager.KeyguardDismissCallback() {

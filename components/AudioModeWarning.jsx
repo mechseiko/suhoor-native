@@ -7,6 +7,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { scheduleNotification } from '../services/notifications';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useFastingTimes } from '../hooks/useFastingTimes';
+import { isNightWarningWindow, nightKey } from '../utils/nightWindow';
 
 // Safe import for the volume manager
 let VolumeManager = null;
@@ -118,13 +119,9 @@ export const AudioModeWarning = () => {
       if (recentlyDismissed) return;
 
       if (todayData && (isSilent || isDND)) {
-        const now = new Date();
-        const currentHour = now.getHours();
-
-        const fajrTime = todayData.fajr ? new Date(todayData.fajr) : new Date();
-        fajrTime.setHours(4, 30, 0, 0);
-
-        if (currentHour >= 20 || currentHour < fajrTime.getHours()) {
+        // 20:00 -> suhoor end (the API has no fajr; suhoor end is the Fajr
+        // boundary the alarm actually depends on).
+        if (isNightWarningWindow(todayData)) {
           setShowWarning(true);
 
           if (!notificationSent) {
@@ -145,6 +142,11 @@ export const AudioModeWarning = () => {
 
   const sendSilentModeNotification = async () => {
     try {
+      // One system notification per night, not one per app launch.
+      const key = `suhoor_audio_warning_notified_${nightKey()}`;
+      const already = await AsyncStorage.getItem(key);
+      if (already === 'true') return;
+
       await scheduleNotification({
         semanticId: 'audio_mode_warning',
         date: new Date(Date.now() + 1000),
@@ -152,6 +154,7 @@ export const AudioModeWarning = () => {
         message: t('audioMode.warningMessage'),
         channel: { id: 'suhoor-wake-up', name: 'Suhoor Wake Up' },
       });
+      await AsyncStorage.setItem(key, 'true');
     } catch (error) {
       console.error('Error sending audio mode notification:', error);
     }

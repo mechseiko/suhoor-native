@@ -262,6 +262,10 @@ export const SignupScreen = ({ navigation }) => {
         errorMessage = t("auth.popupBlocked", "Sign-in popup was blocked. Please allow popups.");
       } else if (err.code === "auth/network-request-failed") {
         errorMessage = t("auth.networkError");
+      } else if (err.code === "auth/provider-password") {
+        errorMessage = t("auth.providerPasswordOnly");
+      } else if (err.code === "auth/account-conflict") {
+        errorMessage = t("auth.accountConflict");
       } else if (err.message) {
         errorMessage = err.message;
       }

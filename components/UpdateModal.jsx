@@ -17,8 +17,6 @@ import { triggerImmediateUpdate } from '../services/inAppUpdates';
 
 export const UpdateModal = ({
   visible,
-  currentVersion,
-  latestVersion,
   playStoreUrl,
   onClose,
 }) => {
@@ -92,49 +90,6 @@ export const UpdateModal = ({
               'A newer version of Suhoor is available on the Google Play Store. Update now for improved performance, wake-up features, and stability.'
             )}
           </Text>
-
-          {/* Versions Comparison Box */}
-          <View
-            style={[
-              styles.versionBox,
-              {
-                backgroundColor: isDark
-                  ? 'rgba(255, 255, 255, 0.05)'
-                  : 'rgba(0, 0, 0, 0.03)',
-                borderColor: colors.border || 'rgba(150, 150, 150, 0.15)',
-              },
-            ]}
-          >
-            <View style={styles.versionCol}>
-              <Text variant="caption" tone="secondary">
-                {t('update.current', 'Current')}
-              </Text>
-              <Text variant="body" style={styles.versionText}>
-                v{currentVersion || '1.0.0'}
-              </Text>
-            </View>
-
-            <Ionicons
-              name="arrow-forward"
-              size={18}
-              color={brand.primary || '#F29F1D'}
-            />
-
-            <View style={styles.versionCol}>
-              <Text variant="caption" tone="secondary">
-                {t('update.latest', 'Latest')}
-              </Text>
-              <Text
-                variant="body"
-                style={[
-                  styles.versionText,
-                  { color: brand.primary || '#F29F1D', fontWeight: '700' },
-                ]}
-              >
-                v{latestVersion || '1.0.0'}
-              </Text>
-            </View>
-          </View>
 
           {/* Action Buttons */}
           <TouchableOpacity

@@ -9,16 +9,28 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signInWithCredential,
-  linkWithCredential,
   fetchSignInMethodsForEmail,
 } from "firebase/auth";
 import { auth, db } from "../config/firebase";
-import { doc, onSnapshot, updateDoc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import {
+  doc,
+  onSnapshot,
+  updateDoc,
+  getDoc,
+  setDoc,
+  collection,
+  query,
+  where,
+  limit,
+  getDocs,
+  serverTimestamp,
+} from "firebase/firestore";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { detectUserLocationDetails } from "../utils/country";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID } from "@env";
+import { registerPushToken } from "../services/pushRegistration";
 
 const AuthContext = createContext({});
 
@@ -29,6 +41,26 @@ GoogleSignin.configure({
   webClientId: EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
   offlineAccess: true,
 });
+
+/**
+ * Returns a profile that owns this email under a *different* uid, or null.
+ * Used to guarantee one account per email even if Firebase auth ever hands back
+ * a second identity for the same address.
+ */
+const findOtherProfileWithEmail = async (email, uid) => {
+  if (!email) return null;
+  try {
+    const profiles = collection(db, 'profiles');
+    const snap = await getDocs(
+      query(profiles, where('email', '==', email), limit(5))
+    );
+    const other = snap.docs.find((d) => d.id !== uid);
+    return other ? { id: other.id, ...other.data() } : null;
+  } catch (error) {
+    console.log('Could not check for duplicate profiles:', error?.message);
+    return null;
+  }
+};
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
@@ -47,20 +79,39 @@ export const AuthProvider = ({ children }) => {
       }
       return await createUserWithEmailAndPassword(auth, email, password);
     } catch (error) {
+      // Email enumeration protection can make the check above return nothing.
+      // The sign-up call still fails safely; explain it in the same terms.
+      if (error.code === 'auth/email-already-in-use') {
+        try {
+          const methods = await fetchSignInMethodsForEmail(auth, email);
+          if (methods.includes('google.com')) {
+            const mapped = new Error('This email already has a Google account.');
+            mapped.code = 'auth/email-already-linked-to-google';
+            throw mapped;
+          }
+        } catch (inner) {
+          if (inner.code === 'auth/email-already-linked-to-google') throw inner;
+        }
+      }
       throw error;
     }
   };
 
+  /**
+   * Email + password sign-in. A Google-only account cannot get in here: no
+   * password is set on it, so Firebase rejects the credentials. LoginScreen
+   * tells the user to continue with Google instead.
+   */
   const login = async (email, password) => {
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      // Account linking is handled automatically by Firebase when using the same email
-      return userCredential;
-    } catch (error) {
-      throw error;
-    }
+    return signInWithEmailAndPassword(auth, email, password);
   };
 
+  /**
+   * We only allow one provider per email address.
+   * A password account can never be entered through Google and vice versa —
+   * attempted cross-provider sign-in is rejected with a clear code and the
+   * user is told which method their email belongs to.
+   */
   const signInWithGoogle = async () => {
     try {
       let userCredential;
@@ -85,24 +136,36 @@ export const AuthProvider = ({ children }) => {
         }
 
         googleCredential = GoogleAuthProvider.credential(idToken);
-        userCredential = await signInWithCredential(auth, googleCredential);
+        try {
+          userCredential = await signInWithCredential(auth, googleCredential);
+        } catch (credentialError) {
+          if (credentialError.code === 'auth/account-exists-with-different-credential') {
+            const conflict = new Error(
+              'This email is registered with a password.'
+            );
+            conflict.code = 'auth/provider-password';
+            throw conflict;
+          }
+          throw credentialError;
+        }
       }
 
       const user = userCredential.user;
 
-      // ACCOUNT LINKING: Check if email already exists with password provider
-      try {
-        const signInMethods = await fetchSignInMethodsForEmail(auth, user.email);
-        if (signInMethods.includes('password') && !signInMethods.includes('google.com')) {
-          // Email exists with password but not linked to Google - link it
-          if (googleCredential) {
-            await linkWithCredential(user, googleCredential);
-            console.log("Google credential linked to existing email/password account");
-          }
+      // Defence in depth: never allow a second account for an email that
+      // already owns a profile (protects against legacy duplicates and the
+      // case where the console setting is ever turned off).
+      const duplicate = await findOtherProfileWithEmail(user.email, user.uid);
+      if (duplicate) {
+        await signOut(auth);
+        if (Platform.OS !== 'web') {
+          try {
+            await GoogleSignin.signOut();
+          } catch (e) {}
         }
-      } catch (linkErr) {
-        // Ignore linking errors (might already be linked or other issues)
-        console.log("Account linking note:", linkErr.message);
+        const conflict = new Error('This email already has an account.');
+        conflict.code = 'auth/account-conflict';
+        throw conflict;
       }
 
       // Check if user profile exists in Firestore, if not create it
@@ -234,6 +297,9 @@ export const AuthProvider = ({ children }) => {
       setCurrentUser(user);
 
       if (user) {
+        // Background buzz delivery: keep the server's FCM token in sync.
+        registerPushToken(user.uid).catch(() => {});
+
         // Subscribe to profile updates
         unsubscribeProfile = onSnapshot(
           doc(db, "profiles", user.uid),

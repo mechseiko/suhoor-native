@@ -488,10 +488,17 @@ const LocationPermissionStep = ({ onStatusChange, currentUser }) => {
         const fine = await PermissionsAndroid.check(
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
         );
+        // Android 12+ lets the user pick "Approximate" — that still returns
+        // coordinates good enough for prayer times, so it counts as granted.
+        const coarse =
+          fine ||
+          (await PermissionsAndroid.check(
+            PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION
+          ));
 
-        console.log("Location permission check - fine:", fine);
+        console.log("Location permission check - fine:", fine, "coarse:", coarse);
 
-        if (!fine) {
+        if (!fine && !coarse) {
           setDetected(false);
           onStatusChange?.(false);
           return;
@@ -534,16 +541,24 @@ const LocationPermissionStep = ({ onStatusChange, currentUser }) => {
   const handleAction = async () => {
     try {
       if (Platform.OS === "android") {
+        // Android 12+ REQUIRES fine + coarse in the same runtime request.
+        // Requesting only ACCESS_FINE_LOCATION is ignored by the system on some
+        // releases, which made this button silently do nothing.
         const res = await PermissionsAndroid.requestMultiple([
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
         ]);
         const fine =
           res[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] ===
           PermissionsAndroid.RESULTS.GRANTED;
+        const coarse =
+          fine ||
+          res[PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION] ===
+            PermissionsAndroid.RESULTS.GRANTED;
 
-        console.log("Permission request result - fine:", fine);
+        console.log("Permission request result - fine:", fine, "coarse:", coarse);
 
-        if (fine) {
+        if (fine || coarse) {
           Geolocation.getCurrentPosition(
             (position) => {
               console.log("Location detected successfully:", position);

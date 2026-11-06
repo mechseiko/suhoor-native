@@ -332,13 +332,14 @@ export const GroupsScreen = ({ navigation, route }) => {
       const q = query(membersRef, where('user_id', '==', currentUser.uid))
       const querySnapshot = await getDocs(q)
 
-      const groupIds = []
+      const roleByGroup = {}
       querySnapshot.forEach(doc => {
-        groupIds.push(doc.data().group_id)
+        const data = doc.data()
+        if (data.group_id) roleByGroup[data.group_id] = data.role
       })
 
       const groupsData = []
-      for (const groupId of [...new Set(groupIds)]) {
+      for (const groupId of Object.keys(roleByGroup)) {
         const groupRef = doc(db, COLLECTIONS.groups, groupId)
         const groupSnap = await getDoc(groupRef)
         if (groupSnap.exists()) {
@@ -353,6 +354,8 @@ export const GroupsScreen = ({ navigation, route }) => {
             name: groupSnap.data().name || t('groups.unnamedGroup'),
             group_key: groupSnap.data().group_key || '',
             group_picture_url: groupSnap.data().group_picture_url || null,
+            only_admins_invite: groupSnap.data().only_admins_invite === true,
+            role: roleByGroup[groupId],
             member_count: new Set(
               memberCountSnap.docs.map((m) => m.data().user_id)
             ).size,
@@ -379,6 +382,12 @@ export const GroupsScreen = ({ navigation, route }) => {
   }
 
   const handleCopyKey = async group => {
+    // Respect "Only admins can share invite": members must not be able to
+    // copy the code from the list either.
+    if (group?.only_admins_invite && group?.role !== 'admin') {
+      triggerToast(t('groups.onlyAdminsCanInvite'), 'info')
+      return
+    }
     await copyToClipboard(group.group_key)
     setCopiedId(group.id)
     triggerToast(t('groups.copiedSuccess'), 'success')
@@ -603,21 +612,32 @@ export const GroupsScreen = ({ navigation, route }) => {
             <Text style={[styles.keyLabel, { color: colors.textSecondary }]}>
               {t('groups.keyLabel')}
             </Text>
-            <Text style={[styles.keyValue, { color: colors.textSecondary }]}>
-              {item.group_key}
-            </Text>
-            <TouchableOpacity
-              onPress={() => handleCopyKey(item)}
-              style={styles.copyButton}
-            >
-              <Ionicons
-                name={
-                  copiedId === item.id ? 'checkmark-circle' : 'copy-outline'
-                }
-                size={14}
-                color={copiedId === item.id ? colors.accent : colors.muted}
-              />
-            </TouchableOpacity>
+            {item.only_admins_invite && item.role !== 'admin' ? (
+              <>
+                <Ionicons name="lock-closed-outline" size={12} color={colors.muted} />
+                <Text style={[styles.keyValue, { color: colors.textSecondary }]}>
+                  {t('groups.groupKeyAdminsOnly')}
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={[styles.keyValue, { color: colors.textSecondary }]}>
+                  {item.group_key}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => handleCopyKey(item)}
+                  style={styles.copyButton}
+                >
+                  <Ionicons
+                    name={
+                      copiedId === item.id ? 'checkmark-circle' : 'copy-outline'
+                    }
+                    size={14}
+                    color={copiedId === item.id ? colors.accent : colors.muted}
+                  />
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
       </View>
@@ -765,7 +785,7 @@ export const GroupsScreen = ({ navigation, route }) => {
             {t('network.offline', 'Offline')}
           </Text>
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            {t('network.offlineMessage', 'Check your internet connection to view groups')}
+            {t('network.offlineMessage')}
           </Text>
         </View>
       ) : groups.length === 0 ? (

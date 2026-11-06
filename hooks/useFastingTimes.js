@@ -157,16 +157,39 @@ export function useFastingTimes() {
     return null;
   }, [fastingDays]);
 
-  /** Suhoor end for the given date key, as a local Date, or null. */
+  /**
+   * Suhoor end for the given date key, as a local Date, or null.
+   *
+   * The API returns a single day (range=day), so tomorrow's row is never in
+   * `fastingDays`. Without this fallback `getWakeStart(tomorrow)` was null and
+   * the daily prompt could never arm tomorrow's alarm at all. Suhoor moves by
+   * about a minute a day, so today's time is a safe approximation — it is
+   * shifted one minute earlier so the alarm can never ring after suhoor.
+   */
   const getSuhoor = useCallback((dateKey) => {
     const day = getDayData(dateKey);
-    if (!day?.time?.sahur) return null;
-    const [h, m] = day.time.sahur.split(':').map(Number);
+    let sahur = day?.time?.sahur;
+
+    if (!sahur && dateKey) {
+      const todayStr = todayKey();
+      if (dateKey !== todayStr) {
+        const target = new Date(`${dateKey}T00:00:00`);
+        const today = new Date(`${todayStr}T00:00:00`);
+        const diffDays = Math.round((target.getTime() - today.getTime()) / 86400000);
+        if (diffDays === 1) {
+          sahur = fastingDays[0]?.time?.sahur;
+        }
+      }
+    }
+
+    if (!sahur) return null;
+    const [h, m] = sahur.split(':').map(Number);
     if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
     const d = new Date(`${dateKey}T00:00:00`);
-    d.setHours(h, m, 0, 0);
+    // One-minute safety margin for the approximate (tomorrow) case.
+    d.setHours(h, day?.time?.sahur ? m : m - 1, 0, 0);
     return d;
-  }, [getDayData]);
+  }, [getDayData, fastingDays]);
 
   /**
    * Wake-up-window start = suhoor(date) - minutesBefore.

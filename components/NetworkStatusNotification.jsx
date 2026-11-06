@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Animated, TouchableOpacity, Platform } from 'react-native';
 import { useNetwork } from '../context/NetworkContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -6,51 +6,27 @@ import { useTheme } from '../context/ThemeContext';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { Text } from './ui';
 
+const ONLINE_BANNER_MS = 3000;
+
 const NetworkStatusNotification = () => {
   const { isConnected, isOffline } = useNetwork();
   const { t } = useLanguage();
   const { isDark } = useTheme();
   const [showNotification, setShowNotification] = useState(false);
-  const [notificationType, setNotificationType] = useState(null); // 'offline' or 'online'
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  const [notificationType, setNotificationType] = useState(null); // 'offline' | 'online'
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const hideTimer = useRef(null);
+  const previousConnected = useRef(Boolean(isConnected));
 
-  useEffect(() => {
-    if (!isConnected && !isOffline) {
-      // User just went offline
-      setNotificationType('offline');
-      setShowNotification(true);
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: Platform.OS !== 'web',
-      }).start();
-
-      // Auto-hide after 4 seconds
-      const timer = setTimeout(() => {
-        hideNotification();
-      }, 4000);
-
-      return () => clearTimeout(timer);
-    } else if (isConnected && isOffline) {
-      // User just came back online
-      setNotificationType('online');
-      setShowNotification(true);
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: Platform.OS !== 'web',
-      }).start();
-
-      // Auto-hide after 3 seconds
-      const timer = setTimeout(() => {
-        hideNotification();
-      }, 3000);
-
-      return () => clearTimeout(timer);
+  const clearHideTimer = () => {
+    if (hideTimer.current) {
+      clearTimeout(hideTimer.current);
+      hideTimer.current = null;
     }
-  }, [isConnected, isOffline]);
+  };
 
   const hideNotification = () => {
+    clearHideTimer();
     Animated.timing(fadeAnim, {
       toValue: 0,
       duration: 300,
@@ -60,6 +36,38 @@ const NetworkStatusNotification = () => {
       setNotificationType(null);
     });
   };
+
+  const show = (type) => {
+    clearHideTimer();
+    setNotificationType(type);
+    setShowNotification(true);
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: Platform.OS !== 'web',
+    }).start();
+  };
+
+  useEffect(() => {
+    const connected = Boolean(isConnected);
+    const was = previousConnected.current;
+
+    if (connected === was) return;
+    previousConnected.current = connected;
+
+    // Offline: stays until the user dismisses it or the network returns.
+    if (!connected) {
+      show('offline');
+      return;
+    }
+
+    // Back online: confirm briefly, then get out of the way.
+    show('online');
+    hideTimer.current = setTimeout(hideNotification, ONLINE_BANNER_MS);
+  }, [isConnected, isOffline]);
+
+  // Never leave a timer running after unmount.
+  useEffect(() => clearHideTimer, []);
 
   if (!showNotification) return null;
 
@@ -93,8 +101,8 @@ const NetworkStatusNotification = () => {
           style={styles.icon}
         />
         <Text style={[styles.notificationText, { color: textColor }]}>
-          {isOfflineType 
-            ? t('network.offline') 
+          {isOfflineType
+            ? t('network.offline')
             : t('network.online')}
         </Text>
         <TouchableOpacity

@@ -7,17 +7,34 @@ import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
+import com.mechseiko.suhoor.alarm.AlarmTriggerBus
 
 class MainActivity : ReactActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(null)
     setupLockScreenFlags()
+    publishAlarmTrigger()
   }
 
   override fun onNewIntent(intent: android.content.Intent?) {
     super.onNewIntent(intent)
     setIntent(intent)
     setupLockScreenFlags()
+    publishAlarmTrigger()
+  }
+
+  /**
+   * The alarm screen ("Enter PIN") and the alarm notification both open this
+   * activity with `alarm_trigger`. Park it for JS to consume so AlarmOverlay
+   * can request the PIN while the alarm is still ringing.
+   */
+  private fun publishAlarmTrigger() {
+    if (intent?.getBooleanExtra("alarm_trigger", false) == true) {
+      AlarmTriggerBus.set(
+        intent?.getStringExtra("alarm_id"),
+        intent?.getStringExtra("alarm_type")
+      )
+    }
   }
 
   private fun setupLockScreenFlags() {

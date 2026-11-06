@@ -156,7 +156,7 @@ class AlarmReceiver : BroadcastReceiver() {
         val intent = Intent(context, AlarmActivity::class.java).apply {
             putExtra("alarm_id", alarmData.id)
             putExtra("alarm_data", alarmDataJson)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
 
         val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -183,7 +183,8 @@ class AlarmReceiver : BroadcastReceiver() {
         val intent = Intent(context, AlarmActivity::class.java).apply {
             putExtra("alarm_id", alarmData.id)
             putExtra("alarm_data", alarmDataJson)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            // No CLEAR_TASK: it tore down the React Native task as a side effect.
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
 
         // Add flags to wake device and show on lock screen

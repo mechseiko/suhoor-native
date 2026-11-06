@@ -259,11 +259,11 @@ const ProfileScreen = ({ route }) => {
     }
   };
 
-  const showToast = (msg, type) => {
+  const showToast = React.useCallback((msg, type) => {
     setToastMessage(msg);
     setToastType(type);
     setToastVisible(true);
-  };
+  }, []);
 
   // Load current alarm PIN from profile
   React.useEffect(() => {
@@ -278,6 +278,9 @@ const ProfileScreen = ({ route }) => {
     }
   }, [userProfile]);
 
+  // Guards against out-of-order responses overwriting newer results.
+  const locationSearchId = React.useRef(0);
+
   const searchLocation = React.useCallback(
     async (query) => {
       if (!query || query.length < 3) {
@@ -285,6 +288,7 @@ const ProfileScreen = ({ route }) => {
         return;
       }
 
+      const requestId = ++locationSearchId.current;
       setIsSearchingLocation(true);
       try {
         const response = await fetch(
@@ -297,6 +301,7 @@ const ProfileScreen = ({ route }) => {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
+        if (requestId !== locationSearchId.current) return;
         if (!Array.isArray(data) || data.length === 0) {
           setLocationResults([]);
           return;
@@ -308,14 +313,17 @@ const ProfileScreen = ({ route }) => {
         }));
         setLocationResults(results);
       } catch (err) {
+        if (requestId !== locationSearchId.current) return;
         console.error("Error searching location:", err);
         setLocationResults([]);
         showToast(t("profile.locationSearchError", "Failed to search location"), "error");
       } finally {
-        setIsSearchingLocation(false);
+        if (requestId === locationSearchId.current) {
+          setIsSearchingLocation(false);
+        }
       }
     },
-    [showToast]
+    [showToast, t]
   );
 
   // Sync selected location with profile
@@ -327,16 +335,16 @@ const ProfileScreen = ({ route }) => {
     }
   }, [userProfile?.preferences?.defaultLocation]);
 
-  // Debounced location search
+  // Debounced location search (only while the modal is open)
   React.useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (locationSearch.length >= 3) {
+      if (showLocationModal && locationSearch.length >= 3) {
         searchLocation(locationSearch);
       }
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [locationSearch, searchLocation]);
+  }, [locationSearch, searchLocation, showLocationModal]);
 
   // Handle PIN digit changes
   const handlePinDigitChange = (index, value) => {
@@ -2139,7 +2147,7 @@ const ProfileScreen = ({ route }) => {
             </View>
 
             <ScrollView style={{ maxHeight: 300 }}>
-              {isSearchingLocation ? (
+              {isSearchingLocation && locationResults.length === 0 ? (
                 <View style={{ padding: 20, alignItems: 'center' }}>
                   <ActivityIndicator size="small" color={Colors.primary} />
                   <Text style={{ marginTop: 8, color: colors.textSecondary, fontSize: 13 }}>
@@ -2147,9 +2155,9 @@ const ProfileScreen = ({ route }) => {
                   </Text>
                 </View>
               ) : locationResults.length > 0 ? (
-                locationResults.map((item, idx) => (
+                locationResults.map((item) => (
                   <TouchableOpacity
-                    key={idx}
+                    key={`${item.lat}-${item.lng}-${item.name}`}
                     style={styles.locationItem}
                     onPress={() => handleSelectLocation(item)}
                   >
@@ -2168,7 +2176,7 @@ const ProfileScreen = ({ route }) => {
                     </Text>
                   </TouchableOpacity>
                 ))
-              ) : locationSearch.length >= 3 ? (
+              ) : locationSearch.length >= 3 && !isSearchingLocation ? (
                 <Text style={[styles.noResults, themedStyles.noResultsText]}>
                   {t("profile.noLocationsFound", "No locations found")}
                 </Text>

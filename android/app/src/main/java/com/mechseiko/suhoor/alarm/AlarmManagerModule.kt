@@ -43,7 +43,9 @@ class AlarmManagerModule(private val context: Context) {
         triggerTime: Long,
         userId: String,
         groupId: String,
-        alarmType: String = "wake_up"
+        alarmType: String = "wake_up",
+        soundName: String = "",
+        volume: Float = -1f
     ): Boolean {
         try {
             // Check if exact alarm permission is granted (Android 12+)
@@ -61,7 +63,9 @@ class AlarmManagerModule(private val context: Context) {
                 userId = userId,
                 groupId = groupId,
                 type = alarmType,
-                createdAt = System.currentTimeMillis()
+                createdAt = System.currentTimeMillis(),
+                soundName = soundName,
+                volume = volume
             )
 
             // Save alarm to persistent storage
@@ -142,7 +146,9 @@ class AlarmManagerModule(private val context: Context) {
                 triggerTime = newTriggerTime,
                 userId = alarmData.userId,
                 groupId = alarmData.groupId,
-                alarmType = alarmData.type
+                alarmType = alarmData.type,
+                soundName = alarmData.soundName,
+                volume = alarmData.volume
             )
 
         } catch (e: Exception) {
@@ -181,8 +187,10 @@ class AlarmManagerModule(private val context: Context) {
             // Remove from persistent storage
             removeAlarm(alarmId)
 
-            // Stop foreground service
-            AlarmForegroundService.stopService(context)
+            // NOTE: deliberately does NOT stop AlarmForegroundService here.
+            // This used to be called right after startAlarm() in AlarmReceiver,
+            // which handed the service a PLAY then an immediate STOP and cut the
+            // ringing sound. Only the PIN dismissal (stopAlarmService) stops it.
 
             Log.d(TAG, "Alarm cancelled: $alarmId")
             return true
@@ -228,7 +236,9 @@ class AlarmManagerModule(private val context: Context) {
                     triggerTime = alarm.triggerTime,
                     userId = alarm.userId,
                     groupId = alarm.groupId,
-                    alarmType = alarm.type
+                    alarmType = alarm.type,
+                    soundName = alarm.soundName,
+                    volume = alarm.volume
                 )
                 Log.d(TAG, "Restored alarm: ${alarm.id}")
             } else {
@@ -286,5 +296,9 @@ data class AlarmData(
     val userId: String,
     val groupId: String,
     val type: String,
-    val createdAt: Long
+    val createdAt: Long,
+    /** Raw resource name from utils/soundGenerator (e.g. "alarm_sound_pulse"). */
+    val soundName: String = "",
+    /** 0.0 - 1.0, or -1 to use full volume. */
+    val volume: Float = -1f
 ) : java.io.Serializable

@@ -24,6 +24,8 @@ import { useSocket } from "../../context/SocketContext";
 import { useNetwork } from "../../context/NetworkContext";
 import { useFastingTimes } from "../../hooks/useFastingTimes";
 import { useGamification } from "../../hooks/useGamification";
+import { isNightWarningWindow } from "../../utils/nightWindow";
+import { getDefaultIntention } from "../../utils/fastingUtils";
 import { db } from "../../config/firebase";
 import { COLLECTIONS, wakeUpLogId } from "../../config/firestoreSchema";
 import {
@@ -228,6 +230,26 @@ export const GroupDetailScreen = ({ route, navigation }) => {
 
   const isOnline = (userId) => Array.isArray(onlineMembers) && onlineMembers.includes(userId);
 
+  /**
+   * Does this member intend to fast today?
+   *
+   * A record that exists always wins. When there is no record yet, fall back to
+   * the same default the daily prompt uses (`getDefaultIntention`): ordinary
+   * days are No, special days (Ramadan, Mon/Thu, white days, Dhul-Hijjah) are
+   * Yes when that switch is on in their settings.
+   *
+   * This used to treat "no record" as Yes, which made members who never
+   * answered the prompt look fasting — and therefore buzzable.
+   */
+  const memberIntendsToFast = (member) => {
+    if (!member?.profiles?.id) return false;
+    const recorded = memberIntentions[member.profiles.id];
+    if (recorded !== undefined) return recorded !== false;
+
+    const todayStr = new Date().toLocaleDateString("en-CA");
+    return getDefaultIntention(new Date(`${todayStr}T00:00:00`), member.profiles);
+  };
+
   const getMemberStatus = (member) => {
     if (!member?.profiles) return "sleeping";
 
@@ -237,7 +259,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         log.date === new Date().toLocaleDateString("en-CA")
     );
 
-    const intendsToFast = memberIntentions[member.profiles.id] !== false;
+    const intendsToFast = memberIntendsToFast(member);
 
     if (!intendsToFast) return "not_fasting";
     if (hasCheckedInToday) return "awake";
@@ -344,7 +366,12 @@ export const GroupDetailScreen = ({ route, navigation }) => {
             if (docSnap.exists()) {
               intentions[member.profiles.id] = docSnap.data().wantsToFast;
             } else {
-              intentions[member.profiles.id] = true;
+              // Nothing recorded yet: use the same default the prompt shows.
+              // Ordinary days are No, special days follow their settings.
+              intentions[member.profiles.id] = getDefaultIntention(
+                new Date(`${today}T00:00:00`),
+                member.profiles
+              );
             }
           } catch (e) {
             console.error(e);
@@ -501,7 +528,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
   const checkBuzzEligibility = async (member) => {
     if (!currentUser || !member?.profiles) return { ok: false, reason: "invalid" };
     if (member.profiles.id === currentUser.uid) return { ok: false, reason: "self" };
-    if (memberIntentions[member.profiles.id] === false) {
+    if (!memberIntendsToFast(member)) {
       return { ok: false, reason: "not_fasting" };
     }
     if (!isMemberInWakeUpWindow(member)) {
@@ -693,7 +720,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     if (!isStatusVisibleNow()) return false;
     if (!currentUser || !member?.profiles) return false;
     if (member.profiles.id === currentUser.uid) return false;
-    if (memberIntentions[member.profiles.id] === false) return false;
+    if (!memberIntendsToFast(member)) return false;
     if (getMemberStatus(member) !== "sleeping") return false;
     return isMemberInWakeUpWindow(member);
   };
@@ -794,7 +821,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     const wakeUpLog = wakeUpLogs.find(
       (log) => log.user_id === item.profiles.id
     );
-    const intendsToFast = memberIntentions[item.profiles.id] !== false;
+    const intendsToFast = memberIntendsToFast(item);
     const showStatus = isStatusVisibleNow();
     const isSelf = item.profiles.id === currentUser?.uid;
 
@@ -1115,12 +1142,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         {renderBulkBar()}
 
         {isOffline && (() => {
-          const now = new Date();
-          const currentHour = now.getHours();
-          const fajrTime = todayData?.time?.sahur ? new Date(`2000-01-01T${todayData.time.sahur}:00`) : new Date();
-          fajrTime.setHours(4, 30, 0, 0);
-
-          if (currentHour >= 20 || currentHour < fajrTime.getHours()) {
+          if (isNightWarningWindow(todayData)) {
             return (
               <View style={[styles.offlineWarning, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)', borderColor: isDark ? 'rgba(239, 68, 68, 0.4)' : 'rgba(239, 68, 68, 0.3)' }]}>
                 <Ionicons name="wifi-off" size={20} color={isDark ? '#F87171' : '#DC2626'} style={styles.warningIcon} />
@@ -1153,7 +1175,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
               {t('network.offline', 'Offline')}
             </Text>
             <Text style={{ marginTop: 4, color: colors.textSecondary, fontSize: 14 }}>
-              {t('network.offlineMessage', 'Check your internet connection')}
+              {t('network.offlineMessage')}
             </Text>
           </View>
         ) : (
@@ -1219,7 +1241,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
 
             <View style={styles.actionModalOptions}>
               {getMemberStatus(selectedMemberForAction) === "sleeping" &&
-                memberIntentions[selectedMemberForAction?.profiles?.id] !== false &&
+                memberIntendsToFast(selectedMemberForAction) &&
                 selectedMemberForAction?.profiles?.id !== currentUser?.uid &&
                 isMemberInWakeUpWindow(selectedMemberForAction) && (
                   <TouchableOpacity

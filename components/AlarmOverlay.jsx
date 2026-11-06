@@ -5,6 +5,7 @@ import {
   Dimensions,
   Image,
   Modal,
+  NativeModules,
   Platform,
   SafeAreaView,
   StyleSheet,
@@ -78,9 +79,18 @@ export const AlarmOverlay = () => {
   const selectedAlarmSound = userProfile?.preferences?.alarmSound || 'default'
 
   // Vibration and audio playback
+  // When the alarm is handed off from the native alarm screen (tap "Enter PIN"),
+  // the foreground service is already looping the sound. The overlay is PIN-only
+  // in that case so the two never play at once.
+  const fromNative = Boolean(alarmData?.fromNative)
   useEffect(() => {
     if (visible && status === 'ringing') {
-      if (soundAllowed) {
+      if (soundAllowed && !fromNative) {
+        // Android already has the native alarm ringing when this overlay was
+        // opened by the same alarm. Silence that loop so exactly one plays.
+        if (Platform.OS === 'android' && NativeModules?.AlarmBridge?.stopAlarmService) {
+          NativeModules.AlarmBridge.stopAlarmService().catch(() => {})
+        }
         try {
           // react-native-sound: enable playback in silent mode on iOS
           Sound.setCategory('Playback', true)
@@ -124,7 +134,7 @@ export const AlarmOverlay = () => {
         }
       }
 
-      if (Platform.OS !== 'web') {
+      if (Platform.OS !== 'web' && !fromNative) {
         Vibration.vibrate([0, 600, 300, 600], true)
       }
 
@@ -182,7 +192,7 @@ export const AlarmOverlay = () => {
         pulse.stop()
       }
     }
-  }, [visible, soundAllowed])
+  }, [visible, soundAllowed, fromNative])
 
   // PIN digit handling for personal alarm dismissal
   const handlePinDigitChange = (index, value) => {

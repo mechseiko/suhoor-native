@@ -52,8 +52,8 @@ defaultConfig {
         applicationId 'com.mechseiko.suhoor'
         minSdkVersion 24
         targetSdkVersion 36
-        versionCode 26
-        versionName "1.0.20"
+        versionCode 27
+        versionName "1.0.21"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
 
@@ -163,6 +163,10 @@ dependencies {
     // Google FIREBASE AUTH:
     implementation platform('com.google.firebase:firebase-bom:32.7.0') 
     implementation 'com.google.firebase:firebase-auth'
+
+    // FCM: background group buzz delivery. Push is the only way a buzz can
+    // arrive when the app process is not running.
+    implementation 'com.google.firebase:firebase-messaging'
 
     // 🔥 FORCE PATCH: Override the vulnerable reCAPTCHA SDK version
     implementation 'com.google.android.recaptcha:recaptcha:18.4.0'

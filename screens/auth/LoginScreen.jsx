@@ -177,7 +177,7 @@ export const LoginScreen = ({ navigation }) => {
         errorCode === 'auth/invalid-credential' ||
         errorCode === 'auth/invalid-login-credentials'
       ) {
-        errorMessage = t('auth.invalidCredentials')
+        errorMessage = t('auth.invalidCredentialsGoogleHint')
       } else if (errorCode === 'auth/user-not-found') {
         errorMessage = t('auth.userNotFound')
       } else if (errorCode === 'auth/wrong-password') {
@@ -239,9 +239,15 @@ export const LoginScreen = ({ navigation }) => {
       ) {
         errorMessage = t('auth.googleSignInCancelled', 'Sign-in cancelled')
       } else if (err.code === 'auth/popup-blocked') {
-        errorMessage = t('auth.signInPopupBlocked', 'Sign-in popup was blocked. Please allow popups.')
+        errorMessage = t('auth.signInPopupBlocked')
       } else if (err.code === 'auth/network-request-failed') {
         errorMessage = t('auth.networkError')
+      } else if (err.code === 'auth/provider-password') {
+        // This email belongs to an email/password account; Google is not allowed
+        // for it (one provider per email).
+        errorMessage = t('auth.providerPasswordOnly')
+      } else if (err.code === 'auth/account-conflict') {
+        errorMessage = t('auth.accountConflict')
       } else if (err.message) {
         errorMessage = err.message
       }

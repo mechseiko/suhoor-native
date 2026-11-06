@@ -193,7 +193,7 @@ export const FastingTimesScreen = ({ navigation }) => {
             {t('network.offline', 'Offline')}
           </Text>
           <Text style={{ marginTop: 8, fontSize: 14, color: colors.textSecondary, textAlign: 'center' }}>
-            {t('network.offlineMessage', 'Check your internet connection to view fasting times')}
+            {t('network.offlineMessage')}
           </Text>
           <TouchableOpacity
             onPress={handleRefresh}

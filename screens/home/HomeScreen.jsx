@@ -11,6 +11,7 @@ import { COLLECTIONS } from '../../config/firestoreSchema';
 import { collection, query, where, getDocs, orderBy, limit, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import FastingPrompt from '../../components/FastingPrompt';
 import AudioModeWarning from '../../components/AudioModeWarning';
+import AlarmReliabilityCard from '../../components/AlarmReliabilityCard';
 import StatsCard from '../../components/StatsCard';
 import ProfileSidebar from '../../components/ProfileSidebar';
 import UpdateModal from '../../components/UpdateModal';
@@ -482,6 +483,8 @@ export const HomeScreen = ({ navigation }) => {
 
       <AudioModeWarning />
 
+      <AlarmReliabilityCard />
+
       {/* Sound Disabled Disclaimer Card */}
       {userProfile?.preferences?.soundEnabled === false && (
         <Card style={[styles.pinPromptCard, { borderColor: '#EF4444', borderWidth: 1.5, backgroundColor: alpha('#EF4444', 0.05) }]}>
@@ -806,8 +809,6 @@ export const HomeScreen = ({ navigation }) => {
       {/* App Update Modal */}
       <UpdateModal
         visible={showUpdateModal}
-        currentVersion={updateInfo.currentVersion}
-        latestVersion={updateInfo.latestVersion}
         playStoreUrl={updateInfo.playStoreUrl}
         onClose={handleDismissUpdate}
       />

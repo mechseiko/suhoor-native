@@ -17,6 +17,11 @@ export function useNativeAlarm() {
       getAllAlarms: async () => [],
       cancelAllAlarms: async () => false,
       canScheduleExactAlarms: async () => true,
+      canUseFullScreenIntent: async () => true,
+      openFullScreenIntentSettings: async () => false,
+      openExactAlarmSettings: async () => false,
+      getFcmToken: async () => null,
+      consumeAlarmTrigger: async () => null,
       triggerRemoteBuzz: async () => false,
       stopAlarmService: async () => true,
       isNativeAvailable: false,
@@ -35,6 +40,11 @@ export function useNativeAlarm() {
       getAllAlarms: async () => [],
       cancelAllAlarms: async () => false,
       canScheduleExactAlarms: async () => false,
+      canUseFullScreenIntent: async () => true,
+      openFullScreenIntentSettings: async () => false,
+      openExactAlarmSettings: async () => false,
+      getFcmToken: async () => null,
+      consumeAlarmTrigger: async () => null,
       triggerRemoteBuzz: async () => false,
       stopAlarmService: async () => false,
       isNativeAvailable: false,
@@ -48,6 +58,8 @@ export function useNativeAlarm() {
    * @param {string} userId - User ID for logging purposes
    * @param {string} groupId - Group ID for logging purposes
    * @param {string} alarmType - Type of alarm (wake_up, remote_buzz)
+   * @param {string} soundName - Raw resource name, e.g. "alarm_sound_pulse"
+   * @param {number} volume - 0..1, or -1 for full volume
    * @returns {Promise<boolean>} - True if alarm was scheduled successfully
    */
   const scheduleAlarm = async (
@@ -55,7 +67,9 @@ export function useNativeAlarm() {
     triggerTime,
     userId,
     groupId,
-    alarmType = 'wake_up'
+    alarmType = 'wake_up',
+    soundName = '',
+    volume = -1
   ) => {
     try {
       return await AlarmBridge.scheduleAlarm(
@@ -63,7 +77,9 @@ export function useNativeAlarm() {
         triggerTime,
         userId,
         groupId,
-        alarmType
+        alarmType,
+        soundName || '',
+        typeof volume === 'number' ? volume : -1
       )
     } catch (error) {
       console.error('Error scheduling native alarm:', error)
@@ -175,6 +191,62 @@ export function useNativeAlarm() {
     }
   }
 
+  /** Android 14+: is the alarm allowed to take over the lock screen? */
+  const canUseFullScreenIntent = async () => {
+    try {
+      if (!AlarmBridge.canUseFullScreenIntent) return true
+      return await AlarmBridge.canUseFullScreenIntent()
+    } catch (error) {
+      console.error('Error checking full-screen intent permission:', error)
+      return true
+    }
+  }
+
+  const openFullScreenIntentSettings = async () => {
+    try {
+      if (AlarmBridge.openFullScreenIntentSettings) {
+        return await AlarmBridge.openFullScreenIntentSettings()
+      }
+      return false
+    } catch (error) {
+      console.error('Error opening full-screen intent settings:', error)
+      return false
+    }
+  }
+
+  const openExactAlarmSettings = async () => {
+    try {
+      if (AlarmBridge.openExactAlarmSettings) {
+        return await AlarmBridge.openExactAlarmSettings()
+      }
+      return false
+    } catch (error) {
+      console.error('Error opening exact alarm settings:', error)
+      return false
+    }
+  }
+
+  const getFcmToken = async () => {
+    try {
+      if (!AlarmBridge.getFcmToken) return null
+      return await AlarmBridge.getFcmToken()
+    } catch (error) {
+      console.error('Error getting FCM token:', error)
+      return null
+    }
+  }
+
+  /** One-shot: the user opened the app from the alarm screen / notification. */
+  const consumeAlarmTrigger = async () => {
+    try {
+      if (!AlarmBridge.consumeAlarmTrigger) return null
+      return await AlarmBridge.consumeAlarmTrigger()
+    } catch (error) {
+      console.error('Error consuming alarm trigger:', error)
+      return null
+    }
+  }
+
   return {
     scheduleAlarm,
     updateAlarm,
@@ -183,6 +255,11 @@ export function useNativeAlarm() {
     getAllAlarms,
     cancelAllAlarms,
     canScheduleExactAlarms,
+    canUseFullScreenIntent,
+    openFullScreenIntentSettings,
+    openExactAlarmSettings,
+    getFcmToken,
+    consumeAlarmTrigger,
     triggerRemoteBuzz,
     stopAlarmService: async () => {
       try {

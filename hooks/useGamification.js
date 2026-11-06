@@ -202,10 +202,11 @@ export function useGamification() {
               icon: trackInfo.icon,
             });
 
-            // Show notification
+            // Show notification. Title and body are separate keys: the body
+            // names the badge so the two lines never repeat each other.
             presentNotification({
-              title: `${trackInfo.icon} ${t('milestones.newBadge', 'New Badge Unlocked!')}`,
-              message: t('milestones.badgeUnlocked', { title: badgeInfo.title, points: badgeInfo.points }),
+              title: `${trackInfo.icon} ${t('milestones.newBadge')}`,
+              message: t('milestones.badgeUnlocked', { title: badgeInfo.title }),
               data: { type: 'badge', badgeId },
             });
           }
