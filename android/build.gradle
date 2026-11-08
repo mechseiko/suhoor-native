@@ -4,9 +4,10 @@ buildscript {
   ext {
     buildToolsVersion = "34.0.0"
     minSdkVersion = 24
-    compileSdkVersion = 36
-    targetSdkVersion = 36
-    ndkVersion = "25.1.8937393"
+    compileSdkVersion = 35
+    targetSdkVersion = 35
+    // NDK r27+ compiles 16 KB-aligned native libraries by default.
+    ndkVersion = "26.1.10909125"
     kotlinVersion = "2.0.21"
   }
   repositories {
@@ -22,7 +23,7 @@ buildscript {
     }
   }
   dependencies {
-    classpath('com.android.tools.build:gradle:8.2.1')
+    classpath('com.android.tools.build:gradle:8.6.1')
     classpath('com.facebook.react:react-native-gradle-plugin')
     classpath('org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.21')
     classpath('com.google.gms:google-services:4.4.1')

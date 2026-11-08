@@ -298,10 +298,11 @@ export const AuthProvider = ({ children }) => {
 
       // Remember the signed-in uid so an offline launch can hold the splash
       // instead of showing signup to someone who is still logged in.
-      AsyncStorage[user?.uid ? 'setItem' : 'removeItem'](
-        'suhoor_session_uid',
-        ...(user?.uid ? [user.uid] : [])
-      ).catch(() => {});
+      if (user?.uid) {
+        AsyncStorage.setItem('suhoor_session_uid', user.uid).catch(() => {});
+      } else {
+        AsyncStorage.removeItem('suhoor_session_uid').catch(() => {});
+      }
 
       if (user) {
         // Background buzz delivery: keep the server's FCM token in sync.

@@ -32,7 +32,7 @@ def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 android {
     ndkVersion "26.1.10909125"
     buildToolsVersion "34.0.0"
-    compileSdk 36
+    compileSdk 35
 
     buildFeatures {
         buildConfig true
@@ -51,7 +51,7 @@ android {
 defaultConfig {
         applicationId 'com.mechseiko.suhoor'
         minSdkVersion 24
-        targetSdkVersion 36
+        targetSdkVersion 35
         versionCode 28
         versionName "1.0.22"
 
@@ -182,7 +182,8 @@ configurations.all {
     exclude group: 'com.google.android.gms', module: 'play-services-safetynet'
 }
 
-apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesAppBuildGradle(project)
+// React Native 0.76 autolinks through the settings plugin; the old
+// native_modules.gradle script no longer ships with RN.
 
 // Disable state tracking on React Native bundle tasks because OneDrive reparse points
 // cause Gradle's Java NIO file snapshotting to fail with "not a regular file"
