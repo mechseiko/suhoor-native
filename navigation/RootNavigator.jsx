@@ -14,6 +14,7 @@ import { COLLECTIONS } from '../config/firestoreSchema'
 import { doc, getDoc } from 'firebase/firestore'
 import { navigationRef } from '../services/NavigationService'
 import { useLanguage } from '../context/LanguageContext'
+import { useNetwork } from '../context/NetworkContext'
 
 const deepLinking = {
   prefixes: ['suhoor://', 'https://suhoor-group.web.app'],
@@ -52,37 +53,38 @@ export const RootNavigator = () => {
   const { t } = useLanguage()
   const { currentUser, loading, userProfile } = useAuth()
   const { colors } = useTheme()
+  const { isConnected } = useNetwork()
   const [onboardingComplete, setOnboardingComplete] = useState(null)
   const [isVerified, setIsVerified] = useState(false)
   const [checkingVerification, setCheckingVerification] = useState(false)
   const [loadTimedOut, setLoadTimedOut] = useState(false)
   const [showNewUserSplash, setShowNewUserSplash] = useState(null) // null = not yet determined
+  // Last known signed-in uid (written by AuthContext). Lets the app hold on the
+  // splash instead of dumping an offline returning user onto the signup screen.
+  const [cachedUid, setCachedUid] = useState(null)
   const tabBarRef = useRef(null)
+
+  useEffect(() => {
+    let active = true
+    AsyncStorage.getItem('suhoor_session_uid')
+      .then((uid) => { if (active) setCachedUid(uid || null) })
+      .catch(() => {})
+    return () => { active = false }
+  }, [currentUser])
 
   useEffect(() => {
     let active = true
     AsyncStorage.getItem('suhoor-onboarding-complete')
       .then(value => {
-        const completed = value === 'true'
-        if (active) {
-          setOnboardingComplete(completed)
-          // Show the brand-new-user splash only when:
-          //  1. Onboarding was never completed (fresh install)
-          //  2. There is no currently signed-in user
-          setShowNewUserSplash(!completed && !currentUser ? true : false)
-        }
+        if (active) setOnboardingComplete(value === 'true')
       })
       .catch(() => {
-        if (active) {
-          setOnboardingComplete(false)
-          setShowNewUserSplash(!currentUser ? true : false)
-        }
+        if (active) setOnboardingComplete(false)
       })
 
     const timer = setTimeout(() => {
       if (active) {
         setOnboardingComplete(prev => (prev === null ? false : prev))
-        setShowNewUserSplash(prev => (prev === null ? false : prev))
         setLoadTimedOut(true)
       }
     }, 4000)
@@ -110,6 +112,15 @@ export const RootNavigator = () => {
     const sub = Linking.addEventListener?.('url', e => handleUrl(e?.url))
     return () => sub?.remove?.()
   }, [])
+
+  // Decide the brand-new-user splash only once auth has actually resolved.
+  // Deciding it on mount (while `loading` is still true and currentUser is
+  // always null) sent returning users who opened the app offline straight to
+  // onboarding/signup.
+  useEffect(() => {
+    if (loading || onboardingComplete === null) return
+    setShowNewUserSplash(!onboardingComplete && !currentUser)
+  }, [loading, onboardingComplete, currentUser])
 
   useEffect(() => {
     let isMounted = true
@@ -195,6 +206,15 @@ export const RootNavigator = () => {
   }
 
   if (!loadTimedOut && (loading || onboardingComplete === null || checkingVerification)) {
+    return <LogoLoader />
+  }
+
+  // Returning user, offline, and Firebase has not restored the session yet.
+  // Hold on the logo instead of dropping them onto signup; the auth listener
+  // brings them in as soon as the session (or the network) is available.
+  const holdingForOfflineSession =
+    !loading && !currentUser && Boolean(cachedUid) && !isConnected
+  if (holdingForOfflineSession) {
     return <LogoLoader />
   }
 

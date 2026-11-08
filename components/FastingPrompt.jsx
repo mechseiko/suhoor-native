@@ -183,19 +183,15 @@ export const FastingPrompt = () => {
       statusRef,
       (snap) => {
         if (!snap.exists()) {
-          setCurrentDayFastingStatus(null);
+          setCurrentDayFastingStatus('not_fasting');
           return;
         }
         const d = snap.data();
-        if (d.checkedIn === true) {
-          setCurrentDayFastingStatus('fasting');
-        } else if (d.wantsToFast === false) {
-          setCurrentDayFastingStatus('not_fasting');
-        } else if (d.wantsToFast === true && d.isAutoDefault !== true) {
-          setCurrentDayFastingStatus('fasting');
-        } else {
-          setCurrentDayFastingStatus(null);
-        }
+        // One signal decides both states: the check-in. "You are fasting" only
+        // after checking in (which proves the person actually woke up); no
+        // check-in means "You are not fasting", whether or not an intention was
+        // recorded. An intention alone never claims a fast.
+        setCurrentDayFastingStatus(d.checkedIn === true ? 'fasting' : 'not_fasting');
       },
       (err) => {
         console.error('Error listening to current day status:', err);

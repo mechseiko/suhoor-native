@@ -65,6 +65,9 @@ export const GroupsScreen = ({ navigation, route }) => {
 
   // Wake-up window and check-in state
   const [isInWakeUpWindow, setIsInWakeUpWindow] = useState(false)
+  // Check-in stays open until iftar (late wake-ups), while the "wake window"
+  // itself still ends at suhoor for buzz/status purposes.
+  const [isCheckInOpen, setIsCheckInOpen] = useState(false)
   const [hasCheckedInToday, setHasCheckedInToday] = useState(false)
   const [wantsToFast, setWantsToFast] = useState(true)
 
@@ -171,6 +174,14 @@ export const GroupsScreen = ({ navigation, route }) => {
       // Active only if we are between start and end
       const active = now >= startTime && now <= endTime
       setIsInWakeUpWindow(active)
+
+      // The check-in stays open after the alarm window until 07:00 — the same
+      // moment the fasting prompt flips its target to tomorrow. The fasting API
+      // exposes no Fajr time (suhoor end IS Fajr), so late risers need this
+      // grace period instead of being locked out for the rest of the day.
+      const sevenAm = new Date()
+      sevenAm.setHours(7, 0, 0, 0)
+      setIsCheckInOpen(active || (now >= startTime && now < sevenAm))
     }
 
     const interval = setInterval(checkTime, 10000)
@@ -749,7 +760,7 @@ export const GroupsScreen = ({ navigation, route }) => {
       </View>
 
       {/* ONE Check-in Banner */}
-      {isInWakeUpWindow && wantsToFast && !hasCheckedInToday && (
+      {isCheckInOpen && wantsToFast && !hasCheckedInToday && (
         <View style={[styles.checkInBanner, { backgroundColor: colors.primary }]}>
           <TouchableOpacity
             style={styles.checkInBtn}

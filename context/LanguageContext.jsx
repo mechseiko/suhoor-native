@@ -95,18 +95,24 @@ export const LanguageProvider = ({ children }) => {
         await i18n.changeLanguage(next);
         const needsRestart = applyDirection(next);
 
-        // Automatically restart if layout direction changed
+        // A layout-direction change needs a *process* restart: I18nManager is
+        // read at startup, so a JS reload leaves the old direction in place
+        // (that is why English stayed RTL after switching from Urdu).
         if (needsRestart) {
           if (Platform.OS === 'android') {
             try {
-              if (NativeModules && NativeModules.DevSettings) {
+              if (NativeModules?.AlarmBridge?.restartApp) {
+                NativeModules.AlarmBridge.restartApp();
+                return { success: true, locale: next, restarting: true };
+              }
+              if (NativeModules?.DevSettings?.reload) {
                 await NativeModules.DevSettings.reload();
               }
             } catch (e) {
-              console.warn('Could not reload automatically:', e);
+              console.warn('Could not restart automatically:', e);
             }
           } else {
-            // iOS doesn't have DevSettings.reload, we'll rely on the banner
+            // iOS has no restart API — the change applies next launch.
             console.log('RTL layout changed - restart required on iOS');
           }
         }

@@ -845,6 +845,11 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     const showStatus = isStatusVisibleNow();
     const isSelf = item.profiles.id === currentUser?.uid;
 
+    // Dim a non-fasting member only during the wake-up window (their alarm time
+    // -> end of suhoor). Outside that window everyone is listed normally.
+    const dimNotFasting =
+      memberStatus === "not_fasting" && isMemberInWakeUpWindow(item);
+
     const isSelected = selectedBulkIds.includes(item.profiles.id);
 
     // Determine the status badge to show next to the name
@@ -894,7 +899,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         style={[
           styles.memberRow,
           memberStatus === "awake" && styles.memberRowAwake,
-          memberStatus === "not_fasting" && styles.memberRowNotFasting,
+          dimNotFasting && styles.memberRowNotFasting,
         ]}
       >
         <View style={styles.memberLeft}>

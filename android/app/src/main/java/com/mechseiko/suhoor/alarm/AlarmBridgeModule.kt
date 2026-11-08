@@ -349,6 +349,28 @@ class AlarmBridgeModule(reactContext: ReactApplicationContext) : ReactContextBas
         }
     }
 
+    /**
+     * Fully restarts the app process.
+     *
+     * Needed after I18nManager.forceRTL(): the layout direction is read at
+     * process start, so a JS reload is not enough. Without this, switching
+     * Urdu -> English left the UI RTL until the user killed the app by hand.
+     */
+    @ReactMethod
+    fun restartApp() {
+        try {
+            val context = reactApplicationContext
+            val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+            intent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            if (intent != null) {
+                context.startActivity(intent)
+            }
+        } catch (e: Exception) {
+            Log.e("AlarmBridge", "restartApp failed", e)
+        }
+        android.os.Process.killProcess(android.os.Process.myPid())
+    }
+
     /** Mute/unmute wake-up buzzes coming from one group (stored natively). */
     @ReactMethod
     fun setMutedGroup(groupId: String, muted: Boolean, promise: Promise) {

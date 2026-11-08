@@ -296,6 +296,13 @@ export const AuthProvider = ({ children }) => {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
 
+      // Remember the signed-in uid so an offline launch can hold the splash
+      // instead of showing signup to someone who is still logged in.
+      AsyncStorage[user?.uid ? 'setItem' : 'removeItem'](
+        'suhoor_session_uid',
+        ...(user?.uid ? [user.uid] : [])
+      ).catch(() => {});
+
       if (user) {
         // Background buzz delivery: keep the server's FCM token in sync.
         registerPushToken(user.uid).catch(() => {});

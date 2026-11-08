@@ -48,6 +48,18 @@ export const HomeScreen = ({ navigation }) => {
   const [pinError, setPinError] = useState('');
   const pinRefs = [useRef(), useRef(), useRef(), useRef()];
 
+  // PIN set on this device. The Firestore profile is the primary source, but
+  // offline the snapshot can arrive without `pin` (or not at all), which used
+  // to make the "Set your alarm PIN" card reappear for users who had one.
+  const [localPin, setLocalPin] = useState(null);
+  useEffect(() => {
+    let active = true;
+    AsyncStorage.getItem('suhoor_alarm_pin')
+      .then((value) => { if (active) setLocalPin(value || ''); })
+      .catch(() => { if (active) setLocalPin(''); });
+    return () => { active = false; };
+  }, []);
+
   // App Update Modal state
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updateInfo, setUpdateInfo] = useState({
@@ -334,6 +346,7 @@ export const HomeScreen = ({ navigation }) => {
     try {
       // Save PIN to AsyncStorage (matching onboarding flow)...
       await AsyncStorage.setItem('suhoor_alarm_pin', entered);
+      setLocalPin(entered);
 
       // ...and to the Firestore profile, same as ProfileScreen.saveAlarmPin.
       // The "Set Your Alarm PIN" card keys off userProfile.pin, so without
@@ -456,7 +469,7 @@ export const HomeScreen = ({ navigation }) => {
       </Text>
 
       {/* Alarm PIN Setup Prompt Card */}
-      {(userProfile && !userProfile.pin) ? (
+      {(userProfile && !userProfile.pin && localPin === '') ? (
         <Card style={[styles.pinPromptCard, { borderColor: colors.warning, borderWidth: 1.5 }]}>
           <View style={styles.cardHeader}>
             <View style={[styles.iconContainer, { backgroundColor: alpha(colors.warning, 0.1) }]}>
