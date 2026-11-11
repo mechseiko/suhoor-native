@@ -30,7 +30,7 @@ def enableMinifyInReleaseBuilds = true
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
 android {
-    ndkVersion "26.1.10909125"
+    ndkVersion "27.1.12297006"
     buildToolsVersion "34.0.0"
     compileSdk 35
 
@@ -144,6 +144,14 @@ defaultConfig {
 
 configurations.all {
     exclude group: 'com.android.support'
+}
+
+// React Native 0.76 autolinking: the settings plugin generates PackageList, but
+// the app must declare the library projects as dependencies here. Without it
+// compileReleaseJavaWithJavac fails with "cannot find symbol" for every
+// auto-linked package (AsyncStoragePackage, NetInfoPackage, …).
+react {
+    autolinkLibrariesWithApp()
 }
 
 dependencies {
