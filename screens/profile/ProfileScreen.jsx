@@ -631,13 +631,8 @@ const ProfileScreen = ({ route }) => {
       });
     } else {
       try {
-        const DocumentPicker =
-          require("react-native-document-picker").default ||
-          require("react-native-document-picker");
-        const res = await DocumentPicker.pickSingle({
-          type: [DocumentPicker.types.images],
-          copyTo: "cachesDirectory",
-        });
+        const { pick: pickDocument, types: documentTypes } = require("@react-native-documents/picker");
+        const [res] = await pickDocument({ type: [documentTypes.images] });
         return {
           uri: res.fileCopyUri || res.uri,
           type: res.type || "image/jpeg",
@@ -2584,3 +2579,5 @@ const styles = StyleSheet.create({
 });
 
 export default ProfileScreen;
+
+

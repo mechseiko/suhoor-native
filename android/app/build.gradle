@@ -31,8 +31,8 @@ def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
 android {
     ndkVersion "27.1.12297006"
-    buildToolsVersion "34.0.0"
-    compileSdk 35
+    buildToolsVersion "36.0.0"
+    compileSdk 36
 
     buildFeatures {
         buildConfig true
@@ -51,9 +51,9 @@ android {
 defaultConfig {
         applicationId 'com.mechseiko.suhoor'
         minSdkVersion 24
-        targetSdkVersion 35
-        versionCode 28
-        versionName "1.0.22"
+        targetSdkVersion 36
+        versionCode 29
+        versionName "1.0.23"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
 
@@ -203,3 +203,4 @@ afterEvaluate {
 
 
 apply plugin: 'com.google.gms.google-services'
+
