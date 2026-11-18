@@ -11,7 +11,6 @@ import {
   Platform,
   Linking,
   Modal,
-  Pressable,
   Image,
 } from "react-native";
 import {
@@ -2011,11 +2010,12 @@ const ProfileScreen = ({ route }) => {
         animationType="fade"
         onRequestClose={() => setDeleteModalVisible(false)}
       >
-        <Pressable
+        <TouchableOpacity
           style={styles.modalOverlay}
+          activeOpacity={1}
           onPress={() => setDeleteModalVisible(false)}
         >
-          <Pressable style={[styles.modalContent, themedStyles.card]}>
+          <View style={[styles.modalContent, themedStyles.card]}>
             <Text style={[styles.modalTitle, { color: Colors.red }]}>
               {t("settings.deleteAccount")}
             </Text>
@@ -2072,8 +2072,8 @@ const ProfileScreen = ({ route }) => {
                 )}
               </TouchableOpacity>
             </View>
-          </Pressable>
-        </Pressable>
+          </View>
+        </TouchableOpacity>
       </Modal>
 
       {/* Location Search Modal */}

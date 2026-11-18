@@ -1,5 +1,5 @@
 import React from 'react'
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native'
+import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import { useTheme } from '../../context/ThemeContext'
 import Text from './Text'
@@ -65,19 +65,20 @@ export const Button = ({
     : { height: 52, paddingHorizontal: 20 }
 
   return (
-    <Pressable
+    <TouchableOpacity
       onPress={onPress}
       disabled={isDisabled}
+      activeOpacity={0.85}
       accessibilityRole="button"
       accessibilityState={{ disabled: isDisabled, busy: loading }}
-      style={({ pressed }) => [
+      style={[
         styles.base,
         sizeStyle,
         {
           backgroundColor: palette.background,
           borderColor: palette.border,
           borderWidth: palette.borderWidth,
-          opacity: isDisabled ? 0.5 : pressed ? 0.85 : 1,
+          opacity: isDisabled ? 0.5 : 1,
           alignSelf: fullWidth ? 'stretch' : 'auto',
         },
         StyleSheet.flatten(style),
@@ -102,7 +103,7 @@ export const Button = ({
           )}
         </View>
       )}
-    </Pressable>
+    </TouchableOpacity>
   )
 }
 

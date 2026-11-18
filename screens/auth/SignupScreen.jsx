@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, TouchableOpacity, Linking, ActivityIndicator, Pressable } from "react-native";
+import { View, TouchableOpacity, Linking, ActivityIndicator } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../../context/AuthContext";
@@ -525,11 +525,12 @@ export const SignupScreen = ({ navigation }) => {
           </View>
 
           {/* Google Sign Up Button */}
-          <Pressable
+          <TouchableOpacity
             onPress={handleGoogleSignUp}
             disabled={googleLoading || loading}
+            activeOpacity={0.85}
             accessibilityRole="button"
-            style={({ pressed }) => ({
+            style={{
               height: 50,
               borderRadius: 8,
               borderWidth: 1,
@@ -539,8 +540,8 @@ export const SignupScreen = ({ navigation }) => {
               alignItems: "center",
               justifyContent: "center",
               columnGap: 10,
-              opacity: (googleLoading || loading) ? 0.5 : pressed ? 0.85 : 1,
-            })}
+              opacity: (googleLoading || loading) ? 0.5 : 1,
+            }}
           >
             {googleLoading ? (
               <ActivityIndicator size="small" color={isDark ? colors.text : "#374151"} />
@@ -558,7 +559,7 @@ export const SignupScreen = ({ navigation }) => {
                 </Text>
               </>
             )}
-          </Pressable>
+          </TouchableOpacity>
         </>
       )}
     </AuthWrapper>

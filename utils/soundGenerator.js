@@ -253,6 +253,88 @@ export const generateDefaultSoundUri = () => {
 };
 
 /**
+ * Generates "Inferno" alarm:
+ * Relentless high-pitched siren wail with layered harmonics and a sub-bass
+ * undertone. Near-constant energy designed to be impossible to sleep through.
+ */
+export const generateInfernoSoundUri = () => {
+  if (soundCache.inferno) return soundCache.inferno;
+
+  const sampleRate = 22050;
+  const duration = 1.4;
+  const totalSamples = Math.floor(sampleRate * duration);
+  const samples = new Float32Array(totalSamples);
+
+  for (let i = 0; i < totalSamples; i++) {
+    const t = i / sampleRate;
+    const cycle = t % 0.7;
+    const beep =
+      cycle < 0.16 ||
+      (cycle > 0.2 && cycle < 0.36) ||
+      (cycle > 0.4 && cycle < 0.56) ||
+      (cycle > 0.6 && cycle < 0.66);
+
+    if (beep) {
+      let subT, freq;
+      if (cycle < 0.16) { subT = cycle / 0.16; freq = 1568; }
+      else if (cycle < 0.36) { subT = (cycle - 0.2) / 0.16; freq = 2093; }
+      else if (cycle < 0.56) { subT = (cycle - 0.4) / 0.16; freq = 1760; }
+      else { subT = (cycle - 0.6) / 0.06; freq = 2349; }
+
+      const env = Math.sin(Math.PI * Math.min(1, subT));
+      const s =
+        Math.sin(2 * Math.PI * freq * t) * 1.0 +
+        Math.sin(2 * Math.PI * freq * 2 * t) * 0.5 +
+        Math.sin(2 * Math.PI * freq * 3 * t) * 0.3 +
+        Math.sin(2 * Math.PI * freq * 0.5 * t) * 0.4;
+      samples[i] = Math.tanh(s * env * 1.6) * 0.98;
+    } else {
+      samples[i] = 0;
+    }
+  }
+
+  soundCache.inferno = createWavDataUri(samples, sampleRate);
+  return soundCache.inferno;
+};
+
+/**
+ * Generates "Thunder" alarm:
+ * Deep sub-bass pounding hits with a high-frequency crack transient.
+ * Heavy, physical, and aggressive — built to shake the sleeper awake.
+ */
+export const generateThunderSoundUri = () => {
+  if (soundCache.thunder) return soundCache.thunder;
+
+  const sampleRate = 22050;
+  const duration = 1.2;
+  const totalSamples = Math.floor(sampleRate * duration);
+  const samples = new Float32Array(totalSamples);
+
+  for (let i = 0; i < totalSamples; i++) {
+    const t = i / sampleRate;
+    const cycle = t % 0.6;
+    const hit1 = cycle < 0.14;
+    const hit2 = cycle > 0.22 && cycle < 0.36;
+
+    if (hit1 || hit2) {
+      const subT = hit1 ? cycle / 0.14 : (cycle - 0.22) / 0.14;
+      const env = Math.exp(-subT * 3.5) * Math.min(1, subT * 40);
+      const body =
+        Math.sin(2 * Math.PI * 82 * t) * 0.9 +
+        Math.sin(2 * Math.PI * 110 * t) * 0.6;
+      const crack = Math.sin(2 * Math.PI * 1800 * t) * 0.25 * Math.exp(-subT * 18);
+      const hit = Math.sin(2 * Math.PI * 1640 * t) * 0.3 * Math.exp(-subT * 10);
+      samples[i] = Math.tanh((body + crack + hit) * env * 1.8) * 0.98;
+    } else {
+      samples[i] = 0;
+    }
+  }
+
+  soundCache.thunder = createWavDataUri(samples, sampleRate);
+  return soundCache.thunder;
+};
+
+/**
  * Returns sound URI or identifier for a given sound key.
  */
 export const getAlarmSoundUri = (soundKey) => {
@@ -263,6 +345,10 @@ export const getAlarmSoundUri = (soundKey) => {
       return generateSoftSoundUri();
     case 'pulse':
       return generatePulseSoundUri();
+    case 'inferno':
+      return generateInfernoSoundUri();
+    case 'thunder':
+      return generateThunderSoundUri();
     case 'default':
     default:
       return generateDefaultSoundUri();
@@ -277,6 +363,10 @@ export const getAlarmSoundResourceName = (soundKey) => {
       return 'alarm_sound_soft';
     case 'pulse':
       return 'alarm_sound_pulse';
+    case 'inferno':
+      return 'alarm_sound_inferno';
+    case 'thunder':
+      return 'alarm_sound_thunder';
     case 'default':
     default:
       return 'alarm_sound';
@@ -307,5 +397,17 @@ export const ALARM_SOUND_OPTIONS = [
     title: 'Pulse',
     description: 'Rhythmic, modern wake-up beeps',
     badge: 'Custom',
+  },
+  {
+    id: 'inferno',
+    title: 'Inferno',
+    description: 'Relentless siren wail, impossible to sleep through',
+    badge: 'Intense',
+  },
+  {
+    id: 'thunder',
+    title: 'Thunder',
+    description: 'Deep pounding bass hits with a sharp crack',
+    badge: 'Intense',
   },
 ];
