@@ -22,7 +22,12 @@ config.resolver = {
   ...config.resolver,
   // @react-navigation v7 ships ESM only and relies on package exports.
   unstable_enablePackageExports: true,
-  unstable_conditionNames: ["react-native", "require", "import", "default"],
+  // Do NOT add "import" here: @babel/runtime's conditional exports map
+  // "import" -> helpers/esm/* (ESM namespace object) while compiled app code
+  // calls those helpers as CJS functions (module.exports = fn). Resolving the
+  // ESM variant makes every helper call throw "Object is not a function"
+  // during InitializeCore at bundle eval — the release-mode startup crash.
+  unstable_conditionNames: ["react-native", "require", "default"],
   assetExts: [...config.resolver.assetExts, "svg"],
   sourceExts: [...config.resolver.sourceExts, "svg"],
   // SAFETY NET: redirect expo-modules-core's NativeModule to a safe shim.
