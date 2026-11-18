@@ -43,8 +43,8 @@ import { COLLECTIONS } from "../../config/firestoreSchema";
 import Toast from "../../components/Toast";
 import LanguageSelector from "../../components/LanguageSelector";
 import { getCurrentVersion, getLatestPlayStoreVersion, compareVersions } from "../../services/versionService";
-import Sound from 'react-native-sound';
-import { ALARM_SOUND_OPTIONS, getAlarmSoundUri, getAlarmSoundResourceName } from "../../utils/soundGenerator";
+import { Audio } from 'expo-av';
+import { ALARM_SOUND_OPTIONS, ALARM_SOUND_ASSETS } from "../../utils/soundGenerator";
 
 const ProfileScreen = ({ route }) => {
   const { currentUser, userProfile, logout, deleteAccount, profileLoading } = useAuth();
@@ -167,11 +167,10 @@ const ProfileScreen = ({ route }) => {
   const [playingPreview, setPlayingPreview] = useState(null);
   const previewSoundRef = React.useRef(null);
 
-  const stopAudioPreview = () => {
+  const stopAudioPreview = async () => {
     if (previewSoundRef.current) {
       try {
-        previewSoundRef.current.stop();
-        previewSoundRef.current.release();
+        await previewSoundRef.current.unloadAsync();
       } catch (_) {}
       previewSoundRef.current = null;
     }
@@ -184,42 +183,21 @@ const ProfileScreen = ({ route }) => {
     };
   }, []);
 
-  const handleToggleAudioPreview = (soundId) => {
+  const handleToggleAudioPreview = async (soundId) => {
     if (playingPreview === soundId) {
-      stopAudioPreview();
+      await stopAudioPreview();
       return;
     }
-    stopAudioPreview();
+    await stopAudioPreview();
     try {
-      Sound.setCategory('Playback', true);
-      Sound.setMode('Default');
-
-      const resName = getAlarmSoundResourceName(soundId);
-      const s = new Sound(resName, Sound.MAIN_BUNDLE, (err) => {
-        if (err) {
-          console.log('Preview sound load error, falling back to default:', err);
-          const fallback = new Sound('alarm_sound', Sound.MAIN_BUNDLE, (fallbackErr) => {
-            if (fallbackErr) {
-              console.log('Fallback preview sound load error:', fallbackErr);
-              showToast(t('profile.couldNotPreviewSound'), 'error');
-              return;
-            }
-            fallback.setVolume(1.0);
-            fallback.setNumberOfLoops(-1);
-            fallback.play();
-            previewSoundRef.current = fallback;
-            setPlayingPreview(soundId);
-          });
-          return;
-        }
-        s.setVolume(1.0);
-        s.setNumberOfLoops(-1);
-        s.play((success) => {
-          if (!success) console.log('Preview sound playback failed');
-        });
-        previewSoundRef.current = s;
-        setPlayingPreview(soundId);
-      });
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      const asset = ALARM_SOUND_ASSETS[soundId] || ALARM_SOUND_ASSETS.default;
+      const { sound } = await Audio.Sound.createAsync(asset);
+      await sound.setVolumeAsync(1.0);
+      await sound.setIsLoopingAsync(true);
+      await sound.playAsync();
+      previewSoundRef.current = sound;
+      setPlayingPreview(soundId);
     } catch (err) {
       console.log('Preview sound error:', err);
       showToast(t('profile.couldNotPreviewSound'), 'error');
@@ -1817,7 +1795,7 @@ const ProfileScreen = ({ route }) => {
                               { fontWeight: isSelected ? "700" : "600" },
                             ]}
                           >
-                            {option.title}
+                            {t(`profile.alarmSound.${option.id}.title`, option.title)}
                           </Text>
                           <View
                             style={{
@@ -1834,12 +1812,12 @@ const ProfileScreen = ({ route }) => {
                                 color: option.badge === t("profile.badgeStandard", "Standard") ? colors.textSecondary : "#059669",
                               }}
                             >
-                              {option.badge}
+                              {t(`profile.badge${option.badge}`, option.badge)}
                             </Text>
                           </View>
                         </View>
                         <Text style={[styles.settingSub, themedStyles.settingSub, { fontSize: 11.5 }]}>
-                          {option.description}
+                          {t(`profile.alarmSound.${option.id}.description`, option.description)}
                         </Text>
                       </View>
 
