@@ -62,6 +62,30 @@ const findOtherProfileWithEmail = async (email, uid) => {
   }
 };
 
+/**
+ * Pre-sign-in check: does a password account already own this email?
+ * Runs before signInWithCredential so a conflict is rejected while the user
+ * is still on the auth screen — no dashboard flash, no sign-out bounce.
+ * Google-provider profiles are ignored: the same Google email always maps to
+ * the same Firebase uid, so that profile IS this account, not a duplicate.
+ */
+const findPasswordProfileWithEmail = async (email) => {
+  if (!email) return null;
+  try {
+    const profiles = collection(db, 'profiles');
+    const snap = await getDocs(
+      query(profiles, where('email', '==', email), limit(5))
+    );
+    const passwordOwned = snap.docs.find(
+      (d) => d.data()?.authProvider === 'password'
+    );
+    return passwordOwned ? { id: passwordOwned.id, ...passwordOwned.data() } : null;
+  } catch (error) {
+    console.log('Could not pre-check email ownership:', error?.message);
+    return null;
+  }
+};
+
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -133,6 +157,18 @@ export const AuthProvider = ({ children }) => {
 
         if (!idToken) {
            throw new Error("No ID token returned from Google");
+        }
+
+        // Reject a password-owned email BEFORE Firebase sign-in, so the auth
+        // state never flips and the user never sees the dashboard flash.
+        const googleEmail =
+          response.data?.user?.email || response.user?.email || null;
+        if (googleEmail && (await findPasswordProfileWithEmail(googleEmail))) {
+          const conflict = new Error(
+            'This email is registered with a password.'
+          );
+          conflict.code = 'auth/provider-password';
+          throw conflict;
         }
 
         googleCredential = GoogleAuthProvider.credential(idToken);

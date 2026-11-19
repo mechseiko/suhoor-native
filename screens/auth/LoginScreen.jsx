@@ -118,8 +118,14 @@ export const LoginScreen = ({ navigation }) => {
     if (user.emailVerified) return { verified: true, profileData: null }
 
     let profileData = null
+    // Tracks whether Firestore actually answered. A failed read (offline,
+    // timeout) is inconclusive — it must never be treated as "unverified",
+    // or a network blip logs the user out right after a successful login.
+    let firestoreAnswered = false
+
     try {
       const snap = await getDoc(doc(db, COLLECTIONS.profiles, user.uid))
+      firestoreAnswered = true
       profileData = snap.exists() ? snap.data() : null
     } catch (e) {
       console.log('Error reading profile for verification:', e)
@@ -132,13 +138,25 @@ export const LoginScreen = ({ navigation }) => {
     try {
       await user.reload?.()
       if (user.emailVerified) return { verified: true, profileData }
+    } catch (e) {
+      console.log('Error reloading user for verification:', e)
+    }
+    try {
       const snap2 = await getDoc(doc(db, COLLECTIONS.profiles, user.uid))
+      firestoreAnswered = true
       const pd2 = snap2.exists() ? snap2.data() : null
       if (pd2?.isVerified === true) return { verified: true, profileData: pd2 }
-      return { verified: false, profileData: pd2 || profileData }
+      profileData = pd2 || profileData
     } catch (e) {
-      return { verified: false, profileData }
+      console.log('Error reading profile for verification (retry):', e)
     }
+
+    // Only report unverified when Firestore definitively answered and still
+    // says so. Otherwise let the login through — RootNavigator's
+    // suhoor-was-verified fallback and the live profile snapshot keep the
+    // session honest.
+    if (!firestoreAnswered) return { verified: true, profileData, inconclusive: true }
+    return { verified: false, profileData }
   }
 
   const handleLogin = async () => {
