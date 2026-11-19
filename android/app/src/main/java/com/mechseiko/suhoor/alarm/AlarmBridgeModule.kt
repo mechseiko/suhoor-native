@@ -1,6 +1,9 @@
 package com.mechseiko.suhoor.alarm
 
+import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.net.Uri
@@ -199,32 +202,87 @@ class AlarmBridgeModule(reactContext: ReactApplicationContext) : ReactContextBas
     }
 
     private var previewPlayer: MediaPlayer? = null
+    private var previewFocusRequest: AudioFocusRequest? = null
 
     /**
-     * Play a short looping preview of a bundled alarm sound (settings picker).
-     * Uses the same res/raw + STREAM_ALARM path as the real alarm service.
+     * Play a looping preview of a bundled alarm sound (settings picker).
+     *
+     * Deliberately mirrors AlarmForegroundService.startAlarmSound(): same
+     * R.raw track, USAGE_ALARM audio attributes, alarm stream at full volume
+     * and audio focus. The previous version relied on the deprecated
+     * MediaPlayer.setAudioStreamType() after MediaPlayer.create(), which does
+     * not re-route an already-prepared player: the preview played on the media
+     * stream (silent whenever media volume is down, e.g. phone on vibrate)
+     * while real alarms, which use the alarm stream, still rang.
      */
     @ReactMethod
     fun playSoundPreview(soundName: String, promise: Promise) {
         try {
             stopSoundPreviewInternal()
-            // Compile-time R.raw mapping: getIdentifier() returns 0 in release
-            // builds because shrinkResources obfuscates raw resource names.
-            val resId = AlarmSounds.resId(reactApplicationContext, soundName)
-            previewPlayer = MediaPlayer.create(reactApplicationContext, resId)?.apply {
-                setAudioStreamType(AudioManager.STREAM_ALARM)
-                setVolume(1.0f, 1.0f)
-                isLooping = true
-                setOnCompletionListener { mp -> mp.release() }
-                start()
+
+            val context = reactApplicationContext
+            val resId = AlarmSounds.resId(context, soundName)
+            val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
+            val attributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+
+            // The real alarm forces the alarm stream to its maximum, so a
+            // preview at a lower level would not represent what the user hears.
+            // Best-effort: a locked-down device must not turn this into a
+            // failed preview.
+            try {
+                val maxAlarmVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_ALARM)
+                if (audioManager.getStreamVolume(AudioManager.STREAM_ALARM) < maxAlarmVolume) {
+                    audioManager.setStreamVolume(AudioManager.STREAM_ALARM, maxAlarmVolume, 0)
+                }
+            } catch (_: Exception) {}
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+                    .setAudioAttributes(attributes)
+                    .setAcceptsDelayedFocusGain(true)
+                    .setOnAudioFocusChangeListener({ })
+                    .build()
+                previewFocusRequest = focusRequest
+                audioManager.requestAudioFocus(focusRequest)
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager.requestAudioFocus(
+                    null,
+                    AudioManager.STREAM_ALARM,
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+                )
             }
-            if (previewPlayer == null) {
-                promise.reject("SOUND_PREVIEW_ERROR", "MediaPlayer.create returned null")
-                return
+
+            // Attributes must be set before prepare(): after prepare the player
+            // has already chosen its output stream.
+            val afd = context.resources.openRawResourceFd(resId)
+                ?: throw IllegalStateException("Sound $soundName cannot be streamed")
+
+            val player = MediaPlayer()
+            try {
+                afd.use {
+                    player.setDataSource(it.fileDescriptor, it.startOffset, it.length)
+                }
+                player.setAudioAttributes(attributes)
+                player.isLooping = true
+                player.setVolume(1.0f, 1.0f)
+                player.prepare()
+                player.start()
+            } catch (e: Exception) {
+                try { player.release() } catch (_: Exception) {}
+                throw e
             }
+
+            previewPlayer = player
             promise.resolve(true)
         } catch (e: Exception) {
-            promise.reject("SOUND_PREVIEW_ERROR", e.message, e)
+            Log.e("AlarmBridge", "Sound preview failed for $soundName", e)
+            stopSoundPreviewInternal()
+            promise.reject("SOUND_PREVIEW_ERROR", e.message ?: "Could not play sound preview", e)
         }
     }
 
@@ -246,6 +304,17 @@ class AlarmBridgeModule(reactContext: ReactApplicationContext) : ReactContextBas
             }
         } catch (_: Exception) {}
         previewPlayer = null
+
+        try {
+            val audioManager = reactApplicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                previewFocusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager.abandonAudioFocus(null)
+            }
+        } catch (_: Exception) {}
+        previewFocusRequest = null
     }
 
     @ReactMethod

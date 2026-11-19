@@ -187,6 +187,13 @@ const ProfileScreen = ({ route }) => {
     };
   }, []);
 
+  // Do not leave a preview looping after the user leaves the Preferences tab.
+  React.useEffect(() => {
+    if (activeTab !== "preferences" && playingPreview) {
+      stopAudioPreview();
+    }
+  }, [activeTab]);
+
   const handleToggleAudioPreview = async (soundId) => {
     if (playingPreview === soundId) {
       await stopAudioPreview();
@@ -194,7 +201,7 @@ const ProfileScreen = ({ route }) => {
     }
     await stopAudioPreview();
     try {
-      if (Platform.OS === "web" || !AlarmBridge?.playSoundPreview) {
+      if (Platform.OS === "web") {
         const audio = new Audio(getAlarmSoundUri(soundId));
         audio.loop = true;
         audio.volume = 1.0;
@@ -203,11 +210,18 @@ const ProfileScreen = ({ route }) => {
         setPlayingPreview(soundId);
         return;
       }
+      // Native previews must go through the alarm bridge: it plays the bundled
+      // res/raw track on the ALARM stream, exactly like a real alarm. The old
+      // fallback used the browser Audio() constructor, which does not exist in
+      // React Native — so a missing bridge produced no sound at all.
+      if (!AlarmBridge?.playSoundPreview) {
+        throw new Error("AlarmBridge.playSoundPreview is unavailable");
+      }
       await AlarmBridge.playSoundPreview(getAlarmSoundResourceName(soundId));
       setPlayingPreview(soundId);
     } catch (err) {
       console.log("Preview sound error:", err);
-      showToast(t("profile.couldNotPreviewSound"), "error");
+      showToast(t("profile.couldNotPreviewSound", "Could not preview sound"), "error");
     }
   };
 
