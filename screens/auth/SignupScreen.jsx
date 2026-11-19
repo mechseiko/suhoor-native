@@ -193,7 +193,9 @@ export const SignupScreen = ({ navigation }) => {
         profileData.preferences.defaultLocation = onboardingLocation;
       }
 
-      await setDoc(doc(db, "profiles", user.uid), profileData);
+      // merge: the profile repair pass can create/fill the document first; a
+      // plain setDoc here would wipe whichever fields it wrote.
+      await setDoc(doc(db, "profiles", user.uid), profileData, { merge: true });
 
       // Triggers the one-time tab tour when the new user first enters the app
       try {

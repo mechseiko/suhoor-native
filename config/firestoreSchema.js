@@ -176,6 +176,25 @@ export const profileCreatedAt = (profile) =>
   toIsoTime(profile?.createdAt ?? profile?.created_at)
 
 /**
+ * Resolves a profile's signup date to a real Date. `createdAt` is canonical,
+ * but older/partial writes stored `created_at` (and, rarely, `createdOn`), so
+ * read all of them and tolerate every stored shape: Firestore Timestamp,
+ * { seconds }, JS Date, ISO string and epoch numbers. Returns null when there is
+ * no usable date — never an Invalid Date.
+ */
+export const profileCreatedAtDate = (profile) => {
+  const value = profile?.createdAt ?? profile?.created_at ?? profile?.createdOn
+  if (!value) return null
+  let date = null
+  if (typeof value.toDate === 'function') date = value.toDate()
+  else if (value instanceof Date) date = value
+  else if (typeof value.seconds === 'number') date = new Date(value.seconds * 1000)
+  else if (typeof value === 'number') date = new Date(value < 1e12 ? value * 1000 : value)
+  else if (typeof value === 'string') date = new Date(value)
+  return date && !Number.isNaN(date.getTime()) ? date : null
+}
+
+/**
  * Lifetime Badge Tracks with Levels.
  * Designed so that milestones never finish and can last a lifetime.
  */

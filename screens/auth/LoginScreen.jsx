@@ -9,7 +9,7 @@ import { Button, Input, Text } from '../../components/ui'
 import { GoogleIcon } from '../../components/GoogleIcon'
 import { db } from '../../config/firebase'
 import { COLLECTIONS } from '../../config/firestoreSchema'
-import { doc, updateDoc, setDoc, getDoc } from 'firebase/firestore'
+import { doc, updateDoc, getDoc } from 'firebase/firestore'
 
 const CACHE_KEYS = {
   NAME: 'suhoor_last_display_name',
@@ -97,14 +97,16 @@ export const LoginScreen = ({ navigation }) => {
     }
   }
 
-  // Sync alarm PIN from AsyncStorage to profile if it exists.
-  // Uses setDoc-with-merge so it works even if the profile doc doesn't exist yet.
+  // Sync alarm PIN from AsyncStorage to an existing profile. updateDoc (not
+  // setDoc-with-merge) is deliberate: merge would silently CREATE a profile
+  // containing only `pin` when the document is missing, which left accounts
+  // with no email, provider or signup date.
   const syncAlarmPin = async (uid) => {
     try {
       const alarmPin = await AsyncStorage.getItem('suhoor_alarm_pin')
       if (!alarmPin) return
       const profileRef = doc(db, COLLECTIONS.profiles, uid)
-      await setDoc(profileRef, { pin: alarmPin }, { merge: true })
+      await updateDoc(profileRef, { pin: alarmPin })
     } catch (syncErr) {
       console.log('Error syncing alarm PIN:', syncErr)
     }

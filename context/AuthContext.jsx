@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -24,6 +24,7 @@ import {
   limit,
   getDocs,
   serverTimestamp,
+  Timestamp,
 } from "firebase/firestore";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -31,6 +32,7 @@ import { detectUserLocationDetails } from "../utils/country";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID } from "@env";
 import { registerPushToken } from "../services/pushRegistration";
+import { profileCreatedAtDate } from "../config/firestoreSchema";
 
 const AuthContext = createContext({});
 
@@ -41,6 +43,28 @@ GoogleSignin.configure({
   webClientId: EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
   offlineAccess: true,
 });
+
+/**
+ * Firebase Auth records the account creation time. It is the only trustworthy
+ * signup date for profiles written before `createdAt` existed, so it is what a
+ * missing date is back-filled from.
+ */
+const authCreatedAtDate = (user) => {
+  const raw = user?.metadata?.creationTime;
+  if (!raw) return null;
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+/** Best date available for a profile that has no `createdAt` yet. */
+const resolveCreatedAt = (user, profileData) =>
+  profileCreatedAtDate(profileData) || authCreatedAtDate(user);
+
+/** Which provider this auth account actually uses, for profile repairs. */
+const providerFromUser = (user) =>
+  user?.providerData?.some((p) => p.providerId === "google.com")
+    ? "google"
+    : "password";
 
 // Profile docs may store emails in any case; match all common variants so a
 // "User@Gmail.com" profile still blocks a "user@gmail.com" sign-in.
@@ -297,13 +321,28 @@ export const AuthProvider = ({ children }) => {
           console.log("Error setting tab tour flag:", tourErr);
         }
       } else {
+        const existing = profileDoc.data() || {};
+        const updateData = {};
+        if (!existing.authProvider) updateData.authProvider = "google";
+
+        // Back-fill the signup date for accounts whose profile predates
+        // `createdAt` (or was written by the old partial-write fallback). The
+        // admin dashboard reads this field as the join date.
+        if (!existing.createdAt) {
+          const createdAt = resolveCreatedAt(user, existing);
+          if (createdAt) updateData.createdAt = Timestamp.fromDate(createdAt);
+        }
+        if (!existing.uid) updateData.uid = user.uid;
+
         // Sync avatar from Google if not yet set in profile
-        const updateData = { authProvider: "google" };
-        if (user.photoURL && !profileDoc.data()?.avatar_url && !profileDoc.data()?.photoURL) {
+        if (user.photoURL && !existing.avatar_url && !existing.photoURL) {
           updateData.avatar_url = user.photoURL;
           updateData.photoURL = user.photoURL;
         }
-        await updateDoc(doc(db, "profiles", user.uid), updateData).catch(() => {});
+
+        if (Object.keys(updateData).length) {
+          await updateDoc(doc(db, "profiles", user.uid), updateData).catch(() => {});
+        }
 
         // Sync alarm pin if set in local storage
         try {
@@ -405,6 +444,40 @@ export const AuthProvider = ({ children }) => {
       unsubscribeProfile();
     };
   }, []);
+
+  // Repair profiles whose signup date was never written. Runs once per uid per
+  // app launch and only fills missing fields, so it cannot clobber a concurrent
+  // sign-up write. Accounts created on older builds (or through the old
+  // partial-write fallback) get the real Firebase Auth creation date here,
+  // which is what the admin dashboard displays.
+  const repairedProfileUids = useRef(new Set());
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    if (repairedProfileUids.current.has(currentUser.uid)) return;
+    repairedProfileUids.current.add(currentUser.uid);
+
+    (async () => {
+      try {
+        const profileRef = doc(db, "profiles", currentUser.uid);
+        const snap = await getDoc(profileRef);
+        if (!snap.exists()) return; // sign-up flows create the profile
+        const data = snap.data() || {};
+        const patch = {};
+        if (!data.createdAt) {
+          const createdAt = resolveCreatedAt(currentUser, data);
+          if (createdAt) patch.createdAt = Timestamp.fromDate(createdAt);
+        }
+        if (!data.uid) patch.uid = currentUser.uid;
+        if (!data.email && currentUser.email) patch.email = currentUser.email;
+        if (!data.authProvider) patch.authProvider = providerFromUser(currentUser);
+        if (Object.keys(patch).length) {
+          await updateDoc(profileRef, patch);
+        }
+      } catch (err) {
+        console.log("Profile date repair failed:", err?.message);
+      }
+    })();
+  }, [currentUser]);
 
   const reloadUser = async () => {
     if (auth.currentUser) {
