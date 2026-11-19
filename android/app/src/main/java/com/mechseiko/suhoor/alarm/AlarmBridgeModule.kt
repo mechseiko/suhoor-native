@@ -208,12 +208,9 @@ class AlarmBridgeModule(reactContext: ReactApplicationContext) : ReactContextBas
     fun playSoundPreview(soundName: String, promise: Promise) {
         try {
             stopSoundPreviewInternal()
-            val resName = soundName.ifBlank { "alarm_sound" }
-            val resId = reactApplicationContext.resources.getIdentifier(resName, "raw", reactApplicationContext.packageName)
-            if (resId == 0) {
-                promise.reject("SOUND_NOT_FOUND", "No raw resource named $resName")
-                return
-            }
+            // Compile-time R.raw mapping: getIdentifier() returns 0 in release
+            // builds because shrinkResources obfuscates raw resource names.
+            val resId = AlarmSounds.resId(reactApplicationContext, soundName)
             previewPlayer = MediaPlayer.create(reactApplicationContext, resId)?.apply {
                 setAudioStreamType(AudioManager.STREAM_ALARM)
                 setVolume(1.0f, 1.0f)

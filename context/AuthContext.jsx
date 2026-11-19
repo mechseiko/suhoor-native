@@ -42,24 +42,42 @@ GoogleSignin.configure({
   offlineAccess: true,
 });
 
+// Profile docs may store emails in any case; match all common variants so a
+// "User@Gmail.com" profile still blocks a "user@gmail.com" sign-in.
+const emailVariants = (email) => {
+  const e = (email || '').trim();
+  if (!e) return [];
+  return [...new Set([e, e.toLowerCase(), e.toUpperCase()])];
+};
+
+const findProfilesByEmail = async (email) => {
+  const variants = emailVariants(email);
+  if (!variants.length) return [];
+  try {
+    const snap = await getDocs(
+      query(
+        collection(db, 'profiles'),
+        where('email', 'in', variants),
+        limit(10)
+      )
+    );
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  } catch (error) {
+    console.log('Could not check for duplicate profiles:', error?.message);
+    return null; // null = lookup failed (offline etc.), distinct from []
+  }
+};
+
 /**
  * Returns a profile that owns this email under a *different* uid, or null.
  * Used to guarantee one account per email even if Firebase auth ever hands back
  * a second identity for the same address.
  */
 const findOtherProfileWithEmail = async (email, uid) => {
-  if (!email) return null;
-  try {
-    const profiles = collection(db, 'profiles');
-    const snap = await getDocs(
-      query(profiles, where('email', '==', email), limit(5))
-    );
-    const other = snap.docs.find((d) => d.id !== uid);
-    return other ? { id: other.id, ...other.data() } : null;
-  } catch (error) {
-    console.log('Could not check for duplicate profiles:', error?.message);
-    return null;
-  }
+  const profiles = await findProfilesByEmail(email);
+  if (!profiles) return null;
+  const other = profiles.find((p) => p.id !== uid);
+  return other || null;
 };
 
 /**
@@ -70,20 +88,9 @@ const findOtherProfileWithEmail = async (email, uid) => {
  * the same Firebase uid, so that profile IS this account, not a duplicate.
  */
 const findPasswordProfileWithEmail = async (email) => {
-  if (!email) return null;
-  try {
-    const profiles = collection(db, 'profiles');
-    const snap = await getDocs(
-      query(profiles, where('email', '==', email), limit(5))
-    );
-    const passwordOwned = snap.docs.find(
-      (d) => d.data()?.authProvider === 'password'
-    );
-    return passwordOwned ? { id: passwordOwned.id, ...passwordOwned.data() } : null;
-  } catch (error) {
-    console.log('Could not pre-check email ownership:', error?.message);
-    return null;
-  }
+  const profiles = await findProfilesByEmail(email);
+  if (!profiles) return null;
+  return profiles.find((p) => p.authProvider === 'password') || null;
 };
 
 export const AuthProvider = ({ children }) => {
@@ -101,7 +108,26 @@ export const AuthProvider = ({ children }) => {
         error.code = "auth/email-already-linked-to-google";
         throw error;
       }
-      return await createUserWithEmailAndPassword(auth, email, password);
+      const credential = await createUserWithEmailAndPassword(auth, email, password);
+
+      // One email = one account. fetchSignInMethodsForEmail can return an
+      // empty list (enumeration protection), and Firebase's
+      // multiple-accounts-per-email setting would let this create a SECOND
+      // identity for an email that already owns a profile (e.g. Google).
+      // Verify against profiles and remove the just-created user on conflict.
+      const owner = await findOtherProfileWithEmail(email, credential.user.uid);
+      if (owner) {
+        try {
+          await deleteUser(credential.user);
+        } catch (deleteErr) {
+          console.log('Could not delete duplicate auth user:', deleteErr?.message);
+        }
+        const conflict = new Error('This email already has an account.');
+        conflict.code = 'auth/account-conflict';
+        throw conflict;
+      }
+
+      return credential;
     } catch (error) {
       // Email enumeration protection can make the check above return nothing.
       // The sign-up call still fails safely; explain it in the same terms.

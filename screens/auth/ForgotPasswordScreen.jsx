@@ -142,6 +142,15 @@ export const ForgotPasswordScreen = ({ navigation }) => {
         variant="primary"
         style={{ borderRadius: 8 }}
       />
+
+      {success ? (
+        <Button
+          title={t('auth.backToLogin', 'Back to Login')}
+          onPress={() => navigation.navigate('Login')}
+          variant="secondary"
+          style={{ borderRadius: 8, marginTop: 12 }}
+        />
+      ) : null}
     </AuthWrapper>
   )
 }

@@ -222,6 +222,8 @@ export const SignupScreen = ({ navigation }) => {
         setError(t("auth.emailInUse"));
       } else if (err.code === "auth/email-already-linked-to-google") {
         setError(t("auth.emailAlreadyLinkedToGoogle"));
+      } else if (err.code === "auth/account-conflict") {
+        setError(t("auth.accountConflict"));
       } else {
         setError(t("auth.signupError"));
       }

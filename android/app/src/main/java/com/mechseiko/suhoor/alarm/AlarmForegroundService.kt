@@ -240,11 +240,10 @@ class AlarmForegroundService : Service() {
             }
 
             // Play whatever the user picked in Settings -> Alarm sound.
+            // AlarmSounds maps known names to R.raw fields directly because
+            // shrinkResources obfuscates raw names and getIdentifier() fails.
             val requested = alarmData?.soundName ?: ""
-            val resId = if (requested.isNotBlank()) {
-                resources.getIdentifier(requested, "raw", packageName)
-            } else 0
-            val track = if (resId != 0) resId else R.raw.alarm_sound
+            val track = AlarmSounds.resId(this, requested)
 
             // Alarms persisted by an older build deserialize volume as 0 with no
             // soundName. Only trust volume when we wrote it alongside a sound.
