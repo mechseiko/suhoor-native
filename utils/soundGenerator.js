@@ -412,12 +412,3 @@ export const ALARM_SOUND_OPTIONS = [
   },
 ];
 
-// Bundled audio assets for in-app preview playback (expo-av).
-export const ALARM_SOUND_ASSETS = {
-  default: require('../assets/sounds/alarm_sound.mp3'),
-  apex: require('../assets/sounds/alarm_sound_apex.mp3'),
-  soft: require('../assets/sounds/alarm_sound_soft.mp3'),
-  pulse: require('../assets/sounds/alarm_sound_pulse.mp3'),
-  inferno: require('../assets/sounds/alarm_sound_inferno.wav'),
-  thunder: require('../assets/sounds/alarm_sound_thunder.wav'),
-};

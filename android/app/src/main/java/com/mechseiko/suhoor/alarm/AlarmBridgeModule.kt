@@ -1,6 +1,8 @@
 package com.mechseiko.suhoor.alarm
 
 import android.content.Intent
+import android.media.AudioManager
+import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
@@ -194,6 +196,59 @@ class AlarmBridgeModule(reactContext: ReactApplicationContext) : ReactContextBas
         } catch (e: Exception) {
             promise.reject("STOP_SERVICE_ERROR", e.message, e)
         }
+    }
+
+    private var previewPlayer: MediaPlayer? = null
+
+    /**
+     * Play a short looping preview of a bundled alarm sound (settings picker).
+     * Uses the same res/raw + STREAM_ALARM path as the real alarm service.
+     */
+    @ReactMethod
+    fun playSoundPreview(soundName: String, promise: Promise) {
+        try {
+            stopSoundPreviewInternal()
+            val resName = soundName.ifBlank { "alarm_sound" }
+            val resId = reactApplicationContext.resources.getIdentifier(resName, "raw", reactApplicationContext.packageName)
+            if (resId == 0) {
+                promise.reject("SOUND_NOT_FOUND", "No raw resource named $resName")
+                return
+            }
+            previewPlayer = MediaPlayer.create(reactApplicationContext, resId)?.apply {
+                setAudioStreamType(AudioManager.STREAM_ALARM)
+                setVolume(1.0f, 1.0f)
+                isLooping = true
+                setOnCompletionListener { mp -> mp.release() }
+                start()
+            }
+            if (previewPlayer == null) {
+                promise.reject("SOUND_PREVIEW_ERROR", "MediaPlayer.create returned null")
+                return
+            }
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("SOUND_PREVIEW_ERROR", e.message, e)
+        }
+    }
+
+    @ReactMethod
+    fun stopSoundPreview(promise: Promise) {
+        try {
+            stopSoundPreviewInternal()
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("SOUND_PREVIEW_ERROR", e.message, e)
+        }
+    }
+
+    private fun stopSoundPreviewInternal() {
+        try {
+            previewPlayer?.let {
+                if (it.isPlaying) it.stop()
+                it.release()
+            }
+        } catch (_: Exception) {}
+        previewPlayer = null
     }
 
     @ReactMethod

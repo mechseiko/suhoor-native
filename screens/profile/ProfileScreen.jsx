@@ -12,6 +12,7 @@ import {
   Linking,
   Modal,
   Image,
+  NativeModules,
 } from "react-native";
 import {
   uploadProfilePicture,
@@ -43,8 +44,8 @@ import { COLLECTIONS } from "../../config/firestoreSchema";
 import Toast from "../../components/Toast";
 import LanguageSelector from "../../components/LanguageSelector";
 import { getCurrentVersion, getLatestPlayStoreVersion, compareVersions } from "../../services/versionService";
-import { Audio } from 'expo-av';
-import { ALARM_SOUND_OPTIONS, ALARM_SOUND_ASSETS } from "../../utils/soundGenerator";
+
+import { ALARM_SOUND_OPTIONS, getAlarmSoundUri, getAlarmSoundResourceName } from "../../utils/soundGenerator";
 
 const ProfileScreen = ({ route }) => {
   const { currentUser, userProfile, logout, deleteAccount, profileLoading } = useAuth();
@@ -167,11 +168,14 @@ const ProfileScreen = ({ route }) => {
   const [playingPreview, setPlayingPreview] = useState(null);
   const previewSoundRef = React.useRef(null);
 
+  const AlarmBridge = NativeModules?.AlarmBridge;
+
   const stopAudioPreview = async () => {
+    if (Platform.OS !== "web" && AlarmBridge?.stopSoundPreview) {
+      try { await AlarmBridge.stopSoundPreview(); } catch (_) {}
+    }
     if (previewSoundRef.current) {
-      try {
-        await previewSoundRef.current.unloadAsync();
-      } catch (_) {}
+      try { previewSoundRef.current.pause(); previewSoundRef.current.src = ""; } catch (_) {}
       previewSoundRef.current = null;
     }
     setPlayingPreview(null);
@@ -190,17 +194,20 @@ const ProfileScreen = ({ route }) => {
     }
     await stopAudioPreview();
     try {
-      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-      const asset = ALARM_SOUND_ASSETS[soundId] || ALARM_SOUND_ASSETS.default;
-      const { sound } = await Audio.Sound.createAsync(asset);
-      await sound.setVolumeAsync(1.0);
-      await sound.setIsLoopingAsync(true);
-      await sound.playAsync();
-      previewSoundRef.current = sound;
+      if (Platform.OS === "web" || !AlarmBridge?.playSoundPreview) {
+        const audio = new Audio(getAlarmSoundUri(soundId));
+        audio.loop = true;
+        audio.volume = 1.0;
+        await audio.play();
+        previewSoundRef.current = audio;
+        setPlayingPreview(soundId);
+        return;
+      }
+      await AlarmBridge.playSoundPreview(getAlarmSoundResourceName(soundId));
       setPlayingPreview(soundId);
     } catch (err) {
-      console.log('Preview sound error:', err);
-      showToast(t('profile.couldNotPreviewSound'), 'error');
+      console.log("Preview sound error:", err);
+      showToast(t("profile.couldNotPreviewSound"), "error");
     }
   };
 
