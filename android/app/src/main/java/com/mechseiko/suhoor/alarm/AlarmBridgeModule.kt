@@ -191,6 +191,21 @@ class AlarmBridgeModule(reactContext: ReactApplicationContext) : ReactContextBas
      * Cancel all alarms
      * @param promise Promise to resolve with success status
      */
+    /**
+     * True while the foreground service is looping an alarm on the alarm
+     * stream. AlarmOverlay uses it to decide whether it still needs to start a
+     * ring: the service is the one that survives silent/DND, so the JS overlay
+     * must not stop it and re-play on the media stream.
+     */
+    @ReactMethod
+    fun isAlarmRinging(promise: Promise) {
+        try {
+            promise.resolve(AlarmForegroundService.isRunning)
+        } catch (e: Exception) {
+            promise.reject("ALARM_STATE_ERROR", e.message, e)
+        }
+    }
+
     @ReactMethod
     fun stopAlarmService(promise: Promise) {
         try {

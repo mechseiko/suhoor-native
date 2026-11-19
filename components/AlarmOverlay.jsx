@@ -86,52 +86,72 @@ export const AlarmOverlay = () => {
   useEffect(() => {
     if (visible && status === 'ringing') {
       if (soundAllowed && !fromNative) {
-        // Android already has the native alarm ringing when this overlay was
-        // opened by the same alarm. Silence that loop so exactly one plays.
-        if (Platform.OS === 'android' && NativeModules?.AlarmBridge?.stopAlarmService) {
-          NativeModules.AlarmBridge.stopAlarmService().catch(() => {})
-        }
-        try {
-          // react-native-sound: enable playback in silent mode on iOS
-          Sound.setCategory('Playback', true)
-          Sound.setMode('Default')
+        const bridge = Platform.OS === 'android' ? NativeModules?.AlarmBridge : null
+        const volume = userProfile?.preferences?.alarmVolume ?? 1.0
+        const soundRes = getAlarmSoundResourceName(selectedAlarmSound)
+        const isCustomAudio = alarmAudioMode === 'custom' && Boolean(customAudioUrl)
 
-          const volume = userProfile?.preferences?.alarmVolume ?? 1.0
-          const soundRes = getAlarmSoundResourceName(selectedAlarmSound)
-
-          const playSound = (uri, isAsset) => {
-            const basePath = isAsset ? Sound.MAIN_BUNDLE : ''
-            const s = new Sound(uri, basePath, (err) => {
-              if (err) {
-                console.log('Sound load error, falling back to default:', err)
-                if (uri !== 'alarm_sound') {
-                  const fallback = new Sound('alarm_sound', Sound.MAIN_BUNDLE, (fallbackErr) => {
-                    if (fallbackErr) return console.log('Default sound load error:', fallbackErr)
-                    fallback.setVolume(volume)
-                    fallback.setNumberOfLoops(-1)
-                    fallback.play()
-                    soundRef.current = fallback
-                  })
-                }
-                return
+        const playSound = (uri, isAsset) => {
+          const basePath = isAsset ? Sound.MAIN_BUNDLE : ''
+          const s = new Sound(uri, basePath, (err) => {
+            if (err) {
+              console.log('Sound load error, falling back to default:', err)
+              if (uri !== 'alarm_sound') {
+                const fallback = new Sound('alarm_sound', Sound.MAIN_BUNDLE, (fallbackErr) => {
+                  if (fallbackErr) return console.log('Default sound load error:', fallbackErr)
+                  fallback.setVolume(volume)
+                  fallback.setNumberOfLoops(-1)
+                  fallback.play()
+                  soundRef.current = fallback
+                })
               }
-              s.setVolume(volume)
-              s.setNumberOfLoops(-1) // loop indefinitely
-              s.play((success) => {
-                if (!success) console.log('Sound playback failed')
-              })
-              soundRef.current = s
+              return
+            }
+            s.setVolume(volume)
+            s.setNumberOfLoops(-1) // loop indefinitely
+            s.play((success) => {
+              if (!success) console.log('Sound playback failed')
             })
-          }
-
-          if (alarmAudioMode === 'custom' && customAudioUrl) {
-            playSound(customAudioUrl, false)
-          } else {
-            playSound(soundRes, true)
-          }
-        } catch (e) {
-          console.log('Audio setup failed:', e)
+            soundRef.current = s
+          })
         }
+
+        // Ring on the same stream the alarm uses.
+        //
+        // On Android the foreground service already loops the chosen sound on
+        // the ALARM stream, which is why it rings even with media volume down.
+        // This overlay used to call stopAlarmService() and then replay the
+        // sound through react-native-sound (STREAM_MUSIC): the alarm screen
+        // appeared with the ring already stopped and nothing audible whenever
+        // media volume was down. Now the native loop is left running, and if it
+        // is not running (e.g. exact-alarm access was denied) we start the same
+        // alarm-stream ring through the bridge instead of the media stream.
+        const startRing = async () => {
+          if (bridge?.isAlarmRinging) {
+            try {
+              if (await bridge.isAlarmRinging()) return
+            } catch (_) {}
+          }
+          if (bridge?.playSoundPreview && !isCustomAudio) {
+            try {
+              await bridge.playSoundPreview(soundRes)
+              return
+            } catch (err) {
+              console.log('Native alarm sound failed, falling back:', err)
+            }
+          }
+          try {
+            // iOS and custom audio URLs only: react-native-sound plays on the
+            // media stream, which is the best available without the bridge.
+            Sound.setCategory('Playback', true)
+            Sound.setMode('Default')
+            if (isCustomAudio) playSound(customAudioUrl, false)
+            else playSound(soundRes, true)
+          } catch (e) {
+            console.log('Audio setup failed:', e)
+          }
+        }
+        startRing().catch((e) => console.log('Alarm audio start failed:', e))
       }
 
       if (Platform.OS !== 'web' && !fromNative) {
@@ -183,6 +203,11 @@ export const AlarmOverlay = () => {
       return () => {
         if (Platform.OS !== 'web') {
           Vibration.cancel()
+        }
+        // Stops only a ring this overlay started; the service loop is owned by
+        // the dismissal path (stopAlarmService). No-op when nothing is playing.
+        if (Platform.OS === 'android' && NativeModules?.AlarmBridge?.stopSoundPreview) {
+          NativeModules.AlarmBridge.stopSoundPreview().catch(() => {})
         }
         if (soundRef.current) {
           soundRef.current.stop()
@@ -255,6 +280,18 @@ export const AlarmOverlay = () => {
       Vibration.cancel()
     }
     cancelAlarm()
+
+    // Silence immediately: the ring is usually owned by the native service on
+    // the alarm stream, not by this overlay, and the success screen should be
+    // quiet right away instead of after the dismiss animation.
+    if (Platform.OS === 'android' && NativeModules?.AlarmBridge) {
+      try {
+        await NativeModules.AlarmBridge.stopAlarmService?.()
+      } catch (_) {}
+      try {
+        await NativeModules.AlarmBridge.stopSoundPreview?.()
+      } catch (_) {}
+    }
 
     // Mark user as checked-in to cancel wake-up notifications
     try {
