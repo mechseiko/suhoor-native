@@ -15,6 +15,16 @@
   <uses-permission android:name="android.permission.WAKE_LOCK"/>
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
   <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
+  <!--
+    Optional, because nothing here needs Wi-Fi hardware. ACCESS_WIFI_STATE is
+    merged in by @react-native-community/netinfo (it uses it for SSID/BSSID,
+    which this app never reads), and Google Play turns that permission into an
+    implied android.hardware.wifi REQUIREMENT. Declaring it explicitly as
+    not-required overrides the implied filter, so the app stays installable on
+    devices without a Wi-Fi radio. Cellular connectivity detection is
+    unaffected.
+  -->
+  <uses-feature android:name="android.hardware.wifi" android:required="false"/>
   <queries>
     <intent>
       <action android:name="android.intent.action.VIEW"/>
