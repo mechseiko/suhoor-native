@@ -9,6 +9,7 @@ import { LanguageProvider } from "./context/LanguageContext";
 import { AlarmProvider, useAlarmState } from "./context/AlarmContext";
 import { NetworkProvider } from "./context/NetworkContext";
 import AlarmOverlay from "./components/AlarmOverlay";
+import { AlarmPermissionGate } from "./components/AlarmPermissionGate";
 import { WhatsNewModal } from "./components/UpdateModal";
 import { useWhatsNew } from "./hooks/useWhatsNew";
 import RootNavigator from "./navigation/RootNavigator";
@@ -149,6 +150,7 @@ export default function App() {
                   <View style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
                     <RootNavigator />
                     <WhatsNewGate />
+                    <AlarmPermissionGate />
                     <AlarmOverlay />
                     <FastingNotificationsManager />
                     <NetworkStatusNotification />
