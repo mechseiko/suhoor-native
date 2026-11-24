@@ -9,6 +9,7 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.mechseiko.suhoor.MainActivity
 import java.util.Date
 
 /**
@@ -21,6 +22,7 @@ class AlarmManagerModule(private val context: Context) {
     companion object {
         private const val TAG = "AlarmManagerModule"
         private const val ALARM_REQUEST_CODE = 1001
+        private const val SHOW_INTENT_REQUEST_CODE = 1002
         private const val PREFS_NAME = "suhoor_alarms"
         private const val KEY_ALARMS = "alarms_list"
     }
@@ -95,17 +97,61 @@ class AlarmManagerModule(private val context: Context) {
                 flags
             )
 
-            // Schedule the alarm: exact when permitted, inexact (but still
-            // Doze-proof) otherwise, so a fasting user always gets woken.
-            if (exactAllowed) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    alarmManager.setExactAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP,
-                        triggerTime,
-                        pendingIntent
-                    )
-                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                    alarmManager.setExact(
+            // Schedule the alarm.
+            //
+            // setAlarmClock() is the only AlarmManager API that the platform
+            // and OEM power managers both treat as a user-visible alarm:
+            //  - it is exempt from Doze batching and from the "not more than
+            //    once every 9 minutes" throttle that applies to
+            //    setExactAndAllowWhileIdle(), so a suhoor alarm is not silently
+            //    deferred by a few minutes every night;
+            //  - it pins a real alarm in the system UI (status-bar clock icon,
+            //    "next alarm" in Quick Settings and Digital Wellbeing), which is
+            //    how a user checks that the alarm is actually armed;
+            //  - it is the alarm type that aggressive OEM power managers
+            //    (Samsung sleeping apps, Xiaomi, Tecno/Infinix, Oppo) do not
+            //    quietly drop;
+            //  - it grants the "an exact alarm fired" exemption that lets the
+            //    receiver start a foreground service from the background on
+            //    Android 12+.
+            //
+            // When exact alarms are not permitted, or the platform refuses the
+            // call, we still schedule something: an alarm that fires a little
+            // late is far better than no alarm at all.
+            var scheduled = false
+            var mode = "inexact"
+
+            if (exactAllowed && scheduleAlarmClock(triggerTime, pendingIntent)) {
+                scheduled = true
+                mode = "alarmClock"
+            } else if (exactAllowed) {
+                Log.w(TAG, "setAlarmClock refused — falling back to setExactAndAllowWhileIdle")
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        alarmManager.setExactAndAllowWhileIdle(
+                            AlarmManager.RTC_WAKEUP,
+                            triggerTime,
+                            pendingIntent
+                        )
+                    } else {
+                        alarmManager.setExact(
+                            AlarmManager.RTC_WAKEUP,
+                            triggerTime,
+                            pendingIntent
+                        )
+                    }
+                    scheduled = true
+                    mode = "exact-and-allow-while-idle"
+                } catch (e: Exception) {
+                    Log.e(TAG, "setExactAndAllowWhileIdle failed: ${e.message}")
+                }
+            }
+
+            if (!scheduled) {
+                // Exact alarms are not allowed (or every exact API was refused):
+                // inexact, but still Doze-proof.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    alarmManager.setAndAllowWhileIdle(
                         AlarmManager.RTC_WAKEUP,
                         triggerTime,
                         pendingIntent
@@ -117,22 +163,9 @@ class AlarmManagerModule(private val context: Context) {
                         pendingIntent
                     )
                 }
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                alarmManager.setAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerTime,
-                    pendingIntent
-                )
-            } else {
-                alarmManager.set(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerTime,
-                    pendingIntent
-                )
             }
 
-
-            Log.d(TAG, "Alarm scheduled: $alarmId at ${Date(triggerTime)}")
+            Log.d(TAG, "Alarm scheduled ($mode): $alarmId at ${Date(triggerTime)}")
             return true
 
         } catch (e: Exception) {
@@ -278,6 +311,51 @@ class AlarmManagerModule(private val context: Context) {
     }
 
     // Private helper methods
+
+    /**
+     * Hands the alarm to [AlarmManager.setAlarmClock].
+     *
+     * Returns false instead of throwing so the caller can fall back: the exact
+     * alarm permission can be revoked between the canScheduleExactAlarms()
+     * check above and this call, and some OEM builds refuse setAlarmClock()
+     * outright when the "Alarms & reminders" toggle is off.
+     */
+    private fun scheduleAlarmClock(triggerTime: Long, operation: PendingIntent): Boolean {
+        return try {
+            alarmManager.setAlarmClock(
+                // AlarmClockInfo is a nested class of AlarmManager, not a
+                // top-level android.app type.
+                AlarmManager.AlarmClockInfo(triggerTime, buildShowPendingIntent()),
+                operation
+            )
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "setAlarmClock failed: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * What the system shows when the user taps the alarm icon (the "next alarm"
+     * entry in Quick Settings / the status bar). Opening the app is the only
+     * useful target, so this never needs to know which alarm it belongs to.
+     *
+     * AlarmClockInfo requires a non-null show intent, and on API 34+ it has to
+     * be an activity PendingIntent, so this must not be changed to a broadcast.
+     */
+    private fun buildShowPendingIntent(): PendingIntent {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        } else {
+            PendingIntent.FLAG_UPDATE_CURRENT
+        }
+        return PendingIntent.getActivity(context, SHOW_INTENT_REQUEST_CODE, intent, flags)
+    }
 
     private fun saveAlarm(alarm: AlarmData) {
         val alarms = getAllAlarms().toMutableList()
