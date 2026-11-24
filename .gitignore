@@ -58,3 +58,12 @@ suhoor-backend/*
 android/app/keystore.properties
 android/app/suhoor-release.keystore
 crash_log.txt
+
+# Signing material / device logs that were tracked by mistake. Untracked on the
+# fix/alarm-reliability branch; the files stay on disk locally.
+# NOTE: android/app/debug.keystore is intentionally still tracked — it is the
+# public Android debug keystore from the React Native template, not a secret.
+android/suhoor-release.keystore
+android/upload_certificate.pem
+android/logs.txt
+full_device_logs.txt
