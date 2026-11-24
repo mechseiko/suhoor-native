@@ -921,6 +921,185 @@ const BatteryOptimizationStep = ({ onStatusChange }) => {
   );
 };
 
+const OverlayPermissionStep = ({ onStatusChange }) => {
+  const { t } = useLanguage();
+  const [granted, setGranted] = useState(false);
+
+  const checkStatus = async () => {
+    if (Platform.OS !== "android") {
+      setGranted(true);
+      onStatusChange?.(true);
+      return;
+    }
+
+    try {
+      if (NativeModules?.AlarmBridge?.canDrawOverlays) {
+        const value = await NativeModules.AlarmBridge.canDrawOverlays();
+        setGranted(value === true);
+      } else {
+        setGranted(false);
+      }
+    } catch (error) {
+      setGranted(false);
+    }
+    // Optional step: the alarm still rings without it, so never block the flow.
+    onStatusChange?.(true);
+  };
+
+  useEffect(() => {
+    checkStatus();
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") checkStatus();
+    });
+    return () => sub.remove();
+  }, []);
+
+  const handleAction = async () => {
+    try {
+      if (NativeModules?.AlarmBridge?.openOverlaySettings) {
+        await NativeModules.AlarmBridge.openOverlaySettings();
+        return;
+      }
+      await Linking.sendIntent("android.settings.action.MANAGE_OVERLAY_PERMISSION");
+    } catch (e) {
+      Linking.openSettings().catch(() => {});
+    }
+  };
+
+  return (
+    <View
+      style={{
+        flex: 1,
+        width: "100%",
+        justifyContent: "center",
+        alignItems: "center",
+        paddingHorizontal: 12,
+      }}
+    >
+      <View
+        style={{
+          width: 76,
+          height: 76,
+          borderRadius: 38,
+          backgroundColor: "rgba(21, 12, 51, 0.07)",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: 20,
+        }}
+      >
+        <Ionicons name="albums-outline" size={36} color={brand.primary} />
+      </View>
+
+      <Text variant="hero" style={{ textAlign: "center", marginBottom: 10 }}>
+        <Text
+          variant="inherit"
+          style={{ color: brand.primary, fontWeight: "800" }}
+        >
+          {t("onboarding.overlayHeader", "Alarm over")}{" "}
+        </Text>
+        <Text
+          variant="inherit"
+          style={{ color: brand.secondary, fontWeight: "800" }}
+        >
+          {t("onboarding.overlayHeaderAccent", "other apps")}
+        </Text>
+      </Text>
+
+      <Text
+        variant="body"
+        tone="secondary"
+        style={{
+          textAlign: "center",
+          maxWidth: 320,
+          lineHeight: 21,
+          fontSize: 13,
+          marginBottom: 24,
+        }}
+      >
+        {t(
+          "onboarding.overlayDesc",
+          "Android only lets an app take over the screen over another app when " +
+            "this is allowed. Without it your Suhoor alarm still rings, but it " +
+            "can only appear as a notification while you are using your phone."
+        )}
+      </Text>
+
+      {/* Status Pill */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: 14,
+          paddingVertical: 8,
+          borderRadius: 20,
+          backgroundColor: granted ? "#ECFDF5" : "#FFFBEB",
+          borderWidth: 1,
+          borderColor: granted ? "#10B981" : "#FCD34D",
+          marginBottom: 26,
+        }}
+      >
+        <Ionicons
+          name={granted ? "checkmark-circle" : "alert-circle-outline"}
+          size={16}
+          color={granted ? "#059669" : "#D97706"}
+          style={{ marginRight: 6 }}
+        />
+        <Text
+          style={{
+            fontSize: 12,
+            fontWeight: "700",
+            color: granted ? "#065F46" : "#B45309",
+            fontFamily: "SpaceGrotesk-Bold",
+          }}
+        >
+          {granted
+            ? t("onboarding.overlayGranted", "Display over other apps is allowed")
+            : t(
+                "onboarding.overlayNotGranted",
+                "Display over other apps is not allowed"
+              )}
+        </Text>
+      </View>
+
+      {/* Action Button */}
+      {!granted && (
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={handleAction}
+          style={{
+            width: "100%",
+            backgroundColor: brand.primary,
+            paddingVertical: 15,
+            borderRadius: 10,
+            alignItems: "center",
+            justifyContent: "center",
+            flexDirection: "row",
+            columnGap: 8,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.08,
+            shadowRadius: 4,
+            elevation: 2,
+          }}
+        >
+          <Ionicons name="open-outline" size={18} color="#FFFFFF" />
+          <Text
+            style={{
+              color: "#FFFFFF",
+              fontSize: 13,
+              fontWeight: "800",
+              letterSpacing: 0.8,
+              fontFamily: "SpaceGrotesk-Bold",
+            }}
+          >
+            {t("onboarding.allowOverlay", "ALLOW OVER OTHER APPS")}
+          </Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+};
+
 const STEPS = [
   {
     id: 1,
@@ -958,6 +1137,10 @@ const STEPS = [
   {
     id: 7,
     isBattery: true,
+  },
+  {
+    id: 10,
+    isOverlay: true,
   },
   {
     id: 8,
@@ -1492,6 +1675,15 @@ export const OnboardingScreen = ({ onComplete }) => {
               setRequirements((currentState) => ({
                 ...currentState,
                 battery: value,
+              }))
+            }
+          />
+        ) : current.isOverlay ? (
+          <OverlayPermissionStep
+            onStatusChange={(value) =>
+              setRequirements((currentState) => ({
+                ...currentState,
+                overlay: value,
               }))
             }
           />

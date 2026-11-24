@@ -18,6 +18,8 @@ export function useNativeAlarm() {
       cancelAllAlarms: async () => false,
       canScheduleExactAlarms: async () => true,
       canUseFullScreenIntent: async () => true,
+      canDrawOverlays: async () => true,
+      openOverlaySettings: async () => false,
       openFullScreenIntentSettings: async () => false,
       openExactAlarmSettings: async () => false,
       getFcmToken: async () => null,
@@ -42,6 +44,8 @@ export function useNativeAlarm() {
       cancelAllAlarms: async () => false,
       canScheduleExactAlarms: async () => false,
       canUseFullScreenIntent: async () => true,
+      canDrawOverlays: async () => true,
+      openOverlaySettings: async () => false,
       openFullScreenIntentSettings: async () => false,
       openExactAlarmSettings: async () => false,
       getFcmToken: async () => null,
@@ -204,6 +208,33 @@ export function useNativeAlarm() {
     }
   }
 
+  /**
+   * Android 10+: is the app allowed to start the alarm screen over another
+   * app? Without "Display over other apps" the OS blocks the direct launch and
+   * only the notification's full-screen intent can surface the alarm.
+   */
+  const canDrawOverlays = async () => {
+    try {
+      if (!AlarmBridge.canDrawOverlays) return true
+      return await AlarmBridge.canDrawOverlays()
+    } catch (error) {
+      console.error('Error checking overlay permission:', error)
+      return false
+    }
+  }
+
+  const openOverlaySettings = async () => {
+    try {
+      if (AlarmBridge.openOverlaySettings) {
+        return await AlarmBridge.openOverlaySettings()
+      }
+      return false
+    } catch (error) {
+      console.error('Error opening overlay settings:', error)
+      return false
+    }
+  }
+
   const openFullScreenIntentSettings = async () => {
     try {
       if (AlarmBridge.openFullScreenIntentSettings) {
@@ -269,6 +300,8 @@ export function useNativeAlarm() {
     cancelAllAlarms,
     canScheduleExactAlarms,
     canUseFullScreenIntent,
+    canDrawOverlays,
+    openOverlaySettings,
     openFullScreenIntentSettings,
     openExactAlarmSettings,
     getFcmToken,

@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.provider.Settings
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -24,6 +25,17 @@ class AlarmReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context, intent: Intent) {
+        // Nothing may escape onReceive: an exception here is an app crash at the
+        // exact moment the user is meant to be woken up, and it happens whether
+        // or not the process was already running.
+        try {
+            handleAlarm(context, intent)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Unhandled error while delivering the alarm", e)
+        }
+    }
+
+    private fun handleAlarm(context: Context, intent: Intent) {
         Log.d(TAG, "Alarm received")
 
         val alarmId = intent.getStringExtra("alarm_id")
@@ -196,24 +208,64 @@ class AlarmReceiver : BroadcastReceiver() {
     }
 
     /**
-     * Launch the full-screen alarm activity
+     * Launch the full-screen alarm activity directly.
+     *
+     * Since Android 10 a background app — and a BroadcastReceiver is always in
+     * the background — cannot start an activity. The documented exemptions are
+     * "Display over other apps" and, for API 34+, a foreground service of ours
+     * that is already visible. Rather than firing a start that the platform
+     * silently drops ("Background activity launch blocked" in logcat), this
+     * checks first and leaves the notification's full-screen intent to do the
+     * job. That intent is the sanctioned path and is what actually covers the
+     * lock screen.
      */
     private fun launchAlarmActivity(context: Context, alarmData: AlarmData) {
-        val gson = Gson()
-        val alarmDataJson = gson.toJson(alarmData)
-        
-        val intent = Intent(context, AlarmActivity::class.java).apply {
-            putExtra("alarm_id", alarmData.id)
-            putExtra("alarm_data", alarmDataJson)
-            // No CLEAR_TASK: it tore down the React Native task as a side effect.
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        if (!canStartActivityFromBackground(context)) {
+            Log.d(TAG, "Direct launch skipped — relying on the full-screen intent")
+            return
         }
 
-        // Add flags to wake device and show on lock screen
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            intent.addFlags(Intent.FLAG_ACTIVITY_NO_USER_ACTION)
-        }
+        try {
+            val gson = Gson()
+            val alarmDataJson = gson.toJson(alarmData)
 
-        context.startActivity(intent)
+            val intent = Intent(context, AlarmActivity::class.java).apply {
+                putExtra("alarm_id", alarmData.id)
+                putExtra("alarm_data", alarmDataJson)
+                // No CLEAR_TASK: it tore down the React Native task as a side effect.
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+
+            // Add flags to wake device and show on lock screen
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NO_USER_ACTION)
+            }
+
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            // ActivityNotFoundException, SecurityException, or a vendor build
+            // that throws instead of logging a blocked start. The alarm must
+            // keep ringing, so this never propagates.
+            Log.w(TAG, "Direct launch refused — relying on the full-screen intent", e)
+        }
+    }
+
+    /**
+     * Whether this process may start an activity from the background.
+     *
+     * Before Android 10 there is no restriction. From Android 10 the only
+     * exemption available to a receiver without a visible window is the
+     * "Display over other apps" permission (SYSTEM_ALERT_WINDOW). Android 15
+     * additionally requires the overlay window to be visible, which is why
+     * this stays best-effort and the full-screen intent remains the fallback.
+     */
+    private fun canStartActivityFromBackground(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return true
+        return try {
+            Settings.canDrawOverlays(context)
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not read overlay permission", e)
+            false
+        }
     }
 }
