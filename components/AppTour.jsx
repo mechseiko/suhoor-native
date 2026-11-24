@@ -370,20 +370,34 @@ export const AppTour = ({ children, tabBarRef }) => {
             style={[styles.shade, { right: 0, top: holeT, height: holeH, left: Animated.add(holeL, holeW) }]}
           />
 
-          {/* Spotlight ring with a continuous pulse */}
+          {/* Spotlight ring with a continuous pulse.
+              The geometry is driven by the JS thread (useNativeDriver: false)
+              and the pulse opacity by the native driver, so they have to live
+              on two separate views. Mixing a native-driven opacity with
+              width/height/left/top on one view throws
+              "Style property 'height' is not supported by native animated
+              module" while the native animation starts, which crashed the app
+              right after launch. */}
           <Animated.View
+            pointerEvents="none"
             style={{
               position: 'absolute',
               left: holeL,
               top: holeT,
               width: holeW,
               height: holeH,
-              borderRadius: 999,
-              borderWidth: 2.5,
-              borderColor: colors.primary,
-              opacity: ringPulse,
             }}
-          />
+          >
+            <Animated.View
+              style={{
+                flex: 1,
+                borderRadius: 999,
+                borderWidth: 2.5,
+                borderColor: colors.primary,
+                opacity: ringPulse,
+              }}
+            />
+          </Animated.View>
 
           <TouchableOpacity
             style={[styles.skipBtn, { top: insets.top + 10 }]}
