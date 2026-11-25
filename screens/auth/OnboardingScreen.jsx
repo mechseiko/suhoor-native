@@ -936,19 +936,16 @@ const OverlayPermissionStep = ({ onStatusChange }) => {
       if (NativeModules?.AlarmBridge?.canDrawOverlays) {
         const value = await NativeModules.AlarmBridge.canDrawOverlays();
         setGranted(value === true);
-        // Required step: without it Android blocks the alarm screen over other
-        // apps, which is the whole point of the permission. (On Android 9 and
-        // below the native check returns true, so this step is self-satisfied
-        // there — the restriction only exists from Android 10.)
-        onStatusChange?.(value === true);
       } else {
         setGranted(false);
-        onStatusChange?.(false);
       }
     } catch (error) {
       setGranted(false);
-      onStatusChange?.(false);
     }
+    // Optional step, like battery optimisation: the alarm still rings without
+    // it, so it must never block the flow. The Home reliability card keeps
+    // surfacing it after onboarding for anyone who skips it.
+    onStatusChange?.(true);
   };
 
   useEffect(() => {
@@ -1531,14 +1528,8 @@ export const OnboardingScreen = ({ onComplete }) => {
       setRequirementError(t("onboarding.notificationError"));
       return;
     }
-    // "Display over other apps" is required for the same reason notifications
-    // are: without it Android will not let the alarm screen appear while the
-    // user is in another app, so the alarm rings with nothing to dismiss.
-    if (current.isOverlay && !requirements.overlay) {
-      setRequirementError(t("onboarding.overlayError"));
-      return;
-    }
-    // Location and battery optimization are now optional - remove mandatory checks
+    // Location, battery optimisation and "Display over other apps" are
+    // optional: they improve reliability but must not gate signup.
     setRequirementError("");
 
 
