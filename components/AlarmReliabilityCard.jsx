@@ -37,6 +37,7 @@ const ISSUE_ICONS = {
   exact: 'alarm-outline',
   fullscreen: 'expand-outline',
   notifications: 'notifications-off-outline',
+  overlay: 'albums-outline',
 };
 
 export const AlarmReliabilityCard = () => {
@@ -81,6 +82,13 @@ export const AlarmReliabilityCard = () => {
       if (bridge.canUseFullScreenIntent) {
         const fsi = await bridge.canUseFullScreenIntent();
         if (fsi === false) found.push('fullscreen');
+      }
+    } catch (e) {}
+
+    try {
+      if (bridge.canDrawOverlays) {
+        const overlays = await bridge.canDrawOverlays();
+        if (overlays === false) found.push('overlay');
       }
     } catch (e) {}
 
@@ -137,6 +145,8 @@ export const AlarmReliabilityCard = () => {
         await bridge.openExactAlarmSettings();
       } else if (issue === 'fullscreen' && bridge.openFullScreenIntentSettings) {
         await bridge.openFullScreenIntentSettings();
+      } else if (issue === 'overlay' && bridge.openOverlaySettings) {
+        await bridge.openOverlaySettings();
       }
     } catch (e) {
       console.warn('Could not open alarm settings:', e);

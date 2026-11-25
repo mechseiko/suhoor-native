@@ -221,6 +221,13 @@ export const scheduleNotification = async ({
   channel = CHANNELS.wakeUp,
   data = {},
   soundName = 'default',
+  // Optional delivery behaviour. Defaults keep the old "post and forget" style.
+  // `ongoing` makes the notification non-dismissable by swiping, `autoCancel`
+  // controls whether tapping it clears it, and `timeoutAfter` (ms) makes it
+  // vanish on its own — useful when a follow-up is scheduled to replace it.
+  ongoing = false,
+  autoCancel = true,
+  timeoutAfter = null,
 }) => {
   const Push = getModule()
   if (!Push) return null
@@ -246,6 +253,9 @@ export const scheduleNotification = async ({
       priority: 'max',
       visibility: 'public',
       ignoreInForeground: false,
+      ongoing,
+      autoCancel,
+      timeoutAfter,
       // Full-screen intent: pops the alarm over the lock screen (requires
       // USE_FULL_SCREEN_INTENT permission in AndroidManifest.xml)
       fullScreenIntent: true,

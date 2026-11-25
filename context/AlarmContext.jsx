@@ -16,6 +16,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { useFastingTimes } from '../hooks/useFastingTimes';
 import { useNativeAlarm } from '../hooks/useNativeAlarm';
 import { getAlarmSoundResourceName } from '../utils/soundGenerator';
+import { getTargetFastingDate } from '../utils/fastingUtils';
 import { DAILY_ALARM_ID, ALARM_STORAGE } from '../constants/alarm';
 
 const ALARM_TYPES = new Set(['wake_up_alarm']);
@@ -35,7 +36,7 @@ export const AlarmProvider = ({ children }) => {
   const { currentUser, userProfile } = useAuth();
   const { on, off } = useSocket();
   const { t } = useLanguage();
-  const { todayData } = useFastingTimes();
+  const { todayData, getWakeStart, wakeMinutes } = useFastingTimes();
   const { triggerRemoteBuzz, scheduleAlarm: scheduleNativeAlarm, consumeAlarmTrigger, clearAlarmTrigger } = useNativeAlarm();
 
   // The alarm UI must survive a foreground transition. This used to reset
@@ -395,14 +396,23 @@ export const AlarmProvider = ({ children }) => {
    * "alarm set" with nothing scheduled, and the user only found out at suhoor.
    *
    * Idempotent by construction:
-   *  - runs once per app session;
+   *  - runs once per app session, and only when nothing is armed;
    *  - does nothing when AlarmManager still holds the alarm. It asks the native
    *    side (isAlarmArmed), not the persisted list, which still reports "set"
    *    after a force-stop cleared the real alarm;
-   *  - does nothing when no alarm time is stored — which is also how "the user
-   *    turned the alarm off" is represented;
-   *  - re-arms the stored wall-clock time, not the stored instant, so it lands
-   *    on the next occurrence and can never arm something in the past.
+   *  - never arms against the user's wishes: an explicit "No" for the target day
+   *    short-circuits every path below;
+   *  - arms the next occurrence of the wake start, so it can never arm
+   *    something in the past.
+   *
+   * Two sources, in order of freshness:
+   *  1. the locally stored alarm time (cheap, works offline);
+   *  2. the fasting intention for the target day — local cache first, then the
+   *     Firestore document. This is what survives an app reinstall: the device
+   *     copy is gone but the account still says "wantsToFast: true", so signing
+   *     in on a fresh install re-arms the alarm the user already committed to.
+   *     Without it, a reinstall installed after the prompt had passed left the
+   *     user with no alarm at all and no prompt left to answer.
    *
    * Declared after scheduleDailySuhoorAlarm on purpose: reading that const in a
    * dependency array above its declaration would hit the temporal dead zone.
@@ -410,7 +420,6 @@ export const AlarmProvider = ({ children }) => {
   const selfHealDoneRef = useRef(false);
   useEffect(() => {
     if (!currentUser || selfHealDoneRef.current) return;
-    selfHealDoneRef.current = true;
 
     const heal = async () => {
       if (Platform.OS !== 'android') return;
@@ -421,30 +430,72 @@ export const AlarmProvider = ({ children }) => {
         const armed = bridge.isAlarmArmed
           ? await bridge.isAlarmArmed(DAILY_ALARM_ID)
           : await bridge.isAlarmScheduled?.(DAILY_ALARM_ID);
-        if (armed) return;
-
-        const storedTime = await AsyncStorage.getItem(ALARM_STORAGE.alarmTime);
-        if (!storedTime) return;
-
-        const stored = new Date(storedTime);
-        if (Number.isNaN(stored.getTime())) return;
-
-        const next = new Date();
-        next.setHours(stored.getHours(), stored.getMinutes(), 0, 0);
-        if (next.getTime() <= Date.now()) {
-          next.setDate(next.getDate() + 1);
+        if (armed) {
+          selfHealDoneRef.current = true;
+          return;
         }
-        if (next.getTime() <= Date.now()) return;
 
-        console.log('⏰ Self-heal: re-arming the Suhoor alarm for', next.toISOString());
-        await scheduleDailySuhoorAlarm(next);
+        // (1) The alarm time we last stored for this user.
+        const storedTime = await AsyncStorage.getItem(ALARM_STORAGE.alarmTime);
+        if (storedTime) {
+          const stored = new Date(storedTime);
+          if (!Number.isNaN(stored.getTime())) {
+            const next = new Date();
+            next.setHours(stored.getHours(), stored.getMinutes(), 0, 0);
+            if (next.getTime() <= Date.now()) {
+              next.setDate(next.getDate() + 1);
+            }
+            if (next.getTime() > Date.now()) {
+              console.log('⏰ Self-heal: re-arming the stored Suhoor alarm for', next.toISOString());
+              selfHealDoneRef.current = true;
+              await scheduleDailySuhoorAlarm(next);
+              return;
+            }
+          }
+        }
+
+        // (2) The intention for the target day, if its wake start is still ahead.
+        const targetKey = getTargetFastingDate()?.toLocaleDateString('en-CA');
+        if (!targetKey) return;
+        const wakeStart = getWakeStart(targetKey, wakeMinutes);
+        if (!wakeStart || wakeStart.getTime() <= Date.now()) return;
+
+        const cachedIntent = await AsyncStorage.getItem(`suhoor_intent_${targetKey}`);
+        if (cachedIntent === 'no') {
+          selfHealDoneRef.current = true;
+          return;
+        }
+
+        let wantsToFast = cachedIntent === 'yes';
+        if (!wantsToFast) {
+          try {
+            const snap = await getDoc(
+              doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${targetKey}`)
+            );
+            wantsToFast = snap.exists() && snap.data()?.wantsToFast === true;
+          } catch (e) {
+            // Offline: fall through with whatever the cache said.
+          }
+        }
+
+        if (!wantsToFast) return;
+
+        selfHealDoneRef.current = true;
+        console.log('⏰ Self-heal: re-arming from the fasting intention for', targetKey);
+        await scheduleDailySuhoorAlarm(wakeStart);
       } catch (e) {
         console.warn('Could not self-heal the alarm:', e);
       }
     };
 
     heal();
-  }, [currentUser, scheduleDailySuhoorAlarm]);
+  }, [
+    currentUser,
+    todayData,
+    scheduleDailySuhoorAlarm,
+    getWakeStart,
+    wakeMinutes,
+  ]);
 
   const cancelDailySuhoorAlarm = useCallback(async () => {
     try {
@@ -582,13 +633,23 @@ export const AlarmProvider = ({ children }) => {
         wakeUpDate.setHours(sahurH, sahurM - userMinutesBefore, 0, 0);
 
         if (wakeUpDate > now) {
-          // Schedule notification at the beginning of wake-up window
+          // Two reminders, and they must be readable later: an overnight user
+          // may not look at the phone for a while, and a notification that
+          // quietly vanishes is useless.
+          //
+          // #1 fires at the start of the window and stays for 10 minutes
+          // (timeoutAfter), so #2 replaces it instead of stacking.
+          // #2 fires 10 minutes in and is `ongoing`: it cannot be swiped away
+          // and stays until the user taps it or checks in (see the
+          // check-in cleanup effect below).
           await scheduleNotification({
             semanticId: 'suhoor-wakeup-start',
             date: wakeUpDate,
             title: t('notifications.wakeUpWindowStartTitle', '⏰ Wake-Up Window Started'),
             message: t('notifications.wakeUpWindowStartMessage', "Don't forget to check in! Your wake-up window has begun."),
             channel: CHANNELS.wakeUp,
+            autoCancel: true,
+            timeoutAfter: 10 * 60 * 1000,
           });
 
           // Schedule another reminder 10 minutes into the window
@@ -600,6 +661,8 @@ export const AlarmProvider = ({ children }) => {
               title: t('notifications.checkInReminderTitle', '⏰ Time to Check In'),
               message: t('notifications.checkInReminderMessage', "Don't forget to check in on the Groups tab to let your group know you're awake!"),
               channel: CHANNELS.wakeUp,
+              ongoing: true,
+              autoCancel: true,
             });
           }
 
@@ -613,6 +676,32 @@ export const AlarmProvider = ({ children }) => {
 
     scheduleWakeUpCheckInReminder();
   }, [currentUser, userProfile, todayData, t]);
+
+  // Clear the wake-up reminders once the user has actually checked in.
+  //
+  // The second reminder is `ongoing` (it must not vanish before it is read), so
+  // something has to take it away afterwards. Check-in is the signal, and it can
+  // happen from the Groups tab or from the alarm PIN screen, so this re-runs on
+  // every foreground transition rather than trying to cover every call site.
+  useEffect(() => {
+    const clearIfCheckedIn = async () => {
+      try {
+        const todayStr = new Date().toLocaleDateString('en-CA');
+        const checkedIn = await AsyncStorage.getItem(`suhoor_checked_in_${todayStr}`);
+        if (checkedIn !== 'true') return;
+        await cancelNotification('suhoor-checkin-reminder');
+        await cancelNotification('suhoor-wakeup-start');
+      } catch (e) {
+        // Never let cleanup noise break the app.
+      }
+    };
+
+    clearIfCheckedIn();
+    const subscription = AppState.addEventListener('change', (next) => {
+      if (next === 'active') clearIfCheckedIn();
+    });
+    return () => subscription?.remove();
+  }, [currentUser, isAlarmActive]);
 
   return (
     <AlarmContext.Provider

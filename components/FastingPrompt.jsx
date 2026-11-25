@@ -220,7 +220,20 @@ export const FastingPrompt = () => {
       await AsyncStorage.setItem(`suhoor_intent_${targetKey}`, 'yes');
 
       // Schedule for the TARGET day's wakeStart — never today's suhoor.
-      const alarmTime = getWakeStart(targetKey, wakeMinutes);
+      //
+      // If the target day's window has already started, answering the prompt
+      // used to leave the user with no alarm at all, silently. Roll forward to
+      // the next day's wake start instead: saying "yes I intend to fast" should
+      // always leave a real alarm behind.
+      let alarmTime = getWakeStart(targetKey, wakeMinutes);
+      if (alarmTime && alarmTime.getTime() <= Date.now()) {
+        const nextDay = new Date(`${targetKey}T00:00:00`);
+        nextDay.setDate(nextDay.getDate() + 1);
+        const nextAlarm = getWakeStart(nextDay.toLocaleDateString('en-CA'), wakeMinutes);
+        if (nextAlarm && nextAlarm.getTime() > Date.now()) {
+          alarmTime = nextAlarm;
+        }
+      }
       if (alarmTime && scheduleDailySuhoorAlarm && alarmTime.getTime() > Date.now()) {
         await scheduleDailySuhoorAlarm(alarmTime, t('fasting.suhoorAlarmLabel'));
       }

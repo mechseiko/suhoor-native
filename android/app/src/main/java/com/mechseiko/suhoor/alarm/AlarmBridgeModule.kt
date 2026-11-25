@@ -450,17 +450,18 @@ class AlarmBridgeModule(reactContext: ReactApplicationContext) : ReactContextBas
     }
 
     /**
-     * Android 10 (API 29) blocks background activity starts. Holding
-     * "Display over other apps" (SYSTEM_ALERT_WINDOW) is the documented
-     * exemption, and it is the only permission that lets the alarm screen
-     * appear over another app's UI. Declaring it in the manifest is not enough:
-     * since API 23 it is an app-op that the user has to switch on.
+     * Is "Display over other apps" available for launching the alarm screen?
+     *
+     * Android 10 (API 29) is where background activity starts were restricted,
+     * so below it the permission buys nothing and the check reports true — the
+     * onboarding step that requires it must not force a pointless permission on
+     * Android 7-9. From 10 up it is a real app-op the user has to switch on.
      */
     @ReactMethod
     fun canDrawOverlays(promise: Promise) {
         try {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-                promise.resolve(true) // granted at install time below API 23
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                promise.resolve(true) // no background-activity-start restriction yet
                 return
             }
             promise.resolve(Settings.canDrawOverlays(reactApplicationContext))
