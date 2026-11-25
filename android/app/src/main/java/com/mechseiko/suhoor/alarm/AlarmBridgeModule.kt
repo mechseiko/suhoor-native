@@ -160,6 +160,23 @@ class AlarmBridgeModule(reactContext: ReactApplicationContext) : ReactContextBas
     }
 
     /**
+     * Is AlarmManager still holding this alarm?
+     *
+     * Different from [isAlarmScheduled], which only checks the persisted list:
+     * that list survives a force-stop or an OEM cleanup, so it reports "armed"
+     * for an alarm the system already dropped. Used by the JS self-heal on app
+     * start.
+     */
+    @ReactMethod
+    fun isAlarmArmed(alarmId: String, promise: Promise) {
+        try {
+            promise.resolve(alarmManagerModule.isAlarmArmed(alarmId))
+        } catch (e: Exception) {
+            promise.reject("ARMED_STATE_ERROR", e.message, e)
+        }
+    }
+
+    /**
      * Get all scheduled alarms
      * @param promise Promise to resolve with list of alarms
      */

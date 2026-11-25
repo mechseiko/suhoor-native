@@ -269,6 +269,34 @@ class AlarmManagerModule(private val context: Context) {
     }
 
     /**
+     * Whether AlarmManager itself still holds this alarm.
+     *
+     * [isAlarmScheduled] only reads SharedPreferences, and those survive events
+     * that wipe AlarmManager (force-stop, an OEM "clean", a revoked exact-alarm
+     * permission, a reboot that the boot receiver missed). In all of those the
+     * UI kept saying "alarm set" while nothing was scheduled. This asks the
+     * system instead: FLAG_NO_CREATE returns null when no matching
+     * PendingIntent exists.
+     */
+    fun isAlarmArmed(alarmId: String): Boolean {
+        return try {
+            val intent = Intent(context, AlarmReceiver::class.java).apply {
+                action = "com.mechseiko.suhoor.ALARM_TRIGGER"
+                putExtra("alarm_id", alarmId)
+            }
+            val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+            } else {
+                PendingIntent.FLAG_NO_CREATE
+            }
+            PendingIntent.getBroadcast(context, alarmId.hashCode(), intent, flags) != null
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not read the armed state of $alarmId: ${e.message}")
+            false
+        }
+    }
+
+    /**
      * Get all scheduled alarms
      * @return List of all alarm data
      */

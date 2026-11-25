@@ -226,6 +226,11 @@ export const AlarmProvider = ({ children }) => {
     return unsubscribe;
   }, [currentUser]);
 
+  // NOTE: the cold-start self-heal lives further down, after
+  // scheduleDailySuhoorAlarm is declared. It has to: referencing that useCallback
+  // from a dependency array up here would read the const while it is still in
+  // its temporal dead zone and throw at render.
+
   // Foreground heartbeat: if scheduled alarm time arrives while app is open, activate alarm immediately
   useEffect(() => {
     if (!scheduledAlarmTime || isAlarmActive) return;
@@ -379,6 +384,67 @@ export const AlarmProvider = ({ children }) => {
     },
     [currentUser, userProfile]
   );
+
+  /**
+   * Cold-start self-heal: re-arm the alarm the user set, on every app open.
+   *
+   * Nothing repaired the alarm on a normal launch. It was armed only by an
+   * explicit action (the fasting prompt, saving the wake-up offset) or by the
+   * native re-arm chain, so any break in that chain — a force-stop, an OEM
+   * "deep sleep" clean, a revoked exact-alarm permission — left the app showing
+   * "alarm set" with nothing scheduled, and the user only found out at suhoor.
+   *
+   * Idempotent by construction:
+   *  - runs once per app session;
+   *  - does nothing when AlarmManager still holds the alarm. It asks the native
+   *    side (isAlarmArmed), not the persisted list, which still reports "set"
+   *    after a force-stop cleared the real alarm;
+   *  - does nothing when no alarm time is stored — which is also how "the user
+   *    turned the alarm off" is represented;
+   *  - re-arms the stored wall-clock time, not the stored instant, so it lands
+   *    on the next occurrence and can never arm something in the past.
+   *
+   * Declared after scheduleDailySuhoorAlarm on purpose: reading that const in a
+   * dependency array above its declaration would hit the temporal dead zone.
+   */
+  const selfHealDoneRef = useRef(false);
+  useEffect(() => {
+    if (!currentUser || selfHealDoneRef.current) return;
+    selfHealDoneRef.current = true;
+
+    const heal = async () => {
+      if (Platform.OS !== 'android') return;
+      const bridge = NativeModules?.AlarmBridge;
+      if (!bridge?.scheduleAlarm) return;
+
+      try {
+        const armed = bridge.isAlarmArmed
+          ? await bridge.isAlarmArmed(DAILY_ALARM_ID)
+          : await bridge.isAlarmScheduled?.(DAILY_ALARM_ID);
+        if (armed) return;
+
+        const storedTime = await AsyncStorage.getItem(ALARM_STORAGE.alarmTime);
+        if (!storedTime) return;
+
+        const stored = new Date(storedTime);
+        if (Number.isNaN(stored.getTime())) return;
+
+        const next = new Date();
+        next.setHours(stored.getHours(), stored.getMinutes(), 0, 0);
+        if (next.getTime() <= Date.now()) {
+          next.setDate(next.getDate() + 1);
+        }
+        if (next.getTime() <= Date.now()) return;
+
+        console.log('⏰ Self-heal: re-arming the Suhoor alarm for', next.toISOString());
+        await scheduleDailySuhoorAlarm(next);
+      } catch (e) {
+        console.warn('Could not self-heal the alarm:', e);
+      }
+    };
+
+    heal();
+  }, [currentUser, scheduleDailySuhoorAlarm]);
 
   const cancelDailySuhoorAlarm = useCallback(async () => {
     try {

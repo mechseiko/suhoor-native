@@ -14,6 +14,7 @@ export function useNativeAlarm() {
       updateAlarm: async () => false,
       cancelAlarm: async () => false,
       isAlarmScheduled: async () => false,
+      isAlarmArmed: async () => null,
       getAllAlarms: async () => [],
       cancelAllAlarms: async () => false,
       canScheduleExactAlarms: async () => true,
@@ -41,6 +42,7 @@ export function useNativeAlarm() {
       updateAlarm: async () => false,
       cancelAlarm: async () => false,
       isAlarmScheduled: async () => false,
+      isAlarmArmed: async () => null,
       getAllAlarms: async () => [],
       cancelAllAlarms: async () => false,
       canScheduleExactAlarms: async () => false,
@@ -135,6 +137,26 @@ export function useNativeAlarm() {
     } catch (error) {
       console.error('Error checking native alarm status:', error)
       return false
+    }
+  }
+
+  /**
+   * Is AlarmManager still holding this alarm?
+   *
+   * `isAlarmScheduled` only checks the persisted list, which survives a
+   * force-stop or an OEM cleanup, so it can report "armed" for an alarm the
+   * system already dropped. This asks the native side for the real state.
+   *
+   * Resolves null when the method is missing (older APK), so callers can fall
+   * back instead of treating "unknown" as "not armed".
+   */
+  const isAlarmArmed = async (alarmId) => {
+    try {
+      if (!AlarmBridge.isAlarmArmed) return null
+      return await AlarmBridge.isAlarmArmed(alarmId)
+    } catch (error) {
+      console.error('Error checking whether the alarm is armed:', error)
+      return null
     }
   }
 
@@ -312,6 +334,7 @@ export function useNativeAlarm() {
     updateAlarm,
     cancelAlarm,
     isAlarmScheduled,
+    isAlarmArmed,
     getAllAlarms,
     cancelAllAlarms,
     canScheduleExactAlarms,
