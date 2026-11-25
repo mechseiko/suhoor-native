@@ -624,8 +624,12 @@ export const AlarmProvider = ({ children }) => {
         const alreadyScheduled = await AsyncStorage.getItem(scheduledKey);
         if (alreadyScheduled) return;
 
-        // Wake-up window starts at personal wake-up time or 40 mins before suhoor
-        const userMinutesBefore = userProfile?.preferences?.wakeUpMinutesBeforeSuhoor || 40;
+        // The wake-up window starts at the user's own wake-up time — suhoor
+        // minus their preference, and 45 minutes when they have never set one.
+        // This used to hardcode 40, so the "window started" reminder arrived
+        // five minutes AFTER the alarm it was describing. Same source of truth
+        // as the alarm now (useFastingTimes.wakeMinutes).
+        const userMinutesBefore = wakeMinutes;
         const [sahurH, sahurM] = todayData.time.sahur.split(':').map(Number);
         if (isNaN(sahurH) || isNaN(sahurM)) return;
 
