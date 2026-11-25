@@ -94,5 +94,32 @@
         <action android:name="com.google.firebase.MESSAGING_EVENT"/>
       </intent-filter>
     </service>
+
+    <!--
+      react-native-push-notification ships an EMPTY library manifest: these two
+      receivers have to be declared here or nothing it schedules ever fires.
+      Without RNPushNotificationPublisher, AlarmManager holds a PendingIntent to
+      an undeclared component and every localNotificationSchedule() is dropped
+      silently — the library reports success and posts nothing. This is the
+      fallback notification path used when the native alarm engine is
+      unavailable; reminders (iftar, check-in) use it too.
+
+      Deliberately NOT declared: RNPushNotificationListenerService. It also
+      filters com.google.firebase.MESSAGING_EVENT, and SuhoorMessagingService
+      above already handles buzzes natively; a second handler would deliver the
+      same FCM message twice.
+    -->
+    <receiver
+      android:name="com.dieam.reactnativepushnotification.modules.RNPushNotificationPublisher"
+      android:exported="false"/>
+    <receiver
+      android:name="com.dieam.reactnativepushnotification.modules.RNPushNotificationBootEventReceiver"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED"/>
+        <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
+        <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+      </intent-filter>
+    </receiver>
   </application>
 </manifest>

@@ -278,6 +278,7 @@ export const AlarmProvider = ({ children }) => {
         await AsyncStorage.removeItem(`suhoor_alarm_dismissed_${todayStr}`);
 
         // Schedule exact native Android alarm (survives Doze, device sleep, and deep background)
+        let nativeArmed = false;
         if (Platform.OS === 'android' && NativeModules && NativeModules.AlarmBridge && NativeModules.AlarmBridge.scheduleAlarm) {
           try {
             // Native side plays its own raw resource, so pass the resource
@@ -309,6 +310,7 @@ export const AlarmProvider = ({ children }) => {
               nativeSound,
               nativeVolume
             );
+            nativeArmed = ok === true;
             if (ok) {
               console.log('⏰ Native exact alarm scheduled for:', alarmDate.toISOString());
             } else {
@@ -331,21 +333,33 @@ export const AlarmProvider = ({ children }) => {
           soundName = userProfile.preferences.customAlarmAudioUrl;
         }
 
-        const scheduledId = await scheduleNotification({
-          semanticId: DAILY_ALARM_ID,
-          date: alarmDate,
-          title: t('alarm.notificationTitle', '⏰ Suhoor Time!'),
-          message:
-            label ||
-            t('alarm.notificationMessage', 'Wake up for Sahur and your blessed fast. May Allah accept your worship!'),
-          channel: CHANNELS.wakeUp,
-          soundName,
-          data: {
-            userId: currentUser?.uid,
-            type: 'wake_up_alarm',
-            time: alarmDate.toISOString(),
-          },
-        });
+        // Second scheduler, only as a fallback.
+        //
+        // This used to run unconditionally, so the same suhoor was queued twice:
+        // once in AlarmManager (native, full-screen + PIN) and once through
+        // react-native-push-notification. Now that the push-notification path
+        // actually works again (see the receivers in AndroidManifest.xml), both
+        // would fire — two notifications and two rings for one alarm. The
+        // native engine owns the alarm whenever it accepted it; the notification
+        // remains the fallback for builds without AlarmBridge, or when arming
+        // was refused.
+        if (!nativeArmed) {
+          await scheduleNotification({
+            semanticId: DAILY_ALARM_ID,
+            date: alarmDate,
+            title: t('alarm.notificationTitle', '⏰ Suhoor Time!'),
+            message:
+              label ||
+              t('alarm.notificationMessage', 'Wake up for Sahur and your blessed fast. May Allah accept your worship!'),
+            channel: CHANNELS.wakeUp,
+            soundName,
+            data: {
+              userId: currentUser?.uid,
+              type: 'wake_up_alarm',
+              time: alarmDate.toISOString(),
+            },
+          });
+        }
 
         setScheduledAlarmTime(alarmDate);
         // One storage key set, shared with useAlarm.js. The native id has to be
