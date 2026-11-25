@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, View, Image, TouchableOpacity } from 'react-native';
 import { db } from '../config/firebase';
 import { COLLECTIONS } from '../config/firestoreSchema';
-import { doc, setDoc, getDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -22,7 +22,7 @@ import Toast from './Toast';
 import { useAlarmState } from '../context/AlarmContext';
 import { useFastingTimes } from '../hooks/useFastingTimes';
 import { Badge, Button, Card, Text } from './ui';
-import { radius, spacing } from '../theme';
+import { spacing } from '../theme';
 import { scheduleNotification, CHANNELS } from '../services/notifications';
 
 export const FastingPrompt = () => {
@@ -36,7 +36,6 @@ export const FastingPrompt = () => {
 
   const [status, setStatus] = useState('idle');
   const [loading, setLoading] = useState(false);
-  const [currentDayFastingStatus, setCurrentDayFastingStatus] = useState(null);
 
   // ── Proactive-arm state ────────────────────────────────────────────────
   const [statusResolved, setStatusResolved] = useState(false);
@@ -164,64 +163,11 @@ export const FastingPrompt = () => {
     t,
   ]);
 
-  // ── Current day fasting status (for the top banner) ────────────────────
-  // Live listener: the banner must react to the user answering this prompt and
-  // to a check-in from the Groups tab, both of which write this same document.
-  //
-  // Only two states exist: fasting / not_fasting. A record the app wrote for
-  // the user (isAutoDefault) is NOT an intention, so it never raises the banner
-  // — that is what produced "Intention set - fasting pending" for people who
-  // never answered the prompt.
-  useEffect(() => {
-    if (!currentUser) {
-      setCurrentDayFastingStatus(null);
-      return;
-    }
-
-    const statusRef = doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${todayStr}`);
-    const unsub = onSnapshot(
-      statusRef,
-      (snap) => {
-        if (!snap.exists()) {
-          setCurrentDayFastingStatus('not_fasting');
-          return;
-        }
-        const d = snap.data();
-        // One signal decides both states: the check-in. "You are fasting" only
-        // after checking in (which proves the person actually woke up); no
-        // check-in means "You are not fasting", whether or not an intention was
-        // recorded. An intention alone never claims a fast.
-        setCurrentDayFastingStatus(d.checkedIn === true ? 'fasting' : 'not_fasting');
-      },
-      (err) => {
-        console.error('Error listening to current day status:', err);
-        setCurrentDayFastingStatus(null);
-      }
-    );
-
-    return () => unsub();
-  }, [currentUser, todayStr]);
-
-  // ── Banner time-window ────────────────────────────────────────────────
-  // Visible from the end of the wake-up window (suhoor) until the fast breaks
-  // (iftar, i.e. maghrib). The API exposes `sahur` and `iftar` only.
-  const bannerVisible = (() => {
-    const day = getDayData(todayStr);
-    if (!day?.time) return false;
-    const toMins = (s) => {
-      if (!s) return null;
-      const [h, m] = s.split(':').map(Number);
-      if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
-      return h * 60 + m;
-    };
-    const suhoorMins = toMins(day.time.sahur);
-    const breakMins = toMins(day.time.iftar || day.time.maghrib);
-    if (suhoorMins === null || breakMins === null) return false;
-
-    const now = new Date(nowTick);
-    const nowMins = now.getHours() * 60 + now.getMinutes();
-    return nowMins >= suhoorMins && nowMins < breakMins;
-  })();
+  // The "You are fasting / You are not fasting" banner that used to sit above
+  // this card has been removed, together with its Firestore listener and its
+  // time-window calculation. The fasting prompt below is untouched: it is
+  // driven entirely by `status`, `targetKey` and `wakeStart`, none of which
+  // came from that listener.
 
   // ── Auto-record: inside wake window, write default if user never chose ─
   // Only writes the intent; the alarm was either armed explicitly (Yes),
@@ -361,52 +307,6 @@ export const FastingPrompt = () => {
         visible={toastVisible}
         onDismiss={() => setToastVisible(false)}
       />
-
-      {bannerVisible && currentDayFastingStatus && (
-        <View
-          style={[
-            styles.statusBanner,
-            {
-              backgroundColor:
-                currentDayFastingStatus === 'fasting'
-                  ? isDark ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.08)'
-                  : isDark ? 'rgba(107, 114, 128, 0.15)' : 'rgba(107, 114, 128, 0.08)',
-              borderColor:
-                currentDayFastingStatus === 'fasting'
-                  ? isDark ? 'rgba(16, 185, 129, 0.3)' : 'rgba(16, 185, 129, 0.2)'
-                  : isDark ? 'rgba(107, 114, 128, 0.3)' : 'rgba(107, 114, 128, 0.2)',
-            },
-          ]}
-        >
-          <View style={{ flex: 1 }}>
-            <Text
-              variant="h3"
-              style={{
-                fontSize: 13,
-                color:
-                  currentDayFastingStatus === 'fasting'
-                    ? colors.success || '#10B981'
-                    : colors.textSecondary,
-              }}
-            >
-              {currentDayFastingStatus === 'fasting'
-                ? t('fasting.youAreFasting')
-                : t('fasting.youAreNotFasting')}
-            </Text>
-            {currentDayFastingStatus === 'fasting' && (
-              <Text
-                style={{
-                  fontSize: 12,
-                  color: isDark ? '#A7F3D0' : '#047857',
-                  marginTop: 1,
-                }}
-              >
-                {t('fasting.mayAllahAccept')}
-              </Text>
-            )}
-          </View>
-        </View>
-      )}
 
       {status === 'idle' && (
         <Card
@@ -604,15 +504,6 @@ export const FastingPrompt = () => {
 };
 
 const styles = StyleSheet.create({
-  statusBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    gap: spacing.sm,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
