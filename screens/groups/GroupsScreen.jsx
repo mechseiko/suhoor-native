@@ -759,13 +759,14 @@ export const GroupsScreen = ({ navigation, route }) => {
         </View>
       </View>
 
-      {/* ONE Check-in Banner */}
+      {/* ONE Check-in Banner — one full-width button, not a button inside a pill */}
       {isCheckInOpen && wantsToFast && !hasCheckedInToday && (
-        <View style={[styles.checkInBanner, { backgroundColor: colors.primary }]}>
+        <View style={styles.checkInBannerWrap}>
           <TouchableOpacity
-            style={styles.checkInBtn}
+            style={[styles.checkInBtn, { backgroundColor: colors.primary }]}
             onPress={openPinModal}
             disabled={loading}
+            activeOpacity={0.85}
           >
             <Text style={styles.checkInBtnText}>
               {loading ? t('groups.checkingIn') : t('groups.checkInBtn')}
@@ -1369,16 +1370,27 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
+  // Check-in: the whole banner is the button. It used to be a row with a small
+  // translucent pill inside it, so the label sat off to the left instead of
+  // filling the button.
+  checkInBannerWrap: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 8,
+  },
   checkInBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   checkInBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
     color: '#FFFFFF',
+    letterSpacing: 0.3,
+    textAlign: 'center',
   },
   dateInput: {
     fontSize: 18,

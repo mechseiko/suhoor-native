@@ -939,20 +939,26 @@ export const GroupDetailScreen = ({ route, navigation }) => {
             )}
           </View>
           <View style={styles.memberInfo}>
+            {/* Awake/Asleep pill first, then the name with the alarm time
+                stacked underneath it. The pill used to sit after the name on the
+                same line, which pushed the name around and made the row hard to
+                scan down a list. */}
             <View style={styles.memberNameRow}>
-              <Text style={[styles.memberName, { color: colors.text, fontWeight: '800' }]} numberOfLines={1}>
-                {item.profiles.display_name || item.profiles.email.split("@")[0]}
-              </Text>
               {renderStatusBadge()}
-            </View>
-            <View style={styles.memberDetailsRow}>
-              <View style={[styles.timeTag, { backgroundColor: isDark ? 'rgba(251, 191, 36, 0.1)' : 'rgba(21, 12, 51, 0.05)' }]}>
-                <Ionicons
-                  name="alarm-outline"
-                  size={12}
-                  color={isDark ? colors.secondary : colors.primary}
-                />
-                <Text style={[styles.timeTagText, { color: isDark ? colors.secondary : colors.primary }]}>{wakeUpTime}</Text>
+              <View style={styles.memberNameStack}>
+                <Text style={[styles.memberName, { color: colors.text, fontWeight: '800' }]} numberOfLines={1}>
+                  {item.profiles.display_name || item.profiles.email.split("@")[0]}
+                </Text>
+                <View style={styles.memberDetailsRow}>
+                  <View style={[styles.timeTag, { backgroundColor: isDark ? 'rgba(251, 191, 36, 0.1)' : 'rgba(21, 12, 51, 0.05)' }]}>
+                    <Ionicons
+                      name="alarm-outline"
+                      size={12}
+                      color={isDark ? colors.secondary : colors.primary}
+                    />
+                    <Text style={[styles.timeTagText, { color: isDark ? colors.secondary : colors.primary }]}>{wakeUpTime}</Text>
+                  </View>
+                </View>
               </View>
             </View>
           </View>
@@ -1441,6 +1447,11 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     columnGap: 6,
     rowGap: 4,
+  },
+  // Name + alarm time, stacked, to the right of the awake/asleep pill.
+  memberNameStack: {
+    flexShrink: 1,
+    flexGrow: 1,
   },
   memberName: {
     fontSize: 14,
