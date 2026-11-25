@@ -20,6 +20,7 @@ import { useTheme } from '../../context/ThemeContext'
 import { useLanguage } from '../../context/LanguageContext'
 import { useNetwork } from '../../context/NetworkContext'
 import { useFastingTimes } from '../../hooks/useFastingTimes'
+import { useGamification } from '../../hooks/useGamification'
 import { db } from '../../config/firebase'
 import { COLLECTIONS, wakeUpLogId } from '../../config/firestoreSchema'
 import {
@@ -33,7 +34,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { getDefaultIntention } from '../../utils/fastingUtils'
+import { getDefaultIntention, isMondayOrThursday, isWhiteDay, isRamadan, isFirstNineDhulHijjah } from '../../utils/fastingUtils'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import Toast from '../../components/Toast'
 import { useSocket } from '../../context/SocketContext'
@@ -44,6 +45,7 @@ export const GroupsScreen = ({ navigation, route }) => {
   const { t } = useLanguage()
   const { isConnected } = useNetwork()
   const { todayData } = useFastingTimes()
+  const { recordActivity } = useGamification()
   const { emitWakeUp } = useSocket()
   const [groups, setGroups] = useState([])
   const [loading, setLoading] = useState(true)
@@ -277,6 +279,40 @@ export const GroupsScreen = ({ navigation, route }) => {
 
       setHasCheckedInToday(true)
       triggerToast(t('groups.checkInSuccess'), 'success')
+
+      // Gamification: a check-in is the one place a wake-up is proven, and it
+      // is the event the "successful wake-ups", "early bird" and "sunnah fast"
+      // milestone tracks are built on. Until now NOTHING called recordActivity
+      // for wake-ups (only buzzing did), so those milestones could never unlock
+      // no matter how many mornings the user checked in.
+      //
+      // Fire-and-forget on purpose: a gamification failure must never turn a
+      // successful check-in into an error. recordActivity already swallows its
+      // own errors, and the counters are idempotent per day because this only
+      // runs on a check-in the user had not made yet.
+      try {
+        const now = new Date()
+        // Same early-bird rule the Milestones screen uses to display the count
+        // (before 04:30 local time), so the number shown and the number stored
+        // cannot disagree.
+        const isEarlyBird = now.getHours() < 4 || (now.getHours() === 4 && now.getMinutes() < 30)
+
+        recordActivity('wake_up', { isEarlyBird })
+
+        // Sunnah days are the ones the badges are named after (Mon/Thu, white
+        // days, Ramadan, first nine of Dhul-Hijjah).
+        const day = new Date(`${todayStr}T00:00:00`)
+        if (
+          isMondayOrThursday(day) ||
+          isWhiteDay(day) ||
+          isRamadan(day) ||
+          isFirstNineDhulHijjah(day)
+        ) {
+          recordActivity('sunnah_fast')
+        }
+      } catch (e) {
+        console.warn('Gamification recording failed:', e)
+      }
     } catch (err) {
       console.error('Error in check-in:', err)
       triggerToast(t('groups.checkInFailed'), 'error')

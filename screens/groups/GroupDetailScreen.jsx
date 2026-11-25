@@ -14,6 +14,7 @@ import {
   Alert,
   SafeAreaView,
   Image,
+  Animated,
 } from "react-native";
 import { copyToClipboard } from "../../utils/clipboard";
 import { Text } from "../../components/ui";
@@ -46,16 +47,68 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 import Toast from "../../components/Toast";
 import GamificationCelebration from "../../components/GamificationCelebration";
 
-// Skeleton component for member list
+// Skeleton component for member list.
+//
+// The shimmer is one Animated value translating a light band across the row.
+// Only `transform` is animated, and only on the native driver: mixing a
+// native-driven opacity with layout props on the same view is what crashed the
+// AppTour earlier ("Style property 'height' is not supported by native animated
+// module"). The layout props here are static.
 const MemberSkeleton = () => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+  const shimmer = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(shimmer, {
+        toValue: 1,
+        duration: 1100,
+        useNativeDriver: true,
+      })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [shimmer]);
+
+  const translateX = shimmer.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-160, 320],
+  });
+
+  const base = colors.surfaceVariant;
+  const band = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.65)';
+
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-      <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surfaceVariant }} />
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+        overflow: 'hidden',
+        backgroundColor: colors.surface,
+      }}
+    >
+      <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: base }} />
       <View style={{ flex: 1, marginLeft: 12 }}>
-        <View style={{ width: 120, height: 16, backgroundColor: colors.surfaceVariant, borderRadius: 8, marginBottom: 6 }} />
-        <View style={{ width: 80, height: 12, backgroundColor: colors.surfaceVariant, borderRadius: 6 }} />
+        <View style={{ width: 120, height: 16, backgroundColor: base, borderRadius: 8, marginBottom: 6 }} />
+        <View style={{ width: 80, height: 12, backgroundColor: base, borderRadius: 6 }} />
       </View>
+
+      {/* Sweep band, clipped by the row's overflow: hidden */}
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          top: 0,
+          bottom: 0,
+          width: 90,
+          backgroundColor: band,
+          transform: [{ translateX }],
+        }}
+      />
     </View>
   );
 };
@@ -939,12 +992,10 @@ export const GroupDetailScreen = ({ route, navigation }) => {
             )}
           </View>
           <View style={styles.memberInfo}>
-            {/* Awake/Asleep pill first, then the name with the alarm time
-                stacked underneath it. The pill used to sit after the name on the
-                same line, which pushed the name around and made the row hard to
-                scan down a list. */}
+            {/* Name + alarm time first, then the Awake/Asleep pill to its
+                right. (The pill was on the left, in front of the avatar's
+                block, which read backwards.) */}
             <View style={styles.memberNameRow}>
-              {renderStatusBadge()}
               <View style={styles.memberNameStack}>
                 <Text style={[styles.memberName, { color: colors.text, fontWeight: '800' }]} numberOfLines={1}>
                   {item.profiles.display_name || item.profiles.email.split("@")[0]}
@@ -960,6 +1011,7 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                   </View>
                 </View>
               </View>
+              {renderStatusBadge()}
             </View>
           </View>
         </View>
@@ -1193,6 +1245,14 @@ export const GroupDetailScreen = ({ route, navigation }) => {
 
         {membersLoading ? (
           <View style={{ paddingVertical: 8 }}>
+            {/* Spinner at the top so a slow load still reads as "working", not
+                as an empty list. */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', columnGap: 8, paddingVertical: 10 }}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+                {t('groups.loadingMembers', 'Loading members…')}
+              </Text>
+            </View>
             <MemberSkeleton />
             <MemberSkeleton />
             <MemberSkeleton />
@@ -1261,6 +1321,24 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                     : t('groups.member')}{" "}
                   • {t('groups.wakeUpAt', { time: getMemberWakeUpTime(selectedMemberForAction) })}
                 </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', columnGap: 6, marginTop: 3 }}>
+                  <Ionicons
+                    name={memberIntendsToFast(selectedMemberForAction) ? 'moon' : 'moon-outline'}
+                    size={12}
+                    color={memberIntendsToFast(selectedMemberForAction) ? colors.secondary : colors.textSecondary}
+                  />
+                  <Text style={{ fontSize: 11, color: colors.textSecondary }} numberOfLines={1}>
+                    {memberIntendsToFast(selectedMemberForAction)
+                      ? t('groups.menuWantsToFast', 'Wants to fast today')
+                      : t('groups.menuNotFasting', 'Not fasting today')}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>·</Text>
+                  <Text style={{ fontSize: 11, color: colors.textSecondary }} numberOfLines={1}>
+                    {getMemberStatus(selectedMemberForAction) === 'awake'
+                      ? t('groups.awake', 'Awake')
+                      : t('groups.sleeping', 'Asleep')}
+                  </Text>
+                </View>
               </View>
               <TouchableOpacity
                 onPress={() => setShowMemberActionModal(false)}
