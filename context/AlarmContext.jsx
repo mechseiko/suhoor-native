@@ -16,10 +16,10 @@ import { doc, getDoc } from 'firebase/firestore';
 import { useFastingTimes } from '../hooks/useFastingTimes';
 import { useNativeAlarm } from '../hooks/useNativeAlarm';
 import { getAlarmSoundResourceName } from '../utils/soundGenerator';
-import { DAILY_ALARM_ID } from '../constants/alarm';
+import { DAILY_ALARM_ID, ALARM_STORAGE } from '../constants/alarm';
 
 const ALARM_TYPES = new Set(['wake_up_alarm']);
-const DAILY_ALARM_KEY = 'suhoor_daily_alarm_time';
+const DAILY_ALARM_KEY = ALARM_STORAGE.alarmTime;
 const FASTING_PROMPT_DISMISS_KEY = 'suhoor_fasting_prompt_dismissed';
 const IFTAR_NOTIFICATION_KEY = 'suhoor_iftar_scheduled';
 const CHECKIN_NOTIFICATION_KEY = 'suhoor_checkin_reminder_scheduled';
@@ -36,21 +36,18 @@ export const AlarmProvider = ({ children }) => {
   const { on, off } = useSocket();
   const { t } = useLanguage();
   const { todayData } = useFastingTimes();
-  const { triggerRemoteBuzz, scheduleAlarm: scheduleNativeAlarm, consumeAlarmTrigger } = useNativeAlarm();
+  const { triggerRemoteBuzz, scheduleAlarm: scheduleNativeAlarm, consumeAlarmTrigger, clearAlarmTrigger } = useNativeAlarm();
 
-  // Reset alarm state when app comes to foreground (after swipe-close)
-  useEffect(() => {
-    const handleAppStateChange = (nextAppState) => {
-      if (nextAppState === 'active') {
-        console.log('App came to foreground, resetting alarm state');
-        setIsAlarmActive(false);
-        setAlarmData(null);
-      }
-    };
-
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
-    return () => subscription?.remove();
-  }, []);
+  // The alarm UI must survive a foreground transition. This used to reset
+  // isAlarmActive on every AppState 'active', which hid the PIN overlay while
+  // the foreground service kept ringing — and because the native trigger had
+  // already been consumed on read, there was nothing left to reopen it. The
+  // user's only way out was force-stopping the app.
+  //
+  // Reconciliation now happens in one place (see the effect further down): a
+  // pending native trigger opens the overlay, and a still-ringing service
+  // re-opens it if it somehow got hidden. Nothing clears the state unless the
+  // user actually dismisses the alarm.
 
   // Restore the native "muted groups" store from local settings. The FCM buzz
   // path is native-only, so the mute flags must live there as well.
@@ -75,42 +72,71 @@ export const AlarmProvider = ({ children }) => {
     })();
   }, []);
 
-  // The user tapped "Enter PIN" on the native alarm screen (or the alarm
-  // notification). The native alarm is still ringing; show the PIN overlay so
-  // it can be dismissed properly. Registered after the reset effect above so it
-  // wins when both fire on the same resume. Covers cold start and resume.
-  // Kept in a ref: useNativeAlarm() returns fresh closures on every render, and
-  // this listener must be registered exactly once.
+  // Kept in refs: useNativeAlarm() returns fresh closures on every render, and
+  // these listeners must be registered exactly once.
   const consumeAlarmTriggerRef = useRef(consumeAlarmTrigger);
   useEffect(() => {
     consumeAlarmTriggerRef.current = consumeAlarmTrigger;
   }, [consumeAlarmTrigger]);
 
+  const clearAlarmTriggerRef = useRef(clearAlarmTrigger);
+  useEffect(() => {
+    clearAlarmTriggerRef.current = clearAlarmTrigger;
+  }, [clearAlarmTrigger]);
+
+  /**
+   * Single reconciliation point between the native alarm and this UI.
+   *
+   * Runs on mount and on every resume:
+   *  1. a pending native trigger (the user tapped "Enter PIN" or the alarm
+   *     notification) opens the PIN overlay — the read is non-destructive, so
+   *     missing it once costs nothing;
+   *  2. otherwise, if the foreground service is still ringing, the overlay is
+   *     reopened, so a ringing alarm is always dismissable;
+   *  3. otherwise nothing is touched. Only an explicit dismiss clears the state.
+   */
   useEffect(() => {
     let cancelled = false;
 
-    const checkPendingTrigger = async () => {
-      const consume = consumeAlarmTriggerRef.current;
-      if (Platform.OS !== 'android' || typeof consume !== 'function') return;
+    const reconcile = async () => {
+      if (Platform.OS !== 'android') return;
+
       try {
-        const trigger = await consume();
-        if (cancelled || !trigger) return;
-        console.log('⏰ Native alarm handed off to PIN overlay:', trigger);
-        setAlarmData({
-          type: trigger.alarmType === 'remote_buzz' ? 'buzz' : 'wake_up_alarm',
-          fromNative: true,
-          alarmId: trigger.alarmId,
-        });
+        const readTrigger = consumeAlarmTriggerRef.current;
+        const trigger =
+          typeof readTrigger === 'function' ? await readTrigger() : null;
+        if (cancelled) return;
+
+        if (trigger) {
+          console.log('⏰ Native alarm handed off to PIN overlay:', trigger);
+          setAlarmData({
+            type: trigger.alarmType === 'remote_buzz' ? 'buzz' : 'wake_up_alarm',
+            fromNative: true,
+            alarmId: trigger.alarmId,
+          });
+          setIsAlarmActive(true);
+          return;
+        }
+
+        const bridge = NativeModules?.AlarmBridge;
+        if (!bridge?.isAlarmRinging) return;
+        const ringing = await bridge.isAlarmRinging().catch(() => false);
+        if (cancelled || !ringing) return;
+
+        console.log('⏰ Native alarm still ringing — reopening the PIN overlay');
+        setAlarmData((previous) =>
+          previous ?? { type: 'wake_up_alarm', fromNative: true }
+        );
         setIsAlarmActive(true);
       } catch (e) {
-        console.warn('Could not consume native alarm trigger:', e);
+        console.warn('Could not reconcile the native alarm state:', e);
       }
     };
 
-    checkPendingTrigger();
+    reconcile();
 
     const subscription = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState === 'active') checkPendingTrigger();
+      if (nextAppState === 'active') reconcile();
     });
 
     return () => {
@@ -174,13 +200,16 @@ export const AlarmProvider = ({ children }) => {
       }
     });
 
-    // Check stored alarm time and reset stale alarm state on app start
+    // Clear a stale stored alarm time (more than an hour in the past). This no
+    // longer touches isAlarmActive/alarmData: resetting them on mount used to
+    // wipe a ringing alarm's overlay whenever `currentUser` changed, e.g. a
+    // profile write completing while the alarm was on screen.
     AsyncStorage.getItem(DAILY_ALARM_KEY).then((timeStr) => {
       if (timeStr) {
         const alarmDate = new Date(timeStr);
         const now = Date.now();
         const diff = now - alarmDate.getTime();
-        
+
         // If alarm was more than 1 hour ago, clear it (stale)
         if (diff > 60 * 60 * 1000) {
           console.log('Clearing stale alarm time from', alarmDate.toISOString());
@@ -193,10 +222,6 @@ export const AlarmProvider = ({ children }) => {
     }).catch((err) => {
       console.error('Error checking stored alarm time:', err);
     });
-
-    // Reset alarm state on mount to prevent stale triggers
-    setIsAlarmActive(false);
-    setAlarmData(null);
 
     return unsubscribe;
   }, [currentUser]);
@@ -315,7 +340,15 @@ export const AlarmProvider = ({ children }) => {
         });
 
         setScheduledAlarmTime(alarmDate);
-        await AsyncStorage.setItem(DAILY_ALARM_KEY, alarmDate.toISOString());
+        // One storage key set, shared with useAlarm.js. The native id has to be
+        // recorded or useAlarm().cancelAlarm() has nothing to cancel — it used
+        // to read a key that was never written and silently did nothing.
+        await AsyncStorage.multiSet([
+          [ALARM_STORAGE.alarmId, DAILY_ALARM_ID],
+          [ALARM_STORAGE.alarmTime, alarmDate.toISOString()],
+          [ALARM_STORAGE.userId, String(currentUser?.uid || '')],
+          [ALARM_STORAGE.groupId, ''],
+        ]);
         return true;
       } catch (err) {
         console.error('Failed to schedule daily Suhoor alarm:', err);
@@ -334,7 +367,7 @@ export const AlarmProvider = ({ children }) => {
         } catch (e) {}
       }
       setScheduledAlarmTime(null);
-      await AsyncStorage.removeItem(DAILY_ALARM_KEY);
+      await AsyncStorage.multiRemove(Object.values(ALARM_STORAGE));
       return true;
     } catch (err) {
       console.error('Failed to cancel daily Suhoor alarm:', err);
@@ -350,6 +383,11 @@ export const AlarmProvider = ({ children }) => {
         await NativeModules.AlarmBridge.stopAlarmService();
       } catch (e) {}
     }
+    // Acknowledge the native hand-off. Without this the non-destructive trigger
+    // would reopen the overlay on the next resume, after the user dismissed it.
+    try {
+      await clearAlarmTriggerRef.current?.();
+    } catch (e) {}
     const todayStr = new Date().toLocaleDateString('en-CA');
     await AsyncStorage.setItem(`suhoor_alarm_dismissed_${todayStr}`, 'true');
   };

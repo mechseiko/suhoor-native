@@ -17,7 +17,6 @@ import {
 import Sound from 'react-native-sound'
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { useAlarm } from '../hooks/useAlarm'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -37,7 +36,6 @@ export const AlarmOverlay = () => {
   const { currentUser, userProfile } = useAuth()
   const { colors } = useTheme()
   const { t } = useLanguage()
-  const { cancelAlarm } = useAlarm()
   const { isAlarmActive, alarmData, dismissAlarm } = useAlarmState()
 
   // Status: 'ringing', 'dismiss_challenge', 'success'
@@ -279,7 +277,13 @@ export const AlarmOverlay = () => {
     if (Platform.OS !== 'web') {
       Vibration.cancel()
     }
-    cancelAlarm()
+
+    // Deliberately NOT cancelling the alarm here. Dismissing with the PIN means
+    // "I am awake", not "stop waking me": AlarmReceiver has already re-armed
+    // tomorrow's alarm under the same id, so cancelling by id at this point
+    // would delete the next suhoor instead of this one. Only silencing the
+    // current ring belongs here; turning the alarm off is a separate action
+    // (cancelDailySuhoorAlarm).
 
     // Silence immediately: the ring is usually owned by the native service on
     // the alarm stream, not by this overlay, and the success screen should be

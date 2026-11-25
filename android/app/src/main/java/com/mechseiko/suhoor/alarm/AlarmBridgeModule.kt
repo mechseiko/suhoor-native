@@ -566,11 +566,18 @@ class AlarmBridgeModule(reactContext: ReactApplicationContext) : ReactContextBas
         }
     }
 
-    /** One-shot: did the user open the app from the alarm screen/notification? */
+    /**
+     * Reads the pending native alarm trigger WITHOUT consuming it.
+     *
+     * Safe to call on every mount and every resume: it keeps returning the same
+     * trigger until JS calls [clearAlarmTrigger], so a read that gets dropped
+     * (effect teardown, remount, reload) cannot leave a ringing alarm with no
+     * dismiss screen. Resolves null when nothing is pending.
+     */
     @ReactMethod
     fun consumeAlarmTrigger(promise: Promise) {
         try {
-            val trigger = AlarmTriggerBus.consume()
+            val trigger = AlarmTriggerBus.peek()
             if (trigger == null) {
                 promise.resolve(null)
                 return
@@ -580,6 +587,17 @@ class AlarmBridgeModule(reactContext: ReactApplicationContext) : ReactContextBas
                 putString("alarmType", trigger.second)
             }
             promise.resolve(map)
+        } catch (e: Exception) {
+            promise.reject("ALARM_TRIGGER_ERROR", e.message, e)
+        }
+    }
+
+    /** Acknowledges the trigger once the PIN overlay has been shown. */
+    @ReactMethod
+    fun clearAlarmTrigger(promise: Promise) {
+        try {
+            AlarmTriggerBus.clear()
+            promise.resolve(true)
         } catch (e: Exception) {
             promise.reject("ALARM_TRIGGER_ERROR", e.message, e)
         }

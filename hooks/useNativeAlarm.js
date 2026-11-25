@@ -24,6 +24,7 @@ export function useNativeAlarm() {
       openExactAlarmSettings: async () => false,
       getFcmToken: async () => null,
       consumeAlarmTrigger: async () => null,
+      clearAlarmTrigger: async () => true,
       setMutedGroup: async () => false,
       triggerRemoteBuzz: async () => false,
       stopAlarmService: async () => true,
@@ -50,6 +51,7 @@ export function useNativeAlarm() {
       openExactAlarmSettings: async () => false,
       getFcmToken: async () => null,
       consumeAlarmTrigger: async () => null,
+      clearAlarmTrigger: async () => true,
       setMutedGroup: async () => false,
       triggerRemoteBuzz: async () => false,
       stopAlarmService: async () => false,
@@ -269,7 +271,10 @@ export function useNativeAlarm() {
     }
   }
 
-  /** One-shot: the user opened the app from the alarm screen / notification. */
+  /**
+   * Reads the pending native alarm trigger WITHOUT clearing it. Safe to poll on
+   * every mount and resume; call clearAlarmTrigger once the overlay is shown.
+   */
   const consumeAlarmTrigger = async () => {
     try {
       if (!AlarmBridge.consumeAlarmTrigger) return null
@@ -277,6 +282,17 @@ export function useNativeAlarm() {
     } catch (error) {
       console.error('Error consuming alarm trigger:', error)
       return null
+    }
+  }
+
+  /** Acknowledges the trigger so it is not replayed on the next resume. */
+  const clearAlarmTrigger = async () => {
+    try {
+      if (!AlarmBridge.clearAlarmTrigger) return true
+      return await AlarmBridge.clearAlarmTrigger()
+    } catch (error) {
+      console.error('Error clearing alarm trigger:', error)
+      return false
     }
   }
 
@@ -306,6 +322,7 @@ export function useNativeAlarm() {
     openExactAlarmSettings,
     getFcmToken,
     consumeAlarmTrigger,
+    clearAlarmTrigger,
     setMutedGroup,
     triggerRemoteBuzz,
     stopAlarmService: async () => {

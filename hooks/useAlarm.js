@@ -24,13 +24,12 @@ import {
   notificationIdFor,
 } from '../services/notifications';
 import { useNativeAlarm } from './useNativeAlarm';
+import { ALARM_STORAGE as STORAGE } from '../constants/alarm';
 
-const STORAGE = {
-  alarmId: 'suhoor_alarm_id',
-  alarmTime: 'suhoor_alarm_time',
-  userId: 'suhoor_alarm_user_id',
-  groupId: 'suhoor_alarm_group_id',
-};
+// Keys come from constants/alarm.js, shared with AlarmContext. They used to be
+// defined twice with different values — AlarmContext wrote `suhoor_daily_alarm_time`
+// while this hook read `suhoor_alarm_id` — so cancelAlarm() below always found
+// nothing and returned false without cancelling anything.
 
 // Configure the notification module as soon as the alarm layer is imported, so a
 // notification that arrives before any component mounts is still delivered.
