@@ -42,6 +42,16 @@ object AlarmChannels {
     private const val LEGACY_ID = "suhoor_alarm_channel"
 
     /**
+     * Notification id shared by the foreground service and the receiver.
+     *
+     * One id on purpose: the receiver posts over the service's ongoing
+     * notification, so the user sees a single alarm entry rather than two. Two
+     * constants that drift apart is what produced the duplicate in the first
+     * place.
+     */
+    const val NOTIFICATION_ID = 2001
+
+    /**
      * Creates the channel if needed. Safe to call on every alarm, from any
      * thread: Android treats repeat calls as no-ops.
      */

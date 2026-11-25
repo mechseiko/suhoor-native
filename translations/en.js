@@ -905,6 +905,8 @@ export const en = {
   "home.deviceCheck_exactDesc": "Suhoor cannot schedule an exact alarm, so no alarm will ring.",
   "home.deviceCheck_fullscreenTitle": "Full-screen alarms are off",
   "home.deviceCheck_fullscreenDesc": "Your alarm will only show a notification instead of taking over the lock screen.",
+  "home.deviceCheck_notificationsTitle": "Notifications are turned off",
+  "home.deviceCheck_notificationsDesc": "Without notifications the alarm cannot show the PIN screen while it rings, so you cannot stop it.",
 
   "auth.providerPasswordOnly": "This email is registered with a password. Sign in with your email and password instead.",
   "auth.providerGoogleOnly": "This email is registered with Google. Sign in with Google instead.",

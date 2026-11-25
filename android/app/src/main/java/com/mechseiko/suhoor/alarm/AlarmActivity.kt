@@ -102,14 +102,16 @@ class AlarmActivity : AppCompatActivity() {
             )
         }
 
-        // Dismiss keyguard
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
-            keyguardManager?.requestDismissKeyguard(this, null)
-        } else {
-            @Suppress("DEPRECATION")
-            window.addFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD)
-        }
+        // The keyguard is deliberately NOT dismissed here.
+        //
+        // requestDismissKeyguard() on a device with a secure lock immediately
+        // raises the system PIN/pattern bouncer on top of the alarm screen —
+        // the user is woken by a loud alarm and cannot see who or what it is.
+        // Dismissal now happens only when the user taps "Enter PIN"
+        // (openAppForPin), which is also the moment it is actually needed.
+        // FLAG_DISMISS_KEYGUARD is gone for the same reason: it only ever
+        // affected insecure keyguards, and on those showWhenLocked already
+        // shows the alarm on top.
 
         // Keep screen on
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)

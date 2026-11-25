@@ -904,6 +904,8 @@ export const ar = {
   "home.deviceChecksLater": "لاحقًا",
   "home.deviceCheck_batteryTitle": "تحسين البطارية مفعّل",
   "home.deviceCheck_batteryDesc": "قد يوقف Android تطبيق سحور في الخلفية، لذا قد لا تظهر شاشة المنبه أبدًا.",
+  "home.deviceCheck_notificationsTitle": "الإشعارات مغلقة",
+  "home.deviceCheck_notificationsDesc": "بدون الإشعارات لا يستطيع المنبه عرض شاشة رمز PIN أثناء رنينه، فلن تتمكن من إيقافه.",
   "home.deviceCheck_exactTitle": "المنبهات والتذكيرات معطّلة",
   "home.deviceCheck_exactDesc": "لا يستطيع سحور جدولة منبه دقيق، لذا لن يرن أي منبه.",
   "home.deviceCheck_fullscreenTitle": "المنبهات بشاشة كاملة معطّلة",

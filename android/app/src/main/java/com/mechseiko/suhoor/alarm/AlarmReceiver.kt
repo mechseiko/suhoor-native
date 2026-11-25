@@ -20,7 +20,7 @@ class AlarmReceiver : BroadcastReceiver() {
 
     companion object {
         private const val TAG = "AlarmReceiver"
-        const val NOTIFICATION_ID = 2001
+        const val NOTIFICATION_ID = AlarmChannels.NOTIFICATION_ID
         private const val CHANNEL_ID = AlarmChannels.ID
     }
 

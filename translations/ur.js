@@ -904,6 +904,8 @@ export const ur = {
   "home.deviceChecksLater": "بعد میں",
   "home.deviceCheck_batteryTitle": "بیٹری آپٹیمائزیشن آن ہے",
   "home.deviceCheck_batteryDesc": "اینڈرائیڈ سحور کو پس منظر میں روک سکتا ہے، اس لیے الارم اسکرین کبھی ظاہر نہ ہو۔",
+  "home.deviceCheck_notificationsTitle": "اطلاعات بند ہیں",
+  "home.deviceCheck_notificationsDesc": "اطلاعات کے بغیر الارم بجتے وقت PIN اسکرین نہیں دکھا سکتا، اس لیے آپ اسے بند نہیں کر سکیں گے۔",
   "home.deviceCheck_exactTitle": "الارم اور یاد دہانیاں بند ہیں",
   "home.deviceCheck_exactDesc": "سحور درست وقت کا الارم شیڈول نہیں کر سکتا، اس لیے کوئی الارم نہیں بجے گا۔",
   "home.deviceCheck_fullscreenTitle": "فل اسکرین الارم بند ہیں",

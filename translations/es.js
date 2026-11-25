@@ -904,6 +904,8 @@ export const es = {
   "home.deviceChecksLater": "Más tarde",
   "home.deviceCheck_batteryTitle": "La optimización de batería está activada",
   "home.deviceCheck_batteryDesc": "Android puede pausar Suhoor en segundo plano, así que la pantalla de alarma podría no aparecer.",
+  "home.deviceCheck_notificationsTitle": "Las notificaciones están desactivadas",
+  "home.deviceCheck_notificationsDesc": "Sin notificaciones la alarma no puede mostrar la pantalla del PIN mientras suena, así que no podrás detenerla.",
   "home.deviceCheck_exactTitle": "Alarmas y recordatorios está desactivado",
   "home.deviceCheck_exactDesc": "Suhoor no puede programar una alarma exacta, así que no sonará ninguna.",
   "home.deviceCheck_fullscreenTitle": "Las alarmas en pantalla completa están desactivadas",

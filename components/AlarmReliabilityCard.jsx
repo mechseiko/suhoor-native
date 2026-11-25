@@ -1,5 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { AppState, NativeModules, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import {
+  AppState,
+  Linking,
+  NativeModules,
+  PermissionsAndroid,
+  Platform,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../context/ThemeContext';
@@ -17,6 +26,8 @@ import { radius, spacing } from '../theme';
  *  - battery optimization ON  -> the process can be paused, overlay may not appear
  *  - exact alarms OFF         -> scheduleAlarm() is refused, no alarm at all
  *  - full-screen intent OFF   -> Android 14+, alarm degrades to a heads-up
+ *  - notifications OFF        -> no alarm notification, no full-screen intent, no
+ *                                way to reach the PIN screen while the alarm rings
  */
 const SNOOZE_KEY = 'suhoor_alarm_checks_snoozed_until';
 const SNOOZE_MS = 24 * 60 * 60 * 1000;
@@ -25,6 +36,7 @@ const ISSUE_ICONS = {
   battery: 'battery-half-outline',
   exact: 'alarm-outline',
   fullscreen: 'expand-outline',
+  notifications: 'notifications-off-outline',
 };
 
 export const AlarmReliabilityCard = () => {
@@ -72,6 +84,19 @@ export const AlarmReliabilityCard = () => {
       }
     } catch (e) {}
 
+    // A denied POST_NOTIFICATIONS (Android 13+) leaves the alarm audible but
+    // invisible: the full-screen intent cannot launch from a notification that
+    // is never posted, and there is no way to reach the PIN screen. Nothing in
+    // the app used to check this after onboarding.
+    try {
+      if (Platform.OS === 'android' && Platform.Version >= 33) {
+        const granted = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+        );
+        if (!granted) found.push('notifications');
+      }
+    } catch (e) {}
+
     setIssues(found);
   }, []);
 
@@ -85,6 +110,25 @@ export const AlarmReliabilityCard = () => {
 
   const handleFix = async (issue) => {
     const bridge = NativeModules?.AlarmBridge;
+
+    if (issue === 'notifications') {
+      try {
+        if (Platform.Version >= 33) {
+          const result = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+          );
+          if (result === PermissionsAndroid.RESULTS.GRANTED) {
+            check();
+            return;
+          }
+        }
+      } catch (e) {
+        // Fall through to the system settings screen.
+      }
+      Linking.openSettings().catch(() => {});
+      return;
+    }
+
     if (!bridge) return;
     try {
       if (issue === 'battery' && bridge.openBatteryOptimizationSettings) {

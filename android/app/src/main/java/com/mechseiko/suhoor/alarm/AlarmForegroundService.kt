@@ -34,7 +34,7 @@ class AlarmForegroundService : Service() {
     companion object {
         private const val TAG = "AlarmForegroundService"
         private const val CHANNEL_ID = AlarmChannels.ID
-        private const val NOTIFICATION_ID = 2001
+        private const val NOTIFICATION_ID = AlarmChannels.NOTIFICATION_ID
         const val ACTION_PLAY_ALARM = "com.mechseiko.suhoor.PLAY_ALARM"
         const val ACTION_STOP_ALARM = "com.mechseiko.suhoor.STOP_ALARM"
         const val EXTRA_ALARM_DATA = "alarm_data"

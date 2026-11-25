@@ -904,6 +904,8 @@ export const tr = {
   "home.deviceChecksLater": "Daha sonra",
   "home.deviceCheck_batteryTitle": "Pil optimizasyonu açık",
   "home.deviceCheck_batteryDesc": "Android, Suhoor'u arka planda duraklatabilir; alarm ekranı hiç görünmeyebilir.",
+  "home.deviceCheck_notificationsTitle": "Bildirimler kapalı",
+  "home.deviceCheck_notificationsDesc": "Bildirimler olmadan alarm çalarken PIN ekranını gösteremez, bu yüzden onu durduramazsınız.",
   "home.deviceCheck_exactTitle": "Alarmlar ve hatırlatıcılar kapalı",
   "home.deviceCheck_exactDesc": "Suhoor kesin bir alarm planlayamıyor; hiçbir alarm çalmayacak.",
   "home.deviceCheck_fullscreenTitle": "Tam ekran alarmlar kapalı",
