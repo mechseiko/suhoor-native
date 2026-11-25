@@ -69,14 +69,21 @@ class AlarmReceiver : BroadcastReceiver() {
         val alarmManagerModule = AlarmManagerModule(context)
         alarmManagerModule.cancelAlarm(alarmId)
 
-        // Keep the daily alarm alive without the app being opened: re-arm the
-        // same alarm for 24h later. The app replaces it with the exact API time
-        // the next time it schedules (cancel + reschedule of the same id), so
-        // this is only the safety net that prevents "one morning rings, then
-        // silence". Buzzes never chain.
-        if (alarmId == "suhoor-daily-alarm" && alarmData.type == "wake_up") {
-            val nextTrigger = alarmData.triggerTime + 24L * 60L * 60L * 1000L
-            if (nextTrigger > System.currentTimeMillis()) {
+        // Keep the daily alarm alive without the app being opened.
+        //
+        // This used to require the id to be the literal "suhoor-daily-alarm" and
+        // to chain "triggerTime + 24h". Both were wrong: any caller that
+        // generated its own id silently got a one-shot alarm, and +24h drifts
+        // because suhoor moves a little every day (and a timezone or DST change
+        // moves the clock while the epoch stays put). Every wake-up alarm is now
+        // re-armed at the next occurrence of its wall-clock time; buzzes are
+        // one-shot by design.
+        if (alarmData.type == "wake_up") {
+            val nextTrigger = alarmManagerModule.nextOccurrenceOfDay(
+                alarmData.triggerTime,
+                System.currentTimeMillis()
+            )
+            if (nextTrigger != null && nextTrigger > System.currentTimeMillis()) {
                 alarmManagerModule.scheduleAlarm(
                     alarmId = alarmId,
                     triggerTime = nextTrigger,
@@ -87,6 +94,8 @@ class AlarmReceiver : BroadcastReceiver() {
                     volume = alarmData.volume
                 )
                 Log.d(TAG, "Re-armed daily alarm for ${Date(nextTrigger)}")
+            } else {
+                Log.w(TAG, "Could not re-arm the daily alarm for $alarmId")
             }
         }
     }

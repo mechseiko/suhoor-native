@@ -272,31 +272,101 @@ class AlarmManagerModule(private val context: Context) {
     }
 
     /**
-     * Restore all alarms after device reboot
-     * Called by BootReceiver
+     * Re-arm every persisted alarm.
+     *
+     * Called on boot, after an app update (MY_PACKAGE_REPLACED), after the clock
+     * or timezone changes, and after the exact-alarm permission is granted.
+     * All four of those cancel pending alarms, and without this the suhoor
+     * alarm simply disappears while the UI still says it is set.
      */
     fun restoreAllAlarms() {
         val alarms = getAllAlarms()
         val now = System.currentTimeMillis()
 
         alarms.forEach { alarm ->
-            if (alarm.triggerTime > now) {
-                // Reschedule alarm if it's in the future
-                scheduleAlarm(
-                    alarmId = alarm.id,
-                    triggerTime = alarm.triggerTime,
-                    userId = alarm.userId,
-                    groupId = alarm.groupId,
-                    alarmType = alarm.type,
-                    soundName = alarm.soundName,
-                    volume = alarm.volume
-                )
-                Log.d(TAG, "Restored alarm: ${alarm.id}")
+            val triggerTime = alarm.triggerTime
+            if (triggerTime <= 0) {
+                removeAlarm(alarm.id)
+                Log.w(TAG, "Dropped unreadable alarm: ${alarm.id}")
+                return@forEach
+            }
+
+            // Wake-up alarms are daily by contract, so they are restored to the
+            // next occurrence of their wall-clock time even when the stored
+            // instant is behind us — a reboot, an app update or a timezone
+            // change must never quietly discharge tomorrow's suhoor alarm.
+            // One-shot alarms (buzzes) keep the old behaviour and are dropped
+            // once their instant has passed.
+            val isDailyWakeUp = alarm.type == "wake_up"
+            val next = if (isDailyWakeUp) {
+                nextOccurrenceOfDay(triggerTime, now)
+            } else if (triggerTime > now) {
+                triggerTime
             } else {
-                // Remove expired alarms
+                null
+            }
+
+            if (next == null) {
                 removeAlarm(alarm.id)
                 Log.d(TAG, "Removed expired alarm: ${alarm.id}")
+                return@forEach
             }
+
+            scheduleAlarm(
+                alarmId = alarm.id,
+                triggerTime = next,
+                userId = alarm.userId,
+                groupId = alarm.groupId,
+                alarmType = alarm.type,
+                soundName = alarm.soundName,
+                volume = alarm.volume
+            )
+            Log.d(TAG, "Restored alarm: ${alarm.id} -> ${Date(next)}")
+        }
+    }
+
+    /**
+     * The next future instant whose local wall-clock time matches the alarm's.
+     *
+     * Re-arming by "triggerTime + 24h" drifts: suhoor moves every day, and a
+     * timezone or DST change moves the local clock while the stored epoch stays
+     * put. Re-deriving "same hour and minute, next time it happens" keeps the
+     * alarm at the time the user actually chose.
+     *
+     * Reads the time of day through [java.util.Calendar] so the current default
+     * timezone (which may have just changed) is what the arithmetic uses.
+     */
+    /**
+     * Next occurrence of an alarm's wall-clock time of day, or null when it
+     * cannot be derived.
+     *
+     * Public so [AlarmReceiver] can use exactly the same arithmetic when it
+     * chains the next day's alarm after firing. Two implementations of "when is
+     * the next suhoor" is how alarms drift apart.
+     */
+    fun nextOccurrenceOfDay(triggerTime: Long, now: Long): Long? {
+        return try {
+            val stored = java.util.Calendar.getInstance().apply {
+                timeInMillis = triggerTime
+            }
+            val next = java.util.Calendar.getInstance().apply {
+                timeInMillis = now
+                set(java.util.Calendar.HOUR_OF_DAY, stored.get(java.util.Calendar.HOUR_OF_DAY))
+                set(java.util.Calendar.MINUTE, stored.get(java.util.Calendar.MINUTE))
+                set(java.util.Calendar.SECOND, 0)
+                set(java.util.Calendar.MILLISECOND, 0)
+            }
+            // One day is enough unless a DST jump skips the chosen time; the
+            // guard keeps the loop provably finite.
+            var guard = 0
+            while (next.timeInMillis <= now && guard < 400) {
+                next.add(java.util.Calendar.DAY_OF_YEAR, 1)
+                guard++
+            }
+            next.timeInMillis
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not compute the next occurrence: ${e.message}")
+            if (triggerTime > now) triggerTime else null
         }
     }
 

@@ -16,6 +16,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { useFastingTimes } from '../hooks/useFastingTimes';
 import { useNativeAlarm } from '../hooks/useNativeAlarm';
 import { getAlarmSoundResourceName } from '../utils/soundGenerator';
+import { DAILY_ALARM_ID } from '../constants/alarm';
 
 const ALARM_TYPES = new Set(['wake_up_alarm']);
 const DAILY_ALARM_KEY = 'suhoor_daily_alarm_time';
@@ -238,12 +239,12 @@ export const AlarmProvider = ({ children }) => {
         const alarmDate = targetTime instanceof Date ? targetTime : new Date(targetTime);
 
         // Cancel previous scheduled daily alarm
-        await cancelNotification('suhoor-daily-alarm');
+        await cancelNotification(DAILY_ALARM_ID);
 
         // Cancel previous native alarm if available
         if (Platform.OS === 'android' && NativeModules && NativeModules.AlarmBridge && NativeModules.AlarmBridge.cancelAlarm) {
           try {
-            await NativeModules.AlarmBridge.cancelAlarm('suhoor-daily-alarm');
+            await NativeModules.AlarmBridge.cancelAlarm(DAILY_ALARM_ID);
           } catch (e) {}
         }
 
@@ -267,7 +268,7 @@ export const AlarmProvider = ({ children }) => {
                   : 1;
 
             const ok = await scheduleNativeAlarm(
-              'suhoor-daily-alarm',
+              DAILY_ALARM_ID,
               alarmDate.getTime(),
               currentUser?.uid || '',
               '',
@@ -298,7 +299,7 @@ export const AlarmProvider = ({ children }) => {
         }
 
         const scheduledId = await scheduleNotification({
-          semanticId: 'suhoor-daily-alarm',
+          semanticId: DAILY_ALARM_ID,
           date: alarmDate,
           title: t('alarm.notificationTitle', '⏰ Suhoor Time!'),
           message:
@@ -326,10 +327,10 @@ export const AlarmProvider = ({ children }) => {
 
   const cancelDailySuhoorAlarm = useCallback(async () => {
     try {
-      await cancelNotification('suhoor-daily-alarm');
+      await cancelNotification(DAILY_ALARM_ID);
       if (Platform.OS === 'android' && NativeModules && NativeModules.AlarmBridge && NativeModules.AlarmBridge.cancelAlarm) {
         try {
-          await NativeModules.AlarmBridge.cancelAlarm('suhoor-daily-alarm');
+          await NativeModules.AlarmBridge.cancelAlarm(DAILY_ALARM_ID);
         } catch (e) {}
       }
       setScheduledAlarmTime(null);
