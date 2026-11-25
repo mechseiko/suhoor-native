@@ -37,7 +37,6 @@ const ISSUE_ICONS = {
   exact: 'alarm-outline',
   fullscreen: 'expand-outline',
   notifications: 'notifications-off-outline',
-  overlay: 'albums-outline',
 };
 
 export const AlarmReliabilityCard = () => {
@@ -85,12 +84,10 @@ export const AlarmReliabilityCard = () => {
       }
     } catch (e) {}
 
-    try {
-      if (bridge.canDrawOverlays) {
-        const overlays = await bridge.canDrawOverlays();
-        if (overlays === false) found.push('overlay');
-      }
-    } catch (e) {}
+    // "Display over other apps" is deliberately NOT checked here. It is an
+    // optional onboarding step: the alarm still rings and the full-screen
+    // intent still fires without it, so listing it next to the problems that
+    // actually stop an alarm only made the card noisier.
 
     // A denied POST_NOTIFICATIONS (Android 13+) leaves the alarm audible but
     // invisible: the full-screen intent cannot launch from a notification that
@@ -145,8 +142,6 @@ export const AlarmReliabilityCard = () => {
         await bridge.openExactAlarmSettings();
       } else if (issue === 'fullscreen' && bridge.openFullScreenIntentSettings) {
         await bridge.openFullScreenIntentSettings();
-      } else if (issue === 'overlay' && bridge.openOverlaySettings) {
-        await bridge.openOverlaySettings();
       }
     } catch (e) {
       console.warn('Could not open alarm settings:', e);
