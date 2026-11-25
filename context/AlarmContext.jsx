@@ -292,6 +292,14 @@ export const AlarmProvider = ({ children }) => {
                   ? userProfile.preferences.alarmVolume
                   : 1;
 
+            if (nativeVolume <= 0.001) {
+              // Honored, but never silently: HomeScreen shows a red "audible
+              // alarms are off" card for exactly this state.
+              console.warn(
+                '⏰ Arming the Suhoor alarm at volume 0 — audible alarms are disabled in preferences.'
+              );
+            }
+
             const ok = await scheduleNativeAlarm(
               DAILY_ALARM_ID,
               alarmDate.getTime(),

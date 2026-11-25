@@ -498,8 +498,13 @@ export const HomeScreen = ({ navigation }) => {
 
       <AlarmReliabilityCard />
 
-      {/* Sound Disabled Disclaimer Card */}
-      {userProfile?.preferences?.soundEnabled === false && (
+      {/* Sound Disabled Disclaimer Card.
+          Also covers a 0 alarm volume, not just the on/off switch: a muted
+          slider produced exactly the same silent alarm as the switch did, and
+          nothing in the app said so. */}
+      {(userProfile?.preferences?.soundEnabled === false ||
+        (typeof userProfile?.preferences?.alarmVolume === 'number' &&
+          userProfile.preferences.alarmVolume <= 0.001)) && (
         <Card style={[styles.pinPromptCard, { borderColor: '#EF4444', borderWidth: 1.5, backgroundColor: alpha('#EF4444', 0.05) }]}>
           <View style={styles.cardHeader}>
             <View style={[styles.iconContainer, { backgroundColor: alpha('#EF4444', 0.12) }]}>
@@ -518,9 +523,14 @@ export const HomeScreen = ({ navigation }) => {
               onPress={async () => {
                 if (currentUser?.uid) {
                   try {
-                    await updateDoc(doc(db, COLLECTIONS.profiles, currentUser.uid), {
-                      'preferences.soundEnabled': true,
-                    });
+                    const patch = { 'preferences.soundEnabled': true };
+                    const currentVolume = userProfile?.preferences?.alarmVolume;
+                    if (typeof currentVolume === 'number' && currentVolume <= 0.001) {
+                      // Only fix a genuinely muted slider; leave a deliberate
+                      // 30% alarm alone.
+                      patch['preferences.alarmVolume'] = 1;
+                    }
+                    await updateDoc(doc(db, COLLECTIONS.profiles, currentUser.uid), patch);
                   } catch (err) {
                     console.error('Failed to enable sound:', err);
                   }

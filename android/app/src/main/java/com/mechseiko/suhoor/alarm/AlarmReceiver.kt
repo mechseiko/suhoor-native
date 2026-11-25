@@ -21,7 +21,7 @@ class AlarmReceiver : BroadcastReceiver() {
     companion object {
         private const val TAG = "AlarmReceiver"
         const val NOTIFICATION_ID = 2001
-        private const val CHANNEL_ID = "suhoor_alarm_channel"
+        private const val CHANNEL_ID = AlarmChannels.ID
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -106,30 +106,8 @@ class AlarmReceiver : BroadcastReceiver() {
     private fun showNotification(context: Context, alarmData: AlarmData) {
         val notificationManager = NotificationManagerCompat.from(context)
 
-        // Create notification channel for Android O+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val soundUri = android.net.Uri.parse("android.resource://" + context.packageName + "/" + R.raw.alarm_sound)
-            val audioAttributes = android.media.AudioAttributes.Builder()
-                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .setUsage(android.media.AudioAttributes.USAGE_ALARM)
-                .build()
-
-            val channel = android.app.NotificationChannel(
-                CHANNEL_ID,
-                "Suhoor Alarm",
-                android.app.NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "Notifications for Suhoor alarms"
-                enableVibration(true)
-                enableLights(true)
-                setShowBadge(true)
-                setSound(soundUri, audioAttributes)
-                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
-            }
-
-            val systemNotificationManager = context.getSystemService(android.app.NotificationManager::class.java)
-            systemNotificationManager?.createNotificationChannel(channel)
-        }
+        // One channel definition, shared with the foreground service.
+        AlarmChannels.ensure(context)
 
         // Build notification
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)

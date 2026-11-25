@@ -76,6 +76,13 @@ class AlarmManagerModule(private val context: Context) {
             // Save alarm to persistent storage
             saveAlarm(alarmData)
 
+            if (volume in 0f..0.001f) {
+                // "Audible alarms" is switched off in preferences. Honor it, but
+                // make it visible in the log: a silent wake-up alarm is almost
+                // always a misconfiguration, not a choice.
+                Log.w(TAG, "Scheduling '$alarmId' at volume 0 — audible alarms are disabled")
+            }
+
             // Create intent for alarm receiver
             val intent = Intent(context, AlarmReceiver::class.java).apply {
                 action = "com.mechseiko.suhoor.ALARM_TRIGGER"

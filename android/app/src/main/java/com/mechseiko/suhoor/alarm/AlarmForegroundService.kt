@@ -11,6 +11,7 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
+import android.media.RingtoneManager
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
@@ -32,7 +33,7 @@ class AlarmForegroundService : Service() {
 
     companion object {
         private const val TAG = "AlarmForegroundService"
-        private const val CHANNEL_ID = "suhoor_alarm_channel"
+        private const val CHANNEL_ID = AlarmChannels.ID
         private const val NOTIFICATION_ID = 2001
         const val ACTION_PLAY_ALARM = "com.mechseiko.suhoor.PLAY_ALARM"
         const val ACTION_STOP_ALARM = "com.mechseiko.suhoor.STOP_ALARM"
@@ -186,29 +187,9 @@ class AlarmForegroundService : Service() {
     }
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val soundUri = android.net.Uri.parse("android.resource://" + packageName + "/" + R.raw.alarm_sound)
-            val audioAttributes = AudioAttributes.Builder()
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .setUsage(AudioAttributes.USAGE_ALARM)
-                .build()
-
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Suhoor Alarm",
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "Notifications for Suhoor alarms"
-                enableVibration(true)
-                enableLights(true)
-                setShowBadge(true)
-                setSound(soundUri, audioAttributes)
-                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-            }
-
-            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
-        }
+        // Shared definition: importance, USAGE_ALARM sound, lock-screen
+        // visibility and the Do Not Disturb bypass all live in AlarmChannels.
+        AlarmChannels.ensure(this)
     }
 
     private fun startAlarmSound(alarmData: AlarmData?) {
@@ -216,9 +197,22 @@ class AlarmForegroundService : Service() {
         try {
             val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
-            // Set STREAM_ALARM volume to max so alarm plays even in silent/DND mode
-            val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_ALARM)
-            audioManager.setStreamVolume(AudioManager.STREAM_ALARM, maxVolume, 0)
+            // Force STREAM_ALARM to its maximum so the alarm is loud even when
+            // the user left the alarm slider low.
+            //
+            // In its own try/catch on purpose: setStreamVolume throws
+            // SecurityException on some builds when the change would trip a Do
+            // Not Disturb restriction, and this used to be inside the same try
+            // as everything below — a refused volume change silently killed the
+            // whole ring.
+            try {
+                val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_ALARM)
+                if (audioManager.getStreamVolume(AudioManager.STREAM_ALARM) < maxVolume) {
+                    audioManager.setStreamVolume(AudioManager.STREAM_ALARM, maxVolume, 0)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not raise the alarm stream volume: ${e.message}")
+            }
 
             // Request audio focus on the STREAM_ALARM channel
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -251,21 +245,71 @@ class AlarmForegroundService : Service() {
                 if (alarmData != null && !alarmData.soundName.isNullOrBlank()) alarmData.volume else -1f
             val volume =
                 if (explicitVolume >= 0f) explicitVolume.coerceIn(0f, 1f) else 1.0f
+            if (volume <= 0.001f) {
+                // The user turned "Audible alarms" off. Honor it, but say so
+                // loudly in the log: a silent alarm is almost always a mistake.
+                Log.w(TAG, "Playing the alarm at volume 0 — audible alarms are disabled in preferences")
+            }
 
-            mediaPlayer = MediaPlayer.create(this, track)?.apply {
+            // MediaPlayer.create() returns null (no exception) when the file
+            // cannot be decoded, which silently produced a silent alarm. Fall
+            // back to the system alarm ringtone, the only guaranteed sound.
+            var player = MediaPlayer.create(this, track)
+            if (player == null) {
+                Log.w(TAG, "Could not decode res/raw sound '$requested' — falling back to the system alarm ringtone")
+                player = createSystemAlarmRingtonePlayer()
+            }
+            if (player == null) {
+                Log.e(TAG, "No alarm audio could be prepared; the alarm will vibrate only")
+                return
+            }
+
+            mediaPlayer = player.apply {
                 isLooping = true
-                setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .setUsage(AudioAttributes.USAGE_ALARM)
-                        .setLegacyStreamType(AudioManager.STREAM_ALARM)
-                        .build()
-                )
+                try {
+                    setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .setUsage(AudioAttributes.USAGE_ALARM)
+                            .setLegacyStreamType(AudioManager.STREAM_ALARM)
+                            .build()
+                    )
+                } catch (e: Exception) {
+                    Log.w(TAG, "Could not set alarm audio attributes: ${e.message}")
+                }
                 setVolume(volume, volume)
                 start()
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error starting alarm sound in foreground service", e)
+        }
+    }
+
+    /**
+     * Last-resort audio: the device's own alarm ringtone.
+     *
+     * A phone that cannot decode the bundled asset still has to wake the user,
+     * and every Android build ships a default alarm tone.
+     */
+    private fun createSystemAlarmRingtonePlayer(): MediaPlayer? {
+        return try {
+            val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                ?: return null
+            MediaPlayer().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                )
+                setDataSource(this@AlarmForegroundService, uri)
+                isLooping = true
+                prepare()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Could not prepare the system alarm ringtone", e)
+            null
         }
     }
 
