@@ -1322,11 +1322,6 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                   • {t('groups.wakeUpAt', { time: getMemberWakeUpTime(selectedMemberForAction) })}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', columnGap: 6, marginTop: 3 }}>
-                  <Ionicons
-                    name={memberIntendsToFast(selectedMemberForAction) ? 'moon' : 'moon-outline'}
-                    size={12}
-                    color={memberIntendsToFast(selectedMemberForAction) ? colors.secondary : colors.textSecondary}
-                  />
                   <Text style={{ fontSize: 11, color: colors.textSecondary }} numberOfLines={1}>
                     {memberIntendsToFast(selectedMemberForAction)
                       ? t('groups.menuWantsToFast', 'Wants to fast today')

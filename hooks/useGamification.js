@@ -32,7 +32,24 @@ const EMPTY_STATS = {
   earlyBirds: 0,
   membersBuzzed: 0,
   sunnahFasts: 0,
+  knowledgeCount: 0,
   badges: [],
+};
+
+/**
+ * A wake-up before 04:30 local time counts as an early bird.
+ *
+ * One predicate, used by both the stored counter and the displayed count, so
+ * the number a user is shown and the number their badges are computed from can
+ * never disagree.
+ */
+const isEarlyHour = (timestamp) => {
+  if (!timestamp) return false;
+  const when = new Date(timestamp);
+  if (Number.isNaN(when.getTime())) return false;
+  const hours = when.getHours();
+  const minutes = when.getMinutes();
+  return hours < 4 || (hours === 4 && minutes < 30);
 };
 
 export function useGamification() {
@@ -68,6 +85,7 @@ export function useGamification() {
             earlyBirds: data.early_birds || 0,
             membersBuzzed: data.members_buzzed || 0,
             sunnahFasts: data.sunnah_fasts || 0,
+            knowledgeCount: data.knowledge_count || 0,
             badges: data.badges || [],
           });
         } else {
@@ -132,19 +150,40 @@ export function useGamification() {
         let earlyBirds = stats.earlyBirds;
         let membersBuzzed = stats.membersBuzzed;
         let sunnahFasts = stats.sunnahFasts;
+        const knowledgeCount = stats.knowledgeCount || 0;
         const badgeSet = new Set(stats.badges);
 
+        // Fasting days and early birds are DERIVED from the wake-up logs, not
+        // incremented blind.
+        //
+        // A wake-up log is one document per user per day, so re-counting it is
+        // idempotent: a repeated check-in cannot count twice, and a stale
+        // listener snapshot cannot lose an increment (the old `counter + 1`
+        // did both). max() keeps the stored counter as a floor, so a session
+        // that cannot load logs — offline, or a failed query — never resets a
+        // user's progress downwards.
+        const logDates = new Set();
+        let earlyFromLogs = 0;
+        for (const log of wakeLogs) {
+          if (log.date) logDates.add(log.date);
+          if (isEarlyHour(log.woke_up_at)) earlyFromLogs += 1;
+        }
         if (type === "wake_up") {
-          totalFastingDays += 1;
-          if (payload.isEarlyBird) {
-            earlyBirds += 1;
-          }
-        } else if (type === "buzz_member") {
+          // Today's log has just been written, so it is not in the snapshot yet.
+          logDates.add(new Date().toLocaleDateString("en-CA"));
+          if (payload.isEarlyBird) earlyFromLogs += 1;
+        }
+        totalFastingDays = Math.max(totalFastingDays, logDates.size);
+        earlyBirds = Math.max(earlyBirds, earlyFromLogs);
+
+        if (type === "buzz_member") {
           membersBuzzed += 1;
         } else if (type === "sunnah_fast") {
           sunnahFasts += 1;
         } else if (type === "read_resource") {
-          // resource read
+          // Knowledge points exist in the schema but nothing reads resources
+          // yet; the counter is carried through below so a future caller does
+          // not have its value silently reset to zero.
         }
 
         const calculated = calculateUserSPAndBadges({
@@ -152,6 +191,7 @@ export function useGamification() {
           earlyBirds,
           membersBuzzed,
           sunnahFasts,
+          knowledgeCount,
         });
 
         points = calculated.points;
@@ -220,6 +260,7 @@ export function useGamification() {
           earlyBirds,
           membersBuzzed,
           sunnahFasts,
+          knowledgeCount,
           badges: allBadgesList,
         });
 
@@ -243,25 +284,14 @@ export function useGamification() {
         console.error("Error recording gamification activity:", err);
       }
     },
-    [currentUser, stats]
+    [currentUser, stats, wakeLogs]
   );
 
   // 3. Dynamic Early Bird Calculation for existing logs
-  const calculatedEarlyBirds = useCallback(() => {
-    let count = 0;
-    wakeLogs.forEach(log => {
-      if (!log.woke_up_at) return;
-      const wokeUpDate = new Date(log.woke_up_at);
-      const wokeUpHour = wokeUpDate.getHours();
-      const wokeUpMinute = wokeUpDate.getMinutes();
-
-      // If they woke up before 4:30 AM, consider it an Early Bird
-      if (wokeUpHour < 4 || (wokeUpHour === 4 && wokeUpMinute < 30)) {
-        count++;
-      }
-    });
-    return count;
-  }, [wakeLogs]);
+  const calculatedEarlyBirds = useCallback(
+    () => wakeLogs.filter(log => isEarlyHour(log.woke_up_at)).length,
+    [wakeLogs]
+  );
 
   const currentLevel = getBarakahLevel(stats.points);
   const nextTier = BARAKAH_TIERS.find(
@@ -281,12 +311,38 @@ export function useGamification() {
     )
     : 100;
 
+  // The numbers the screen SHOWS and the numbers the badges are calculated from
+  // must be the same numbers.
+  //
+  // Before, the counters were displayed from the wake-up logs while `badges`
+  // came from the stored document, which was built from whatever counters it
+  // had when it was last written — so the screen could happily show "12 days"
+  // next to a 7-day badge that was still locked. Both sides now use this one
+  // snapshot, and max() stops a failed log fetch from displaying zero.
+  const displayedStats = {
+    ...stats,
+    totalFastingDays: Math.max(
+      stats.totalFastingDays,
+      new Set(wakeLogs.map(l => l.date)).size
+    ),
+    earlyBirds: Math.max(stats.earlyBirds, calculatedEarlyBirds()),
+  };
+
+  const unlockedFromDisplayed = calculateUserSPAndBadges({
+    totalFastingDays: displayedStats.totalFastingDays,
+    earlyBirds: displayedStats.earlyBirds,
+    membersBuzzed: displayedStats.membersBuzzed,
+    sunnahFasts: displayedStats.sunnahFasts,
+    knowledgeCount: displayedStats.knowledgeCount,
+  }).badges;
+
+  // Union with what is already stored: a badge a user earned is never removed.
+  const badges = Array.from(
+    new Set([...(stats.badges || []), ...unlockedFromDisplayed])
+  );
+
   return {
-    stats: {
-      ...stats,
-      totalFastingDays: new Set(wakeLogs.map(l => l.date)).size,
-      earlyBirds: calculatedEarlyBirds(), // Override with exact calculation
-    },
+    stats: { ...displayedStats, badges },
     loading,
     currentLevel,
     nextTier,
@@ -295,7 +351,7 @@ export function useGamification() {
     celebration,
     dismissCelebration: () => setCelebration(null),
     allBadges: Object.values(BADGES),
-    badges: stats.badges,
+    badges,
     refreshStats: () => { },
   };
 }
