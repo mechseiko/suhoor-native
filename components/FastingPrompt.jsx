@@ -303,6 +303,14 @@ export const FastingPrompt = () => {
   if (!isPromptVisible) return null;
   if (!targetKey || !targetDateMidnight) return null;
 
+  // "Change my mind" stays available until 03:00 on the target day, and that
+  // cut-off now applies to BOTH answers. Before, only the fasting card had the
+  // 03:00 limit; the not-fasting card let you reset right up to the wake-up
+  // window, so the two cards disagreed about the deadline. 03:00 is the point
+  // where the night is effectively decided.
+  const canChangeIntention =
+    new Date() < new Date(targetDateMidnight.getTime() + 3 * 60 * 60 * 1000);
+
   const dateObj = targetDateMidnight;
   const isSpecial =
     isMondayOrThursday(dateObj) ||
@@ -470,8 +478,8 @@ export const FastingPrompt = () => {
                 {t('fasting.alarmActiveNotice')}
               </Text>
             </View>
-            {/* Hide reset button after 3 AM of target date */}
-            {targetDateMidnight && new Date() < new Date(targetDateMidnight.getTime() + 3 * 60 * 60 * 1000) && (
+            {/* Reset disappears at 03:00 on the target day (canChangeIntention) */}
+            {canChangeIntention && (
               <TouchableOpacity
                 onPress={handleReset}
                 style={styles.resetButton}
@@ -497,18 +505,21 @@ export const FastingPrompt = () => {
               <Text variant="h3" tone="secondary">{t('fasting.notFasting')}</Text>
               <Text variant="caption" tone="secondary">{t('fasting.notFastingSub')}</Text>
             </View>
-            <TouchableOpacity
-              onPress={handleReset}
-              style={styles.resetButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              accessibilityRole="button"
-              accessibilityLabel={t('fasting.changeIntention')}
-            >
-              <Ionicons name="refresh" size={18} color={colors.textSecondary} />
-              <Text style={{ color: colors.textSecondary, fontSize: 12, marginLeft: 4, fontWeight: '600' }}>
-                Reset
-              </Text>
-            </TouchableOpacity>
+            {/* Same 03:00 cut-off as the fasting card — one deadline, both answers */}
+            {canChangeIntention && (
+              <TouchableOpacity
+                onPress={handleReset}
+                style={styles.resetButton}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityRole="button"
+                accessibilityLabel={t('fasting.changeIntention')}
+              >
+                <Ionicons name="refresh" size={18} color={colors.textSecondary} />
+                <Text style={{ color: colors.textSecondary, fontSize: 12, marginLeft: 4, fontWeight: '600' }}>
+                  Reset
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </Card>
       )}
