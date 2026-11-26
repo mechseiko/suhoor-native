@@ -10,6 +10,7 @@ import { AlarmProvider, useAlarmState } from "./context/AlarmContext";
 import { NetworkProvider } from "./context/NetworkContext";
 import AlarmOverlay from "./components/AlarmOverlay";
 import { AlarmPermissionGate } from "./components/AlarmPermissionGate";
+import { GamificationCelebrationHost } from "./components/GamificationCelebrationHost";
 import { WhatsNewModal } from "./components/UpdateModal";
 import { useWhatsNew } from "./hooks/useWhatsNew";
 import RootNavigator from "./navigation/RootNavigator";
@@ -152,6 +153,7 @@ export default function App() {
                     <WhatsNewGate />
                     <AlarmPermissionGate />
                     <AlarmOverlay />
+                    <GamificationCelebrationHost />
                     <FastingNotificationsManager />
                     <NetworkStatusNotification />
                     <StatusBar barStyle="default" />

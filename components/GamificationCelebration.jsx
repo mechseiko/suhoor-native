@@ -82,7 +82,11 @@ export default function GamificationCelebration({ celebration, onDismiss }) {
         <Toast
           visible
           type="success"
-          message={t('gamification.levelUp', { level: celebration.level, name: celebration.name })}
+          message={
+            celebration.kind === 'badge'
+              ? t('milestones.badgeUnlocked', { title: celebration.badgeTitle || celebration.name })
+              : t('gamification.levelUp', { level: celebration.level, name: celebration.name })
+          }
           onDismiss={onDismiss}
           duration={3200}
         />

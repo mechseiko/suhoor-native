@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { db } from "../config/firebase";
 import { presentNotification } from "../services/notifications";
 import { useLanguage } from "../context/LanguageContext";
+import { publishCelebration } from "../utils/celebrationBus";
 import {
   collection,
   query,
@@ -266,19 +267,78 @@ export function useGamification() {
 
         await setDoc(docRef, updated, { merge: true });
 
-        const previousLevel = getBarakahLevel(stats.points);
-        const updatedLevel = getBarakahLevel(points);
-        if (updatedLevel.level > previousLevel.level) {
-          const storageKey = `suhoor_last_celebrated_level_${currentUser.uid}`;
-          const lastCelebratedLevel = await AsyncStorage.getItem(storageKey);
-          if (lastCelebratedLevel !== String(updatedLevel.level)) {
-            await AsyncStorage.setItem(storageKey, String(updatedLevel.level));
-            setCelebration({
-              level: updatedLevel.level,
-              name: updatedLevel.name,
-              points,
-            });
+        // ── Celebration ──────────────────────────────────────────────────
+        // Exactly one celebration per recorded activity, published to the app
+        // root so it does not matter which screen earned it:
+        //   level-up  -> confetti + the level name
+        //   new badge -> confetti + the badge name
+        // A level-up takes precedence; the badges from the same event are still
+        // recorded (and still notify), they just do not stack a second confetti
+        // on top of the first.
+        //
+        // Persistence is the anti-repeat guard: the level is remembered per user
+        // and each badge id is remembered once, so neither is celebrated twice
+        // — across screens, sessions or reinstalls.
+        try {
+          const previousLevel = getBarakahLevel(stats.points);
+          const updatedLevel = getBarakahLevel(points);
+          let celebrated = false;
+
+          if (updatedLevel.level > previousLevel.level) {
+            const storageKey = `suhoor_last_celebrated_level_${currentUser.uid}`;
+            const lastCelebratedLevel = await AsyncStorage.getItem(storageKey);
+            if (lastCelebratedLevel !== String(updatedLevel.level)) {
+              await AsyncStorage.setItem(storageKey, String(updatedLevel.level));
+              publishCelebration({
+                kind: 'level',
+                level: updatedLevel.level,
+                name: updatedLevel.name,
+                points,
+              });
+              celebrated = true;
+            }
           }
+
+          if (!celebrated) {
+            const badgeKey = `suhoor_celebrated_badges_${currentUser.uid}`;
+            let alreadyCelebrated = [];
+            try {
+              alreadyCelebrated = JSON.parse((await AsyncStorage.getItem(badgeKey)) || '[]');
+            } catch (e) {
+              alreadyCelebrated = [];
+            }
+            const fresh = newBadges.filter((id) => !alreadyCelebrated.includes(id));
+            if (fresh.length > 0) {
+              const firstBadge = fresh[0];
+              let info = null;
+              let track = null;
+              for (const candidate of Object.values(BADGE_TRACKS)) {
+                const level = candidate.levels.find((l) => l.badgeId === firstBadge);
+                if (level) {
+                  info = level;
+                  track = candidate;
+                  break;
+                }
+              }
+              if (info) {
+                await AsyncStorage.setItem(
+                  badgeKey,
+                  JSON.stringify([...alreadyCelebrated, ...fresh])
+                );
+                publishCelebration({
+                  kind: 'badge',
+                  name: info.title,
+                  badgeTitle: info.title,
+                  icon: track?.icon,
+                  level: info.level,
+                  points,
+                });
+              }
+            }
+          }
+        } catch (e) {
+          // A celebration is never worth failing the activity for.
+          console.warn('Could not celebrate:', e);
         }
       } catch (err) {
         console.error("Error recording gamification activity:", err);
