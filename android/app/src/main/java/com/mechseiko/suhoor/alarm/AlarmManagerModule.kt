@@ -28,7 +28,43 @@ class AlarmManagerModule(private val context: Context) {
 
     private val alarmManager: AlarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
     private val gson = Gson()
-    private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+    /**
+     * The alarm list lives in DEVICE-PROTECTED storage, not credential-protected.
+     *
+     * After a reboot, Android only delivers BOOT_COMPLETED to the app at the
+     * first unlock, because normal storage is encrypted with the user's
+     * credential. An alarm for 03:23 on a phone that rebooted at 01:00 and was
+     * never touched again would therefore never be re-armed.
+     *
+     * Device-protected storage is readable before unlock, so LOCKED_BOOT_COMPLETED
+     * (sent at boot, while still locked) can re-arm everything. Nothing secret is
+     * stored here — alarm ids, trigger times, a sound name and a volume.
+     */
+    private val prefs = context.applicationContext
+        .createDeviceProtectedStorageContext()
+        .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+    init {
+        migrateFromCredentialProtectedStorage(context)
+    }
+
+    /**
+     * One-time copy of the alarm list out of the old credential-protected
+     * location, so an in-place app update does not lose a pending alarm.
+     */
+    private fun migrateFromCredentialProtectedStorage(context: Context) {
+        try {
+            if (prefs.contains(KEY_ALARMS)) return
+            val legacy = context.applicationContext
+                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getString(KEY_ALARMS, null) ?: return
+            prefs.edit().putString(KEY_ALARMS, legacy).apply()
+            Log.d(TAG, "Migrated stored alarms to device-protected storage")
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not migrate stored alarms: ${e.message}")
+        }
+    }
 
     /**
      * Schedule a new alarm

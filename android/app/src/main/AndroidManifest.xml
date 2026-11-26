@@ -70,6 +70,7 @@
     <activity
       android:name=".alarm.AlarmActivity"
       android:exported="false"
+      android:directBootAware="true"
       android:launchMode="singleInstance"
       android:excludeFromRecents="true"
       android:showWhenLocked="true"
@@ -80,14 +81,23 @@
       PendingIntent with this app's own identity, so the alarm still fires, but
       another app can no longer broadcast ALARM_TRIGGER with a crafted payload
       and make the phone scream at full volume over the lock screen.
+
+      directBootAware so the alarm can ring before the first unlock after a
+      reboot. It reads nothing from credential-encrypted storage: the alarm data
+      arrives in the intent and the alarm list lives in device-protected storage.
     -->
-    <receiver android:name=".alarm.AlarmReceiver" android:exported="false"/>
+    <receiver android:name=".alarm.AlarmReceiver" android:exported="false" android:directBootAware="true"/>
 
     <!-- Boot Receiver: also re-arms alarms after a Play Store update, a clock or
-         timezone change, and after the user grants exact-alarm access. -->
-    <receiver android:name=".alarm.BootReceiver" android:enabled="true" android:exported="true">
+         timezone change, and after the user grants exact-alarm access.
+         directBootAware + LOCKED_BOOT_COMPLETED is what closes the reboot hole:
+         BOOT_COMPLETED only arrives at the first unlock, which can be hours
+         after the alarm time, so a phone that rebooted overnight would have no
+         alarm. LOCKED_BOOT_COMPLETED is delivered at boot, still locked. -->
+    <receiver android:name=".alarm.BootReceiver" android:enabled="true" android:exported="true" android:directBootAware="true">
       <intent-filter>
         <action android:name="android.intent.action.BOOT_COMPLETED"/>
+        <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED"/>
         <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
         <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
         <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
@@ -97,8 +107,9 @@
       </intent-filter>
     </receiver>
 
-    <!-- Alarm Foreground Service -->
-    <service android:name=".alarm.AlarmForegroundService" android:foregroundServiceType="specialUse" android:exported="false">
+    <!-- Alarm Foreground Service. directBootAware so it can start and ring
+         before the first unlock; it touches no encrypted storage. -->
+    <service android:name=".alarm.AlarmForegroundService" android:foregroundServiceType="specialUse" android:exported="false" android:directBootAware="true">
       <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Suhoor alarm service for scheduled prayer/meal notifications"/>
     </service>
 

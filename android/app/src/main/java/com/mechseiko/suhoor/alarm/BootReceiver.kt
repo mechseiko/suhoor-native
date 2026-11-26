@@ -35,6 +35,11 @@ class BootReceiver : BroadcastReceiver() {
 
         private val HANDLED_ACTIONS = setOf(
             Intent.ACTION_BOOT_COMPLETED,
+            // Sent while the device is still locked. This is the one that
+            // matters here: BOOT_COMPLETED waits for the first unlock, which can
+            // be hours after the alarm time. The alarm list lives in
+            // device-protected storage precisely so it can be read this early.
+            Intent.ACTION_LOCKED_BOOT_COMPLETED,
             ACTION_QUICKBOOT_POWERON,
             ACTION_HTC_QUICKBOOT_POWERON,
             Intent.ACTION_MY_PACKAGE_REPLACED,
