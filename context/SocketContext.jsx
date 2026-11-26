@@ -153,20 +153,67 @@ export const SocketProvider = ({ children }) => {
     [socket]
   );
 
-  // Helper function to buzz a user
+  /**
+   * Buzz a member and wait for the server's verdict.
+   *
+   * The server owns both cooldowns now (5 minute grace, 3 minutes per target),
+   * so it answers with `{ ok: true }` or `{ ok: false, reason, remainingMs }`.
+   * That answer is what lets the UI show the real reason instead of a false
+   * "buzz sent".
+   *
+   * Two rollout details matter:
+   *  - `targetWakeTime` (the target's scheduled wake time, ms) is what the grace
+   *    check uses; the server clamps it, so a bad value degrades to "skip grace".
+   *  - if the ack never arrives (an older server that does not send one), the
+   *    buzz WAS delivered, so a timeout resolves as success rather than telling
+   *    the user their buzz failed.
+   *
+   * @returns {Promise<{ok: boolean, reason?: string, remainingMs?: number, wakeTimeMs?: number}>}
+   */
   const buzzUser = useCallback(
-    (toUserId, groupId, fromUserName, groupName) => {
-      if (socket && currentUser) {
-        socket.emit('buzz-user', {
-          fromUserId: currentUser.uid,
-          fromUserName: fromUserName || currentUser.email,
-          toUserId,
-          groupId,
-          groupName, // Include group name for the buzzed user
-        });
-        console.log(`🔔 Buzzing user: ${toUserId} from group: ${groupName}`);
-      }
-    },
+    (toUserId, groupId, fromUserName, groupName, targetWakeTime) =>
+      new Promise((resolve) => {
+        if (!socket || !currentUser) {
+          resolve({ ok: false, reason: 'offline' });
+          return;
+        }
+
+        let settled = false;
+        const finish = (result) => {
+          if (settled) return;
+          settled = true;
+          resolve(result);
+        };
+
+        const timer = setTimeout(() => {
+          // No ack: assume the older server delivered it silently.
+          console.log('🔔 Buzz ack timed out; assuming delivery');
+          finish({ ok: true, unconfirmed: true });
+        }, 6000);
+
+        try {
+          socket.emit(
+            'buzz-user',
+            {
+              fromUserId: currentUser.uid,
+              fromUserName: fromUserName || currentUser.email,
+              toUserId,
+              groupId,
+              groupName, // Include group name for the buzzed user
+              targetWakeTime: Number(targetWakeTime) || undefined,
+            },
+            (response) => {
+              clearTimeout(timer);
+              finish(response && typeof response === 'object' ? response : { ok: true });
+            }
+          );
+          console.log(`🔔 Buzzing user: ${toUserId} from group: ${groupName}`);
+        } catch (err) {
+          clearTimeout(timer);
+          console.warn('Buzz emit failed:', err?.message || err);
+          finish({ ok: false, reason: 'error' });
+        }
+      }),
     [socket, currentUser]
   );
 

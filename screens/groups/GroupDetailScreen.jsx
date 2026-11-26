@@ -386,6 +386,21 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     return now >= wakeTime && now <= suhoorTime;
   };
 
+  /**
+   * The target's scheduled wake time as an epoch, for the server's grace check.
+   * The server does not hold suhoor times, so the app sends what it already
+   * computed and the server clamps it; the cooldown itself is authoritative.
+   */
+  const getMemberWakeTimeMs = (member) => {
+    const wakeUpStr = getMemberWakeUpTime(member);
+    if (!wakeUpStr || wakeUpStr === '--:--') return null;
+    const [h, m] = wakeUpStr.split(':').map(Number);
+    if (Number.isNaN(h) || Number.isNaN(m)) return null;
+    const when = new Date();
+    when.setHours(h, m, 0, 0);
+    return when.getTime();
+  };
+
   const isCurrentUserAdmin =
     members.find((m) => m?.profiles?.id === currentUser?.uid)?.role === "admin";
 
@@ -659,26 +674,37 @@ export const GroupDetailScreen = ({ route, navigation }) => {
     }
   };
 
-  const performBuzz = async (member, buzzDocRef) => {
+  /**
+   * Delivers a buzz and reports what the server said.
+   *
+   * The server now owns the cooldown record (`group_buzzes`), so this only asks
+   * and, on success, appends the event log and the gamification credit. Writing
+   * group_buzzes here would race the server's own check and could make the first
+   * buzz look like a repeat.
+   *
+   * @returns {Promise<{ok: boolean, reason?: string, remainingMs?: number}>}
+   */
+  const performBuzz = async (member) => {
     const fromName =
       userProfile?.display_name ||
       currentUser.displayName ||
       currentUser.email ||
       t('groups.member');
 
-    await setDoc(buzzDocRef, {
-      group_id: groupId,
-      target_user_id: member.profiles.id,
-      buzzed_by_user_id: currentUser.uid,
-      buzzed_by_name: fromName,
-      group_name: group?.name || "",
-      timestamp: Date.now(),
-      buzzed_at: serverTimestamp(),
-    });
+    const result = await buzzUser(
+      member.profiles.id,
+      groupId,
+      fromName,
+      group?.name,
+      getMemberWakeTimeMs(member)
+    );
+
+    if (!result?.ok) return result;
 
     // group_buzzes keeps one doc per (group, member) — it is the cooldown
     // record, not a history. Append the event so counts and the admin feed are
-    // real. Failure here must never block the buzz itself.
+    // real. Both writes happen only for a buzz the server accepted, so a
+    // refused buzz cannot inflate the admin's totals.
     try {
       await addDoc(collection(db, COLLECTIONS.buzzEvents), {
         group_id: groupId,
@@ -695,9 +721,38 @@ export const GroupDetailScreen = ({ route, navigation }) => {
       console.warn("Could not write buzz event log:", e);
     }
 
-    buzzUser(member.profiles.id, groupId, fromName, group?.name);
-
     await recordActivity("buzz_member");
+    return result;
+  };
+
+  /** The server's refusal, as text. Grace keeps its dedicated dialog. */
+  const getServerRejectionMessage = (member, result) => {
+    const name =
+      member?.profiles?.display_name || member?.profiles?.email || t('groups.member');
+    const remaining = Number(result?.remainingMs) || 0;
+
+    if (result?.reason === 'grace') {
+      const wakeText = result?.wakeTimeMs
+        ? new Date(result.wakeTimeMs).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : '';
+      return t('groups.gracePeriodBody', {
+        name,
+        wakeTime: wakeText,
+        remaining: formatRemainingTime(remaining),
+      });
+    }
+
+    if (result?.reason === 'cooldown') {
+      return t('groups.buzzCooldownActive', {
+        name,
+        time: formatRemainingTime(remaining),
+      });
+    }
+
+    return t('groups.buzzMemberError');
   };
 
   const handleBuzzMember = async (member) => {
@@ -720,7 +775,18 @@ export const GroupDetailScreen = ({ route, navigation }) => {
         return;
       }
 
-      await performBuzz(member, check.buzzDocRef);
+      const result = await performBuzz(member);
+
+      if (!result?.ok) {
+        // The server is the authority; a local pre-check can pass on a stale
+        // record and still be refused here.
+        if (result?.reason === "grace") {
+          Alert.alert(t('groups.gracePeriodTitle'), getServerRejectionMessage(member, result));
+        } else {
+          triggerToast(getServerRejectionMessage(member, result), "info");
+        }
+        return;
+      }
 
       triggerToast(
         t('groups.buzzSentTo', {
@@ -758,7 +824,15 @@ export const GroupDetailScreen = ({ route, navigation }) => {
           });
           continue;
         }
-        await performBuzz(member, check.buzzDocRef);
+        const result = await performBuzz(member);
+        if (!result?.ok) {
+          // The server refused (its cooldown record is the authority).
+          logEntries.push({
+            msg: getServerRejectionMessage(member, result),
+            type: "info",
+          });
+          continue;
+        }
         buzzedCount += 1;
         logEntries.push({
           msg: t('groups.buzzSentTo', {
