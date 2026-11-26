@@ -13,6 +13,28 @@ import com.mechseiko.suhoor.R
  * compile-time safe and unaffected by obfuscation.
  */
 object AlarmSounds {
+    private const val DEFAULT_BOOST_MB = 500
+
+    /**
+     * How much louder each bundled tone plays, in millibels (100 mB = 1 dB).
+     *
+     * Thunder and Pulse were too gentle to wake someone and Chime was
+     * borderline. The boost is applied at playback with LoudnessEnhancer rather
+     * than by re-encoding the assets, so the same values apply to the settings
+     * preview and to the ring — what the user auditions is what rings. Past
+     * roughly +9 dB a phone speaker starts to clip into distortion, which is why
+     * nothing goes above it.
+     */
+    fun boostMb(name: String?): Int = when {
+        name == null -> DEFAULT_BOOST_MB
+        name.contains("thunder", ignoreCase = true) -> 900
+        name.contains("pulse", ignoreCase = true) -> 850
+        name.contains("soft", ignoreCase = true) -> 600
+        name.contains("apex", ignoreCase = true) -> 450
+        name.contains("inferno", ignoreCase = true) -> 350
+        else -> DEFAULT_BOOST_MB
+    }
+
     fun resId(context: Context, name: String?): Int {
         return when (name?.trim()) {
             "alarm_sound_apex" -> R.raw.alarm_sound_apex

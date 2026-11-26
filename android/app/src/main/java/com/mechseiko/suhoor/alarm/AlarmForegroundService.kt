@@ -12,6 +12,7 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.RingtoneManager
+import android.media.audiofx.LoudnessEnhancer
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
@@ -27,6 +28,7 @@ import com.mechseiko.suhoor.R
 class AlarmForegroundService : Service() {
 
     private var mediaPlayer: MediaPlayer? = null
+    private var loudnessEnhancer: LoudnessEnhancer? = null
     private var vibrator: Vibrator? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private var audioFocusRequest: AudioFocusRequest? = null
@@ -280,9 +282,49 @@ class AlarmForegroundService : Service() {
                 setVolume(volume, volume)
                 start()
             }
+
+            // Push the ring past its recorded level.
+            //
+            // Thunder and Pulse were too gentle to wake someone, and Chime was
+            // borderline. Rather than re-encoding the bundled assets (the same
+            // files also feed the picker preview, and MP3s cannot be edited on
+            // device), the ring is boosted at playback with LoudnessEnhancer,
+            // per sound. It runs on the player's own session, so it applies only
+            // to the alarm, and it needs no asset or format change.
+            applyLoudnessBoost(mediaPlayer, requested)
         } catch (e: Exception) {
             Log.e(TAG, "Error starting alarm sound in foreground service", e)
         }
+    }
+
+    /**
+     * Attaches a LoudnessEnhancer to the ringing player. Best effort by design:
+     * some devices do not expose the effect, and a boost that cannot be applied
+     * must never stop the alarm from playing.
+     */
+    private fun applyLoudnessBoost(player: MediaPlayer?, soundName: String) {
+        try {
+            if (player == null) return
+            val sessionId = player.audioSessionId
+            if (sessionId == 0) return
+            releaseLoudnessBoost()
+            loudnessEnhancer = LoudnessEnhancer(sessionId).apply {
+                setTargetGain(AlarmSounds.boostMb(soundName))
+                enabled = true
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not boost the alarm loudness: ${e.message}")
+        }
+    }
+
+    private fun releaseLoudnessBoost() {
+        try {
+            loudnessEnhancer?.enabled = false
+            loudnessEnhancer?.release()
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not release the loudness booster: ${e.message}")
+        }
+        loudnessEnhancer = null
     }
 
     /**
@@ -314,6 +356,7 @@ class AlarmForegroundService : Service() {
     }
 
     private fun stopAlarmSound() {
+        releaseLoudnessBoost()
         try {
             mediaPlayer?.let {
                 if (it.isPlaying) it.stop()

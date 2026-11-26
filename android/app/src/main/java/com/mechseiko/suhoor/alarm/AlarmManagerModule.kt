@@ -8,7 +8,6 @@ import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import com.mechseiko.suhoor.MainActivity
 import java.util.Date
 
@@ -73,8 +72,12 @@ class AlarmManagerModule(private val context: Context) {
                 volume = volume
             )
 
-            // Save alarm to persistent storage
-            saveAlarm(alarmData)
+            // Persistence is bookkeeping, not part of scheduling. It happens
+            // AFTER the alarm is handed to AlarmManager (see below), because a
+            // failure to write the list must never be able to stop the alarm
+            // from being scheduled. That is exactly what went wrong in release
+            // builds: saving threw, so this whole method aborted before it ever
+            // reached AlarmManager.
 
             if (volume in 0f..0.001f) {
                 // "Audible alarms" is switched off in preferences. Honor it, but
@@ -173,6 +176,16 @@ class AlarmManagerModule(private val context: Context) {
             }
 
             Log.d(TAG, "Alarm scheduled ($mode): $alarmId at ${Date(triggerTime)}")
+
+            // Persist for reboot / update / timezone re-arming. Best effort: the
+            // alarm is already armed at this point, so a storage failure only
+            // costs the re-arm, never this alarm.
+            try {
+                saveAlarm(alarmData)
+            } catch (e: Exception) {
+                Log.e(TAG, "Could not persist alarm $alarmId (it is still armed)", e)
+            }
+
             return true
 
         } catch (e: Exception) {
@@ -302,8 +315,25 @@ class AlarmManagerModule(private val context: Context) {
      */
     fun getAllAlarms(): List<AlarmData> {
         val alarmsJson = prefs.getString(KEY_ALARMS, null) ?: return emptyList()
-        val type = object : TypeToken<List<AlarmData>>() {}.type
-        return gson.fromJson(alarmsJson, type) ?: emptyList()
+        return try {
+            // Parsed as a concrete array type on purpose.
+            //
+            // This used to be `object : TypeToken<List<AlarmData>>() {}.type`,
+            // and R8 removes generic signatures in release builds. Gson's
+            // TypeToken then throws
+            //   IllegalStateException: TypeToken must be created with a type
+            //   argument ... make sure that generic signatures are preserved
+            // which made this method throw, which made saveAlarm() throw, which
+            // made scheduleAlarm() abort BEFORE reaching AlarmManager. The net
+            // effect was that a release build never armed a single alarm: no
+            // wake-up alarm, and no scheduled buzz. An array class needs no
+            // generic signature, so no shrinker can break it.
+            gson.fromJson(alarmsJson, Array<AlarmData>::class.java)?.toList() ?: emptyList()
+        } catch (e: Exception) {
+            // A corrupt or unreadable store must never brick scheduling again.
+            Log.e(TAG, "Alarm store is unreadable; continuing with an empty list", e)
+            emptyList()
+        }
     }
 
     /**

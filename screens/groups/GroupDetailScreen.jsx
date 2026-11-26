@@ -1321,19 +1321,6 @@ export const GroupDetailScreen = ({ route, navigation }) => {
                     : t('groups.member')}{" "}
                   • {t('groups.wakeUpAt', { time: getMemberWakeUpTime(selectedMemberForAction) })}
                 </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', columnGap: 6, marginTop: 3 }}>
-                  <Text style={{ fontSize: 11, color: colors.textSecondary }} numberOfLines={1}>
-                    {memberIntendsToFast(selectedMemberForAction)
-                      ? t('groups.menuWantsToFast', 'Wants to fast today')
-                      : t('groups.menuNotFasting', 'Not fasting today')}
-                  </Text>
-                  <Text style={{ fontSize: 11, color: colors.textSecondary }}>·</Text>
-                  <Text style={{ fontSize: 11, color: colors.textSecondary }} numberOfLines={1}>
-                    {getMemberStatus(selectedMemberForAction) === 'awake'
-                      ? t('groups.awake', 'Awake')
-                      : t('groups.sleeping', 'Asleep')}
-                  </Text>
-                </View>
               </View>
               <TouchableOpacity
                 onPress={() => setShowMemberActionModal(false)}

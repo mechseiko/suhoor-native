@@ -17,6 +17,18 @@
 -keep class com.google.code.gson.** { *; }
 -keepclassmembers class com.google.code.gson.** { *; }
 
+# Gson reads generic signatures reflectively, and R8 drops the Signature
+# attribute by default. Without it Gson's TypeToken throws
+#   IllegalStateException: TypeToken must be created with a type argument
+# That is what broke every release build: parsing the stored alarm list threw,
+# which aborted scheduleAlarm() before it ever reached AlarmManager, so no
+# alarm was ever armed. The TypeToken in AlarmManagerModule is now a concrete
+# array type, and these rules protect any future generic Gson use.
+-keepattributes Signature
+-keepattributes *Annotation*
+-keep class com.google.gson.reflect.TypeToken { *; }
+-keep class * extends com.google.gson.reflect.TypeToken { *; }
+
 # Facebook image pipeline (fbjni/imagepipeline in react-native deps) references
 # androidx exif utils that are not packaged; harmless, silence R8's missing-class
 # error generated in _app/outputs/mapping/release/missing_rules.txt.

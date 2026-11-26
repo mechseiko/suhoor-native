@@ -235,6 +235,29 @@ class AlarmBridgeModule(reactContext: ReactApplicationContext) : ReactContextBas
 
     private var previewPlayer: MediaPlayer? = null
     private var previewFocusRequest: AudioFocusRequest? = null
+    private var previewLoudness: android.media.audiofx.LoudnessEnhancer? = null
+
+    /** Mirrors AlarmForegroundService's boost so preview == ring. Best effort. */
+    private fun applyPreviewLoudness(player: MediaPlayer, soundName: String) {
+        try {
+            val sessionId = player.audioSessionId
+            if (sessionId == 0) return
+            previewLoudness = android.media.audiofx.LoudnessEnhancer(sessionId).apply {
+                setTargetGain(AlarmSounds.boostMb(soundName))
+                enabled = true
+            }
+        } catch (e: Exception) {
+            Log.w("AlarmBridge", "Could not boost the preview loudness: ${e.message}")
+        }
+    }
+
+    private fun releasePreviewLoudness() {
+        try {
+            previewLoudness?.enabled = false
+            previewLoudness?.release()
+        } catch (_: Exception) {}
+        previewLoudness = null
+    }
 
     /**
      * Play a looping preview of a bundled alarm sound (settings picker).
@@ -310,6 +333,9 @@ class AlarmBridgeModule(reactContext: ReactApplicationContext) : ReactContextBas
             }
 
             previewPlayer = player
+            // Same boost the ring uses (AlarmSounds.boostMb), so the preview is
+            // an honest audition of what the alarm will sound like.
+            applyPreviewLoudness(player, soundName)
             promise.resolve(true)
         } catch (e: Exception) {
             Log.e("AlarmBridge", "Sound preview failed for $soundName", e)
@@ -329,6 +355,7 @@ class AlarmBridgeModule(reactContext: ReactApplicationContext) : ReactContextBas
     }
 
     private fun stopSoundPreviewInternal() {
+        releasePreviewLoudness()
         try {
             previewPlayer?.let {
                 if (it.isPlaying) it.stop()
