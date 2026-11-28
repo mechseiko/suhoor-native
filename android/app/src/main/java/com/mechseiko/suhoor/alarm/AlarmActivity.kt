@@ -63,6 +63,11 @@ class AlarmActivity : AppCompatActivity() {
         // Acquire wake lock to keep device awake
         acquireWakeLock()
 
+        // Close this screen at tonight's cutoff (15 minutes before suhoor ends),
+        // so an undismissed alarm does not leave a dead alarm screen over the
+        // lock screen after the service has already gone quiet.
+        scheduleCutoffFinish()
+
         // The foreground service owns the looping sound + vibration. Only fall
         // back to playing here if it did not start (e.g. the service was killed
         // and the user reopened the alarm from its notification).
@@ -72,6 +77,28 @@ class AlarmActivity : AppCompatActivity() {
                 startVibration()
             }
         }, 800)
+    }
+
+    /**
+     * Finishes this screen at tonight's cutoff. The service stops the sound on
+     * its own timer; this makes sure the screen does not outlive it. No-op when
+     * no cutoff is known (the alarm then rings until dismissed, as before).
+     */
+    private fun scheduleCutoffFinish() {
+        try {
+            val remaining = AlarmCutoff.remainingMs(this)
+            if (remaining < 0) return
+            Handler(Looper.getMainLooper()).postDelayed({
+                if (!isFinishing) {
+                    android.util.Log.d("AlarmActivity", "Cutoff reached — closing the alarm screen")
+                    stopAlarmSound()
+                    stopVibration()
+                    finish()
+                }
+            }, remaining)
+        } catch (e: Exception) {
+            android.util.Log.w("AlarmActivity", "Could not schedule the cutoff finish: ${e.message}")
+        }
     }
 
     override fun onDestroy() {

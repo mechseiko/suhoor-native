@@ -43,6 +43,34 @@ class AlarmBridgeModule(reactContext: ReactApplicationContext) : ReactContextBas
         }
     }
 
+    /**
+     * Stores tonight's hard stop: 15 minutes before suhoor ends (epoch ms).
+     *
+     * The app computes it because the fasting-times API lives there. Native
+     * components read it directly, so the alarm and every buzz stop at that
+     * moment even with the app closed, before the first unlock, or when a buzz
+     * arrived over FCM with no JS running. Passing 0 clears it.
+     */
+    @ReactMethod
+    fun setDailyCutoff(cutoffMs: Double, promise: Promise) {
+        try {
+            AlarmCutoff.set(reactApplicationContext, cutoffMs.toLong())
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("CUTOFF_ERROR", e.message, e)
+        }
+    }
+
+    /** Milliseconds left until tonight's cutoff, or -1 when none is set. */
+    @ReactMethod
+    fun getCutoffRemainingMs(promise: Promise) {
+        try {
+            promise.resolve(AlarmCutoff.remainingMs(reactApplicationContext).toDouble())
+        } catch (e: Exception) {
+            promise.reject("CUTOFF_ERROR", e.message, e)
+        }
+    }
+
     @ReactMethod
     fun openBatteryOptimizationSettings(promise: Promise) {
         try {

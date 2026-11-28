@@ -14,7 +14,9 @@ import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.media.audiofx.LoudnessEnhancer
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -32,6 +34,9 @@ class AlarmForegroundService : Service() {
     private var vibrator: Vibrator? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private var audioFocusRequest: AudioFocusRequest? = null
+
+    private val cutoffHandler = Handler(Looper.getMainLooper())
+    private var cutoffRunnable: Runnable? = null
 
     companion object {
         private const val TAG = "AlarmForegroundService"
@@ -91,8 +96,10 @@ class AlarmForegroundService : Service() {
                 startForegroundAlarmNotification(alarmData)
                 startAlarmSound(alarmData)
                 startVibration()
+                scheduleCutoffStop()
             }
             ACTION_STOP_ALARM -> {
+                cancelCutoffStop()
                 stopAlarmSound()
                 stopVibration()
                 releaseWakeLock()
@@ -102,6 +109,53 @@ class AlarmForegroundService : Service() {
             }
         }
         return START_NOT_STICKY
+    }
+
+    /**
+     * Stops the ring at tonight's cutoff — 15 minutes before suhoor ends.
+     *
+     * Without this, an alarm nobody dismissed (slept through it, or a buzz from
+     * a friend after they woke) rang until the phone was force-stopped. The
+     * cutoff is read natively, so this works with the app closed and before the
+     * first unlock. When no cutoff is known it does nothing, which is the old
+     * behaviour: ring until dismissed.
+     */
+    private fun scheduleCutoffStop() {
+        try {
+            cutoffRunnable?.let { cutoffHandler.removeCallbacks(it) }
+            val remaining = AlarmCutoff.remainingMs(this)
+            if (remaining < 0) {
+                Log.d(TAG, "No cutoff set; the alarm will ring until dismissed")
+                return
+            }
+            val stop = Runnable {
+                Log.d(TAG, "Cutoff reached — stopping the alarm")
+                stopAlarmSound()
+                stopVibration()
+                releaseWakeLock()
+                isRunning = false
+                try {
+                    stopForeground(true)
+                } catch (e: Exception) {
+                    Log.w(TAG, "stopForeground failed at cutoff: ${e.message}")
+                }
+                stopSelf()
+            }
+            cutoffRunnable = stop
+            cutoffHandler.postDelayed(stop, remaining)
+            Log.d(TAG, "Alarm will stop in ${remaining / 1000}s (cutoff)")
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not schedule the cutoff stop: ${e.message}")
+        }
+    }
+
+    private fun cancelCutoffStop() {
+        try {
+            cutoffRunnable?.let { cutoffHandler.removeCallbacks(it) }
+        } catch (e: Exception) {
+            // nothing to do
+        }
+        cutoffRunnable = null
     }
 
     private fun acquireWakeLock() {
@@ -414,6 +468,7 @@ class AlarmForegroundService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         isRunning = false
+        cancelCutoffStop()
         stopAlarmSound()
         stopVibration()
         releaseWakeLock()

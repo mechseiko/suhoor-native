@@ -36,8 +36,8 @@ export const AlarmProvider = ({ children }) => {
   const { currentUser, userProfile } = useAuth();
   const { on, off } = useSocket();
   const { t } = useLanguage();
-  const { todayData, getWakeStart, wakeMinutes } = useFastingTimes();
-  const { triggerRemoteBuzz, scheduleAlarm: scheduleNativeAlarm, consumeAlarmTrigger, clearAlarmTrigger } = useNativeAlarm();
+  const { todayData, getWakeStart, wakeMinutes, getSuhoor } = useFastingTimes();
+  const { triggerRemoteBuzz, scheduleAlarm: scheduleNativeAlarm, consumeAlarmTrigger, clearAlarmTrigger, setDailyCutoff } = useNativeAlarm();
 
   // The alarm UI must survive a foreground transition. This used to reset
   // isAlarmActive on every AppState 'active', which hid the PIN overlay while
@@ -231,6 +231,61 @@ export const AlarmProvider = ({ children }) => {
   // scheduleDailySuhoorAlarm is declared. It has to: referencing that useCallback
   // from a dependency array up here would read the const while it is still in
   // its temporal dead zone and throw at render.
+
+  /**
+   * Tonight's hard stop: 15 minutes before suhoor ends.
+   *
+   * An alarm nobody dismissed must not outlive its usefulness. The cutoff is
+   * computed here (this is where the fasting-times API lives) and handed to the
+   * native side once, so the service, the receiver and the alarm screen all stop
+   * themselves — with the app closed, before the first unlock, and for a buzz
+   * that arrived over FCM. The same value is kept in a ref so the JS overlay can
+   * close itself while the app is open.
+   */
+  const cutoffRef = useRef(0);
+  useEffect(() => {
+    if (Platform.OS !== 'android' || typeof setDailyCutoff !== 'function') return;
+
+    const CUTOFF_BEFORE_SUHOOR_MS = 15 * 60 * 1000;
+    const todayKey = new Date().toLocaleDateString('en-CA');
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowKey = tomorrow.toLocaleDateString('en-CA');
+
+    try {
+      const todaySuhoor = getSuhoor(todayKey);
+      const suhoor =
+        todaySuhoor && todaySuhoor.getTime() - CUTOFF_BEFORE_SUHOOR_MS > Date.now()
+          ? todaySuhoor
+          : getSuhoor(tomorrowKey) || todaySuhoor;
+
+      const cutoff = suhoor ? suhoor.getTime() - CUTOFF_BEFORE_SUHOOR_MS : 0;
+      const valid = cutoff > Date.now() ? cutoff : 0;
+      cutoffRef.current = valid;
+      setDailyCutoff(valid).catch(() => {});
+      console.log('⏰ Alarm cutoff:', valid ? new Date(valid).toISOString() : 'none');
+    } catch (e) {
+      console.warn('Could not set the alarm cutoff:', e);
+    }
+  }, [todayData?.time?.sahur, getSuhoor, setDailyCutoff]);
+
+  // Close the overlay itself at the cutoff while the app is open. The native
+  // side stops the sound; this stops the screen from staying behind.
+  useEffect(() => {
+    if (Platform.OS !== 'android') return undefined;
+    const id = setInterval(async () => {
+      if (!cutoffRef.current || Date.now() < cutoffRef.current) return;
+      cutoffRef.current = 0;
+      if (!isAlarmActive) return;
+      console.log('⏰ Cutoff reached — closing the alarm overlay');
+      setIsAlarmActive(false);
+      setAlarmData(null);
+      try {
+        await NativeModules?.AlarmBridge?.stopAlarmService?.();
+      } catch (e) {}
+    }, 15000);
+    return () => clearInterval(id);
+  }, [isAlarmActive]);
 
   // Foreground heartbeat: if scheduled alarm time arrives while app is open, activate alarm immediately
   useEffect(() => {

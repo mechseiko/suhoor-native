@@ -17,6 +17,7 @@ export function useNativeAlarm() {
       isAlarmArmed: async () => null,
       getAllAlarms: async () => [],
       cancelAllAlarms: async () => false,
+      setDailyCutoff: async () => false,
       canScheduleExactAlarms: async () => true,
       canUseFullScreenIntent: async () => true,
       canDrawOverlays: async () => true,
@@ -45,6 +46,7 @@ export function useNativeAlarm() {
       isAlarmArmed: async () => null,
       getAllAlarms: async () => [],
       cancelAllAlarms: async () => false,
+      setDailyCutoff: async () => false,
       canScheduleExactAlarms: async () => false,
       canUseFullScreenIntent: async () => true,
       canDrawOverlays: async () => true,
@@ -221,6 +223,23 @@ export function useNativeAlarm() {
     }
   }
 
+  /**
+   * Tonight's hard stop: 15 minutes before suhoor ends, as an epoch in ms.
+   *
+   * Stored natively so the alarm service, the receiver and the alarm screen can
+   * all stop themselves without JS. Passing 0 clears it, restoring the old
+   * behaviour (ring until dismissed).
+   */
+  const setDailyCutoff = async (cutoffMs) => {
+    try {
+      if (!AlarmBridge.setDailyCutoff) return false
+      return await AlarmBridge.setDailyCutoff(Number(cutoffMs) || 0)
+    } catch (error) {
+      console.error('Error setting the alarm cutoff:', error)
+      return false
+    }
+  }
+
   /** Android 14+: is the alarm allowed to take over the lock screen? */
   const canUseFullScreenIntent = async () => {
     try {
@@ -338,6 +357,7 @@ export function useNativeAlarm() {
     getAllAlarms,
     cancelAllAlarms,
     canScheduleExactAlarms,
+    setDailyCutoff,
     canUseFullScreenIntent,
     canDrawOverlays,
     openOverlaySettings,

@@ -55,14 +55,22 @@ class AlarmReceiver : BroadcastReceiver() {
 
         Log.d(TAG, "Alarm triggered: ${alarmData.id} type: ${alarmData.type}")
 
-        // Start foreground service to play sound and vibrate continuously even when app is closed
-        AlarmForegroundService.startAlarm(context, alarmData)
+        // Past suhoor's cutoff there is nothing useful left to do: no sound, no
+        // screen, no notification. The alarm is still consumed and re-armed
+        // below, so the next night is unaffected. This holds for a first alarm
+        // and for a group buzz alike.
+        if (AlarmCutoff.hasPassed(context)) {
+            Log.d(TAG, "Alarm ${alarmData.id} suppressed: past tonight's cutoff")
+        } else {
+            // Start foreground service to play sound and vibrate continuously even when app is closed
+            AlarmForegroundService.startAlarm(context, alarmData)
 
-        // Show notification
-        showNotification(context, alarmData)
+            // Show notification
+            showNotification(context, alarmData)
 
-        // Launch full-screen alarm activity
-        launchAlarmActivity(context, alarmData)
+            // Launch full-screen alarm activity
+            launchAlarmActivity(context, alarmData)
+        }
 
         // Remove alarm from storage after triggering
         val alarmManagerModule = AlarmManagerModule(context)
