@@ -913,6 +913,8 @@ export const en = {
   "home.deviceCheck_notificationsDesc": "Without notifications the alarm cannot show the PIN screen while it rings, so you cannot stop it.",
   "home.deviceCheck_overlayTitle": "Display over other apps is off",
   "home.deviceCheck_overlayDesc": "Android will not let the alarm screen open while another app is in front, so a ringing alarm has no PIN screen to stop it.",
+  "home.deviceCheck_volumeTitle": "Alarm volume is low",
+  "home.deviceCheck_volumeDesc": "Your alarm plays on the alarm slider, which is separate from media volume. Raise it so the alarm can wake you.",
 
   "auth.providerPasswordOnly": "This email is registered with a password. Sign in with your email and password instead.",
   "auth.providerGoogleOnly": "This email is registered with Google. Sign in with Google instead.",

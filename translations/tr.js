@@ -912,6 +912,8 @@ export const tr = {
   "home.deviceCheck_notificationsDesc": "Bildirimler olmadan alarm çalarken PIN ekranını gösteremez, bu yüzden onu durduramazsınız.",
   "home.deviceCheck_overlayTitle": "Diğer uygulamaların üzerinde gösterme kapalı",
   "home.deviceCheck_overlayDesc": "Başka bir uygulama öndeyken Android alarm ekranını açmaz; bu yüzden çalan alarmı durduracak bir ekran olmaz.",
+  "home.deviceCheck_volumeTitle": "Alarm sesi düşük",
+  "home.deviceCheck_volumeDesc": "Alarmınız, medya sesinden ayrı olan alarm ses düzeyinde çalar. Sizi uyandırabilmesi için yükseltin.",
   "home.deviceCheck_exactTitle": "Alarmlar ve hatırlatıcılar kapalı",
   "home.deviceCheck_exactDesc": "Suhoor kesin bir alarm planlayamıyor; hiçbir alarm çalmayacak.",
   "home.deviceCheck_fullscreenTitle": "Tam ekran alarmlar kapalı",

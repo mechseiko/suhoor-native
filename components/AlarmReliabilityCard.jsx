@@ -37,6 +37,7 @@ const ISSUE_ICONS = {
   exact: 'alarm-outline',
   fullscreen: 'expand-outline',
   notifications: 'notifications-off-outline',
+  volume: 'volume-low-outline',
 };
 
 export const AlarmReliabilityCard = () => {
@@ -102,6 +103,19 @@ export const AlarmReliabilityCard = () => {
       }
     } catch (e) {}
 
+    // The ALARM stream is what an alarm actually plays on, and it is a separate
+    // slider from media/ring. A phone can be loud for everything else and still
+    // have its alarm volume at 10% — the classic "my alarm was silent" report.
+    try {
+      if (bridge.getAlarmVolume) {
+        const volume = await bridge.getAlarmVolume();
+        const percent = Number(volume?.percent);
+        if (volume?.muted === true || (Number.isFinite(percent) && percent < 50)) {
+          found.push('volume');
+        }
+      }
+    } catch (e) {}
+
     setIssues(found);
   }, []);
 
@@ -131,6 +145,15 @@ export const AlarmReliabilityCard = () => {
         // Fall through to the system settings screen.
       }
       Linking.openSettings().catch(() => {});
+      return;
+    }
+
+    if (issue === 'volume' && bridge?.openSoundSettings) {
+      try {
+        await bridge.openSoundSettings();
+      } catch (e) {
+        Linking.openSettings().catch(() => {});
+      }
       return;
     }
 

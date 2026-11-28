@@ -913,6 +913,8 @@ export const fr = {
   "home.deviceCheck_notificationsDesc": "Sans notifications, l'alarme ne peut pas afficher l'écran du code PIN pendant qu'elle sonne ; vous ne pourrez pas l'arrêter.",
   "home.deviceCheck_overlayTitle": "Affichage par-dessus les autres applis désactivé",
   "home.deviceCheck_overlayDesc": "Android n'ouvrira pas l'écran d'alarme tant qu'une autre appli est au premier plan : une alarme qui sonne n'aura aucun écran pour l'arrêter.",
+  "home.deviceCheck_volumeTitle": "Le volume de l'alarme est bas",
+  "home.deviceCheck_volumeDesc": "Votre alarme utilise le curseur « alarme », distinct du volume multimédia. Augmentez-le pour être réveillé.",
   "home.deviceCheck_exactTitle": "Alarmes et rappels est désactivé",
   "home.deviceCheck_exactDesc": "Suhoor ne peut pas programmer une alarme exacte ; aucune alarme ne sonnera.",
   "home.deviceCheck_fullscreenTitle": "Les alarmes plein écran sont désactivées",

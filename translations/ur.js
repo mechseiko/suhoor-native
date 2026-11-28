@@ -912,6 +912,8 @@ export const ur = {
   "home.deviceCheck_notificationsDesc": "اطلاعات کے بغیر الارم بجتے وقت PIN اسکرین نہیں دکھا سکتا، اس لیے آپ اسے بند نہیں کر سکیں گے۔",
   "home.deviceCheck_overlayTitle": "دوسری ایپس کے اوپر دکھانا بند ہے",
   "home.deviceCheck_overlayDesc": "کوئی دوسری ایپ سامنے ہونے پر اینڈرائیڈ الارم اسکرین نہیں کھولے گا، اس لیے بجتے ہوئے الارم کو بند کرنے کے لیے کوئی اسکرین نہیں ہوگی۔",
+  "home.deviceCheck_volumeTitle": "الارم کی آواز کم ہے",
+  "home.deviceCheck_volumeDesc": "آپ کا الارم الارم والی آواز پر چلتا ہے جو میڈیا کی آواز سے الگ ہے۔ اسے بڑھائیں تاکہ الارم آپ کو جگا سکے۔",
   "home.deviceCheck_exactTitle": "الارم اور یاد دہانیاں بند ہیں",
   "home.deviceCheck_exactDesc": "سحور درست وقت کا الارم شیڈول نہیں کر سکتا، اس لیے کوئی الارم نہیں بجے گا۔",
   "home.deviceCheck_fullscreenTitle": "فل اسکرین الارم بند ہیں",

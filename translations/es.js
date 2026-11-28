@@ -912,6 +912,8 @@ export const es = {
   "home.deviceCheck_notificationsDesc": "Sin notificaciones la alarma no puede mostrar la pantalla del PIN mientras suena, así que no podrás detenerla.",
   "home.deviceCheck_overlayTitle": "Mostrar sobre otras apps está desactivado",
   "home.deviceCheck_overlayDesc": "Android no abrirá la pantalla de alarma mientras otra app está en primer plano, así que una alarma sonando no tendrá pantalla para detenerla.",
+  "home.deviceCheck_volumeTitle": "El volumen de la alarma es bajo",
+  "home.deviceCheck_volumeDesc": "Tu alarma usa el control de volumen de alarma, separado del volumen multimedia. Súbelo para que pueda despertarte.",
   "home.deviceCheck_exactTitle": "Alarmas y recordatorios está desactivado",
   "home.deviceCheck_exactDesc": "Suhoor no puede programar una alarma exacta, así que no sonará ninguna.",
   "home.deviceCheck_fullscreenTitle": "Las alarmas en pantalla completa están desactivadas",

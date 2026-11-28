@@ -912,6 +912,8 @@ export const ar = {
   "home.deviceCheck_notificationsDesc": "بدون الإشعارات لا يستطيع المنبه عرض شاشة رمز PIN أثناء رنينه، فلن تتمكن من إيقافه.",
   "home.deviceCheck_overlayTitle": "الظهور فوق التطبيقات الأخرى مغلق",
   "home.deviceCheck_overlayDesc": "لن يسمح أندرويد بفتح شاشة التنبيه أثناء استخدام تطبيق آخر، لذا لن تكون هناك شاشة لإيقاف التنبيه وهو يرن.",
+  "home.deviceCheck_volumeTitle": "صوت المنبه منخفض",
+  "home.deviceCheck_volumeDesc": "يعمل منبهك على مستوى صوت المنبه، وهو منفصل عن صوت الوسائط. ارفعه ليتمكن المنبه من إيقاظك.",
   "home.deviceCheck_exactTitle": "المنبهات والتذكيرات معطّلة",
   "home.deviceCheck_exactDesc": "لا يستطيع سحور جدولة منبه دقيق، لذا لن يرن أي منبه.",
   "home.deviceCheck_fullscreenTitle": "المنبهات بشاشة كاملة معطّلة",

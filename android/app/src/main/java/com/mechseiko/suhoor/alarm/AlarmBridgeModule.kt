@@ -71,6 +71,50 @@ class AlarmBridgeModule(reactContext: ReactApplicationContext) : ReactContextBas
         }
     }
 
+    /**
+     * The phone's ALARM volume — not the media or ring volume the existing
+     * ringer check looks at. A phone can be loud for everything else and still
+     * have its alarm stream at 10%, which is exactly the "my alarm was silent"
+     * report.
+     */
+    @ReactMethod
+    fun getAlarmVolume(promise: Promise) {
+        try {
+            val audioManager =
+                reactApplicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            val current = audioManager.getStreamVolume(AudioManager.STREAM_ALARM)
+            val max = audioManager.getStreamMaxVolume(AudioManager.STREAM_ALARM)
+            val percent = if (max > 0) Math.round(current * 100f / max) else 0
+            val muted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                audioManager.isStreamMute(AudioManager.STREAM_ALARM)
+            } else {
+                current == 0
+            }
+            val result = Arguments.createMap().apply {
+                putInt("current", current)
+                putInt("max", max)
+                putInt("percent", percent)
+                putBoolean("muted", muted)
+            }
+            promise.resolve(result)
+        } catch (e: Exception) {
+            promise.reject("ALARM_VOLUME_ERROR", e.message, e)
+        }
+    }
+
+    /** Opens the system sound settings, where the alarm slider lives. */
+    @ReactMethod
+    fun openSoundSettings(promise: Promise) {
+        try {
+            val intent = Intent(Settings.ACTION_SOUND_SETTINGS)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            reactApplicationContext.startActivity(intent)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("SOUND_SETTINGS_ERROR", e.message, e)
+        }
+    }
+
     @ReactMethod
     fun openBatteryOptimizationSettings(promise: Promise) {
         try {
