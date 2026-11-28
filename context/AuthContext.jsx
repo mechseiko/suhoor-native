@@ -254,9 +254,28 @@ export const AuthProvider = ({ children }) => {
         throw conflict;
       }
 
-      // Check if user profile exists in Firestore, if not create it
-      const profileDoc = await getDoc(doc(db, "profiles", user.uid));
-      if (!profileDoc.exists()) {
+      // Check if user profile exists in Firestore, if not create it.
+      //
+      // A failure here must NEVER abort a sign-in that already succeeded: the
+      // Firebase session is valid at this point, and the profile listener later
+      // in this file creates or repairs the document. Letting this throw is
+      // what bounced a brand-new Google user back to the sign-up screen right
+      // after they signed in — the app briefly had a user, then the exception
+      // unwound the flow while Firebase stayed signed in.
+      let profileExists = false;
+      try {
+        const profileDoc = await getDoc(doc(db, "profiles", user.uid));
+        profileExists = profileDoc.exists();
+      } catch (profileReadError) {
+        console.log(
+          "Could not read the profile after Google sign-in:",
+          profileReadError?.message
+        );
+        // Offline / rules: unknown state, so do not create or overwrite.
+        profileExists = true;
+      }
+
+      if (!profileExists) {
         let alarmPin = "";
         let fastingDefaults = {
           sunnah: true,
@@ -314,6 +333,16 @@ export const AuthProvider = ({ children }) => {
             alarmSound: "default",
           },
         });
+
+        // The PIN must also live on the device: the alarm overlay compares
+        // against the local copy, so a dismissal never needs the network.
+        if (alarmPin) {
+          try {
+            await AsyncStorage.setItem("suhoor_alarm_pin", alarmPin);
+          } catch (pinErr) {
+            console.log("Could not cache the alarm PIN locally:", pinErr?.message);
+          }
+        }
 
         try {
           await AsyncStorage.setItem("suhoor-tab-tour-pending", "true");
@@ -416,6 +445,24 @@ export const AuthProvider = ({ children }) => {
             if (docSnapshot.exists()) {
               const profileData = docSnapshot.data();
               setUserProfile(profileData);
+
+              // Keep the on-device copy of the alarm PIN in step with the
+              // profile, so the alarm overlay can verify a PIN with no network
+              // at all — including a PIN changed on another device, as soon as
+              // this profile snapshot arrives.
+              const remotePin = profileData?.pin || profileData?.alarmPin;
+              if (remotePin) {
+                AsyncStorage.getItem("suhoor_alarm_pin")
+                  .then((localPin) => {
+                    if (localPin !== String(remotePin)) {
+                      return AsyncStorage.setItem("suhoor_alarm_pin", String(remotePin));
+                    }
+                    return null;
+                  })
+                  .catch((pinErr) =>
+                    console.log("Could not cache the alarm PIN:", pinErr?.message)
+                  );
+              }
 
               // Sync verification status if needed
               if (user.emailVerified && !profileData.isVerified) {

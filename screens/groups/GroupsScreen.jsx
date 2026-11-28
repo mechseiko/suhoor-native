@@ -21,6 +21,12 @@ import { useLanguage } from '../../context/LanguageContext'
 import { useNetwork } from '../../context/NetworkContext'
 import { useFastingTimes } from '../../hooks/useFastingTimes'
 import { useGamification } from '../../hooks/useGamification'
+import {
+  writeCheckIn,
+  queueCheckIn,
+  flushPendingCheckIns,
+  hasPendingCheckIn,
+} from '../../services/checkInQueue'
 import { db } from '../../config/firebase'
 import { COLLECTIONS, wakeUpLogId } from '../../config/firestoreSchema'
 import {
@@ -205,14 +211,44 @@ export const GroupsScreen = ({ navigation, route }) => {
           where('date', '==', today)
         )
         const snapshot = await getDocs(q)
-        setHasCheckedInToday(!snapshot.empty)
+        // A check-in made offline lives in the queue, not in Firestore yet.
+        // It must still read as "you are checked in" until it is flushed.
+        const pending = await hasPendingCheckIn(currentUser.uid, today)
+        setHasCheckedInToday(!snapshot.empty || pending)
       } catch (err) {
         console.error('Error fetching check-in status:', err)
+        // Offline: fall back to the local record so the button does not reappear
+        // for a check-in the user already made.
+        try {
+          const today = new Date().toLocaleDateString('en-CA')
+          const pending = await hasPendingCheckIn(currentUser.uid, today)
+          if (pending) setHasCheckedInToday(true)
+        } catch (e) {}
       }
     }
 
     fetchTodayCheckIn()
   }, [currentUser])
+
+  // Push any queued check-ins as soon as the phone is online again.
+  useEffect(() => {
+    if (!currentUser) return
+    let cancelled = false
+
+    const flush = async () => {
+      const flushed = await flushPendingCheckIns()
+      if (!cancelled && flushed > 0) {
+        const today = new Date().toLocaleDateString('en-CA')
+        setHasCheckedInToday(true)
+        console.log(`✅ Flushed ${flushed} queued check-in(s) for ${today}`)
+      }
+    }
+
+    flush()
+    return () => {
+      cancelled = true
+    }
+  }, [currentUser, isConnected])
 
   // Fetch fasting intention for today
   useEffect(() => {
@@ -244,24 +280,24 @@ export const GroupsScreen = ({ navigation, route }) => {
       const todayStr = new Date().toLocaleDateString('en-CA')
       const wakeUpTime = new Date().toISOString()
 
-      await setDoc(
-        doc(db, COLLECTIONS.wakeUpLogs, wakeUpLogId(currentUser.uid, todayStr)),
-        {
-          user_id: currentUser.uid,
-          date: todayStr,
-          woke_up_at: wakeUpTime,
-        },
-        { merge: true }
-      )
-
-      const statusRef = doc(db, COLLECTIONS.dailyFastingStatus, `${currentUser.uid}_${todayStr}`)
-      await setDoc(statusRef, {
-        userId: currentUser.uid,
-        date: todayStr,
-        wantsToFast: true,
-        checkedIn: true,
-        wokeUpAt: wakeUpTime,
-      }, { merge: true })
+      // Local-first: the check-in is recorded and shown as done immediately.
+      // If Firestore cannot take it (no data, a flaky connection, rules), it is
+      // queued and written the next time the app is online — the user pressed
+      // the button at 3am, so it must count.
+      try {
+        await writeCheckIn({
+          userId: currentUser.uid,
+          dateKey: todayStr,
+          wokeUpAt: wakeUpTime,
+        })
+      } catch (writeError) {
+        console.log('Check-in queued for later:', writeError?.message || writeError)
+        await queueCheckIn({
+          userId: currentUser.uid,
+          dateKey: todayStr,
+          wokeUpAt: wakeUpTime,
+        })
+      }
 
       // Set checked-in flag in AsyncStorage for notification cancellation
       await AsyncStorage.setItem(`suhoor_checked_in_${todayStr}`, 'true')

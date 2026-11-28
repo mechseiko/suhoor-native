@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { StyleSheet, View, Image, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Image, TouchableOpacity, Animated } from 'react-native';
 import { db } from '../config/firebase';
 import { COLLECTIONS } from '../config/firestoreSchema';
 import { doc, setDoc, getDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
@@ -22,7 +22,7 @@ import Toast from './Toast';
 import { useAlarmState } from '../context/AlarmContext';
 import { useFastingTimes } from '../hooks/useFastingTimes';
 import { Badge, Button, Card, Text } from './ui';
-import { spacing } from '../theme';
+import { spacing, radius } from '../theme';
 import { scheduleNotification, CHANNELS } from '../services/notifications';
 
 export const FastingPrompt = () => {
@@ -303,6 +303,14 @@ export const FastingPrompt = () => {
   if (!isPromptVisible) return null;
   if (!targetKey || !targetDateMidnight) return null;
 
+  // While the stored intention is still loading, show a skeleton instead of the
+  // Yes / No question. Otherwise a user who already answered sees the question
+  // flash first — and can tap it by accident — before the card flips to their
+  // actual answer, which is exactly what happens on a slow connection.
+  if (!statusResolved && status === 'idle') {
+    return <FastingPromptSkeleton />;
+  }
+
   // "Change my mind" stays available until 03:00 on the target day, and that
   // cut-off now applies to BOTH answers. Before, only the fasting card had the
   // 03:00 limit; the not-fasting card let you reset right up to the wake-up
@@ -549,5 +557,77 @@ const styles = StyleSheet.create({
   resetButton: { flexDirection: 'row', alignItems: 'center', padding: spacing.xs },
   footNote: { textAlign: 'center', marginTop: spacing.md },
 });
+
+/**
+ * Skeleton shown while the stored intention is loading.
+ *
+ * Same shape as the real prompt card, with the same shimmer as the group member
+ * skeletons: one Animated value translating a band, transform only, native
+ * driver, static layout props. (Mixing a native-driven opacity with layout props
+ * is what crashed the AppTour.)
+ */
+const FastingPromptSkeleton = () => {
+  const shimmer = useRef(new Animated.Value(0)).current;
+  const { colors, isDark } = useTheme();
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(shimmer, {
+        toValue: 1,
+        duration: 1100,
+        useNativeDriver: true,
+      })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [shimmer]);
+
+  const translateX = shimmer.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-220, 420],
+  });
+
+  const base = colors.surfaceVariant;
+  const band = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.7)';
+
+  return (
+    <View
+      style={{
+        backgroundColor: colors.surface,
+        borderColor: colors.border,
+        borderWidth: 1,
+        borderRadius: radius.xl,
+        padding: spacing.base,
+        overflow: 'hidden',
+        rowGap: spacing.sm,
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', columnGap: spacing.md }}>
+        <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: base }} />
+        <View style={{ flex: 1, rowGap: 6 }}>
+          <View style={{ width: '55%', height: 14, borderRadius: 7, backgroundColor: base }} />
+          <View style={{ width: '80%', height: 11, borderRadius: 6, backgroundColor: base }} />
+        </View>
+      </View>
+      <View style={{ width: '65%', height: 11, borderRadius: 6, backgroundColor: base, marginTop: spacing.xs }} />
+      <View style={{ flexDirection: 'row', columnGap: spacing.sm, marginTop: spacing.sm }}>
+        <View style={{ flex: 1, height: 44, borderRadius: radius.lg, backgroundColor: base }} />
+        <View style={{ flex: 1, height: 44, borderRadius: radius.lg, backgroundColor: base }} />
+      </View>
+
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          top: 0,
+          bottom: 0,
+          width: 120,
+          backgroundColor: band,
+          transform: [{ translateX }],
+        }}
+      />
+    </View>
+  );
+};
 
 export default FastingPrompt;
